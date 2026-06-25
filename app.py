@@ -356,10 +356,17 @@ def _fetch_with_playwright_headless(url):
 
 def _fetch_shopee_data(url):
     import re, urllib.request as _req, json as _json
+    # Format 1: /product-name-i.SHOPID.ITEMID
     m = re.search(r'-i\.(\d+)\.(\d+)', url)
-    if not m:
-        return None, 'Không nhận dạng được URL Shopee. Hãy dùng link trực tiếp đến sản phẩm.'
-    shopid, itemid = m.group(1), m.group(2)
+    if m:
+        shopid, itemid = m.group(1), m.group(2)
+    else:
+        # Format 2: shopee.vn/shopname/SHOPID/ITEMID (từ short link)
+        m2 = re.search(r'shopee\.vn/[^/?#]+/(\d+)/(\d+)', url)
+        if m2:
+            shopid, itemid = m2.group(1), m2.group(2)
+        else:
+            return None, 'Không nhận dạng được URL Shopee. Hãy dùng link trực tiếp đến sản phẩm.'
     api = f'https://shopee.vn/api/v4/item/get?itemid={itemid}&shopid={shopid}'
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -654,8 +661,8 @@ def fetch_url():
                     with _req.urlopen(req, timeout=10) as resp:
                         resolved = resp.url
                         html_s = resp.read().decode('utf-8', errors='ignore')
-                    # HTTP redirect hoạt động?
-                    if re.search(r'-i\.(\d+)\.(\d+)', resolved):
+                    # HTTP redirect hoạt động? (hỗ trợ cả 2 format URL Shopee)
+                    if re.search(r'-i\.(\d+)\.(\d+)', resolved) or re.search(r'shopee\.vn/[^/?#]+/(\d+)/(\d+)', resolved):
                         url = resolved
                     else:
                         # Tìm URL thật trong JS/meta của trang
