@@ -647,6 +647,14 @@ def fetch_url():
     # ── Shopee: gọi API nội bộ (hoạt động cả trên cloud) ─────────────────────
     if 'shopee.vn' in url:
         try:
+            # Follow redirect nếu là short link s.shopee.vn
+            if 's.shopee.vn' in url or re.search(r'shopee\.vn/[A-Za-z0-9_-]{6,20}$', url):
+                try:
+                    req = _req.Request(url, headers={'User-Agent': UA})
+                    with _req.urlopen(req, timeout=10) as resp:
+                        url = resp.url
+                except Exception:
+                    pass
             item, err = _fetch_shopee_data(url)
             if err:
                 return jsonify({'success': False, 'error': err}), 400
