@@ -341,23 +341,27 @@ def _fetch_tiktok_cloud(url):
     except Exception as e:
         return None, f'Không thể tải trang: {str(e)}'
 
+    # Track URLs đã download để tránh duplicate cross-source
+    _downloaded_urls = set()
+
     def _cdn_scan(html_text, existing_count=0):
-        """Scan HTML source tìm ảnh TikTok/ByteDance CDN (kể cả trong JSON strings)."""
+        """Scan HTML source tìm ảnh TikTok/ByteDance CDN, bỏ qua URL đã download."""
         cdn_re = re.compile(
             r'https://[a-z0-9\-]+\.(?:ibyteimg|tiktokcdn|ibytedtos|tiktokstaticb)\.com'
             r'/[^\s"\'<>\]\\]+\.(?:jpeg|jpg|png|webp)(?:[?~][^\s"\'<>\]]*)?'
         )
         SKIP = ('avatar', 'logo', 'icon', '100x100', '50x50', '30x30', 'header', 'banner/bg')
-        seen, result = set(), []
+        seen_local, result = set(), []
         for u in cdn_re.findall(html_text):
             u = u.replace('\\u002F', '/').replace('%2F', '/')
-            if u not in seen and not any(x in u.lower() for x in SKIP):
-                seen.add(u)
+            if u not in _downloaded_urls and u not in seen_local and not any(x in u.lower() for x in SKIP):
+                seen_local.add(u)
                 result.append(u)
         images = []
         for i, img_url in enumerate(result[:max(0, 4 - existing_count)]):
             try:
                 images.append({'id': f'tt-cdn-{i}', 'dataUrl': _download_image_b64(img_url, UA_DESKTOP)})
+                _downloaded_urls.add(img_url)
             except Exception:
                 pass
         return images
@@ -366,9 +370,10 @@ def _fetch_tiktok_cloud(url):
         images = []
         for i, img in enumerate(img_list[:4]):
             img_url = img if isinstance(img, str) else img.get('url', img.get('src', img.get('urlList', [''])[0] if isinstance(img.get('urlList'), list) else ''))
-            if img_url and img_url.startswith('http'):
+            if img_url and img_url.startswith('http') and img_url not in _downloaded_urls:
                 try:
                     images.append({'id': f'{prefix}-{i}', 'dataUrl': _download_image_b64(img_url, UA_DESKTOP)})
+                    _downloaded_urls.add(img_url)
                 except Exception:
                     pass
         return images
