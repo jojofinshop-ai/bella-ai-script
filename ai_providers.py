@@ -111,7 +111,12 @@ def analyze_images_with_gemini(gemini_api_keys, images: list) -> str:
         '- Cách mặc & phối đồ thấy trong ảnh (nếu có model mặc)\n'
         'Chỉ mô tả những gì thực sự nhìn thấy. Không bịa đặt.'
     )
-    models = ['gemini-2.0-flash', 'gemini-1.5-flash']
+    models = [
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite-preview-06-17',
+        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+    ]
     for key in keys:
         for model in models:
             settings = {'apiKey': key, 'modelName': model, 'temperature': 0.2, 'maxTokens': 0}
@@ -158,7 +163,12 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list) -> dict
     import json as _json, re
     images = [{'dataUrl': u} for u in image_data_urls]
     # Thử từng key, từng model — mỗi model có quota riêng
-    models = ['gemini-2.0-flash', 'gemini-1.5-flash']
+    models = [
+        'gemini-2.5-flash',           # mới nhất, quota cao hơn
+        'gemini-2.5-flash-lite-preview-06-17',  # lite version, ít tốn hơn
+        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+    ]
     last_err = None
     for key in keys:
         for model in models:
