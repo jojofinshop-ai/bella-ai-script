@@ -846,6 +846,34 @@ def manifest():
         ]
     })
 
+@app.route('/api/debug-playwright')
+def debug_playwright():
+    import sys, traceback
+    result = {'python': sys.version, 'IS_CLOUD': IS_CLOUD, 'playwright': None, 'chromium': None, 'fetch_test': None}
+    try:
+        from playwright.sync_api import sync_playwright
+        result['playwright'] = 'import OK'
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--single-process'])
+            result['chromium'] = 'launch OK'
+            page = browser.new_page()
+            page.goto('https://vt.tiktok.com/ZS96rxAU1XYRT-8P76X/', timeout=30000, wait_until='domcontentloaded')
+            import time; time.sleep(3)
+            title = page.title()
+            url = page.url
+            dom = page.evaluate("""() => {
+                const h1 = document.querySelector('h1');
+                const ps = Array.from(document.querySelectorAll('p,li,[class*="desc"],[class*="detail"]'))
+                    .map(e=>e.innerText?.trim()||'').filter(t=>t.length>50).slice(0,3);
+                return {title: document.title, h1: h1?.innerText||'', url: location.href, desc_candidates: ps};
+            }""")
+            result['fetch_test'] = {'title': title, 'url': url[:100], 'dom': dom}
+            browser.close()
+    except Exception as e:
+        result['error'] = traceback.format_exc()[-1000:]
+    return jsonify(result)
+
+
 def run_flask():
     app.run(host='127.0.0.1', port=5001, debug=False, use_reloader=False)
 
