@@ -1455,26 +1455,14 @@ function bellaApp() {
         this.history = JSON.parse(localStorage.getItem('bella_history') || '[]');
       } catch { this.history = []; }
     },
-    async _makeThumbnail(dataUrl, size=80) {
-      return new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => {
-          const c = document.createElement('canvas');
-          c.width = c.height = size;
-          const ctx = c.getContext('2d');
-          const r = Math.max(size / img.width, size / img.height);
-          const w = img.width * r, h = img.height * r;
-          ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
-          resolve(c.toDataURL('image/jpeg', 0.6));
-        };
-        img.onerror = () => resolve(null);
-        img.src = dataUrl;
-      });
+    async _makeThumbnail(dataUrl) {
+      // Dùng trực tiếp dataUrl — hiển thị bằng CSS object-fit thay vì canvas (tránh lỗi Safari)
+      return dataUrl || null;
     },
     async saveToHistory() {
       if (!this.currentScript) return;
       const firstImg = this.form.images?.[0]?.dataUrl;
-      const thumbnail = firstImg ? await this._makeThumbnail(firstImg, 80) : null;
+      const thumbnail = firstImg || null;
       const item = {
         id: Date.now().toString() + Math.random().toString(36).slice(2),
         createdAt: new Date().toISOString(),
