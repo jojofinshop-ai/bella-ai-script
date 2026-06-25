@@ -136,13 +136,23 @@ def scan_product_from_screenshot(gemini_api_key: str, image_data_urls: list) -> 
         'Trả về JSON (chỉ JSON, không giải thích thêm):\n'
         '{"productName": "...", "productDescription": "..."}'
     )
-    import json as _json, re
+    import json as _json, re, time
     images = [{'dataUrl': u} for u in image_data_urls]
-    raw = call_gemini(settings, system_prompt, user_prompt, images)
-    m = re.search(r'\{[\s\S]*\}', raw)
-    if m:
-        return _json.loads(m.group(0))
-    raise ValueError('Gemini không trả về JSON hợp lệ')
+    last_err = None
+    for attempt in range(3):
+        try:
+            raw = call_gemini(settings, system_prompt, user_prompt, images)
+            m = re.search(r'\{[\s\S]*\}', raw)
+            if m:
+                return _json.loads(m.group(0))
+            raise ValueError('Gemini không trả về JSON hợp lệ')
+        except Exception as e:
+            last_err = e
+            if '429' in str(e) and attempt < 2:
+                time.sleep(5 * (attempt + 1))  # 5s, 10s
+                continue
+            raise
+    raise last_err
 
 
 def call_ai(settings: dict, system_prompt: str, user_prompt: str, images: list) -> str:

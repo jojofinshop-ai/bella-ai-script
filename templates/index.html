@@ -1064,14 +1064,30 @@ function bellaApp() {
       }
       this.isScanningImage = true;
       try {
-        // Đọc tất cả files thành dataUrl
-        const readFile = f => new Promise((resolve, reject) => {
+        // Đọc và nén ảnh về max 1280px để giảm payload gửi Gemini
+        const compressImage = f => new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = e => resolve(e.target.result);
+          reader.onload = e => {
+            const img = new Image();
+            img.onload = () => {
+              const MAX = 1280;
+              let w = img.width, h = img.height;
+              if (w > MAX || h > MAX) {
+                if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+                else { w = Math.round(w * MAX / h); h = MAX; }
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = w; canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              resolve(canvas.toDataURL('image/jpeg', 0.82));
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+          };
           reader.onerror = reject;
           reader.readAsDataURL(f);
         });
-        const dataUrls = await Promise.all(files.map(readFile));
+        const dataUrls = await Promise.all(files.map(compressImage));
         const res = await fetch('/api/scan-product', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
