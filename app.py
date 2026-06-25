@@ -871,31 +871,59 @@ def manifest():
         ]
     })
 
-@app.route('/api/debug-playwright')
-def debug_playwright():
-    import sys, traceback
-    result = {'python': sys.version, 'IS_CLOUD': IS_CLOUD, 'playwright': None, 'chromium': None, 'fetch_test': None}
+@app.route('/api/debug-urllib')
+def debug_urllib():
+    import urllib.request as _req, re, json as _json, traceback
+    from urllib.parse import urlparse, parse_qs
+    test_url = request.args.get('url', 'https://vt.tiktok.com/ZS96rCQF3pPxt-uEtA5/')
+    result = {'url': test_url}
     try:
-        from playwright.sync_api import sync_playwright
-        result['playwright'] = 'import OK'
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--single-process'])
-            result['chromium'] = 'launch OK'
-            page = browser.new_page()
-            page.goto('https://vt.tiktok.com/ZS96rxAU1XYRT-8P76X/', timeout=30000, wait_until='domcontentloaded')
-            import time; time.sleep(3)
-            title = page.title()
-            url = page.url
-            dom = page.evaluate("""() => {
-                const h1 = document.querySelector('h1');
-                const ps = Array.from(document.querySelectorAll('p,li,[class*="desc"],[class*="detail"]'))
-                    .map(e=>e.innerText?.trim()||'').filter(t=>t.length>50).slice(0,3);
-                return {title: document.title, h1: h1?.innerText||'', url: location.href, desc_candidates: ps};
-            }""")
-            result['fetch_test'] = {'title': title, 'url': url[:100], 'dom': dom}
-            browser.close()
+        UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        req = _req.Request(test_url, headers={'User-Agent': UA, 'Accept': 'text/html', 'Accept-Language': 'vi-VN,vi;q=0.9'})
+        with _req.urlopen(req, timeout=20) as resp:
+            final_url = resp.url
+            html = resp.read().decode('utf-8', errors='ignore')
+        result['final_url'] = final_url[:200]
+        result['html_len'] = len(html)
+        # og_info
+        qs = parse_qs(urlparse(final_url).query)
+        og_raw = qs.get('og_info', [''])[0]
+        if og_raw:
+            try: result['og_info'] = _json.loads(og_raw)
+            except: result['og_info_raw'] = og_raw[:300]
+        # __NEXT_DATA__
+        nd = re.search(r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>', html, re.DOTALL)
+        if nd:
+            nd_text = nd.group(1)
+            result['next_data_len'] = len(nd_text)
+            try:
+                nd_json = _json.loads(nd_text)
+                # Tìm keys liên quan đến product
+                def find_keys(obj, depth=0, path=''):
+                    if depth > 5: return []
+                    found = []
+                    if isinstance(obj, dict):
+                        for k, v in obj.items():
+                            if any(x in k.lower() for x in ('desc','detail','product','item','name','title')):
+                                val_str = str(v)[:200] if not isinstance(v, (dict,list)) else f'[{type(v).__name__}]'
+                                found.append(f'{path}.{k}={val_str}')
+                            found += find_keys(v, depth+1, f'{path}.{k}')
+                    elif isinstance(obj, list) and obj:
+                        found += find_keys(obj[0], depth+1, f'{path}[0]')
+                    return found[:20]
+                result['next_data_keys'] = find_keys(nd_json)
+            except Exception as e:
+                result['next_data_parse_err'] = str(e)
+        else:
+            result['next_data'] = 'NOT FOUND'
+            # og:title và og:description
+            og_t = re.search(r'og:title[^>]+content=["\']([^"\']{5,300})["\']', html)
+            og_d = re.search(r'og:description[^>]+content=["\']([^"\']{5,500})["\']', html)
+            result['og_title'] = og_t.group(1) if og_t else None
+            result['og_desc'] = og_d.group(1)[:300] if og_d else None
+            result['html_sample'] = html[:500]
     except Exception as e:
-        result['error'] = traceback.format_exc()[-1000:]
+        result['error'] = traceback.format_exc()[-800:]
     return jsonify(result)
 
 
