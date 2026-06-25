@@ -586,8 +586,8 @@ def _fetch_tiktok_cloud(url):
     raw_desc = (d.get('og:description') or d.get('twitter:description') or d.get('description') or '').strip()
     desc = '' if _is_generic_tiktok_desc(raw_desc) else raw_desc
 
-    # og_info_desc từ redirect URL là mô tả thật của sản phẩm — dùng khi og:description bị lọc
-    if not desc and og_info_desc and not _is_generic_tiktok_desc(og_info_desc):
+    # og_info.title thường là TÊN sản phẩm. Chỉ dùng làm mô tả nếu rất dài (>120 chars) — tức seller viết desc vào title
+    if not desc and og_info_desc and len(og_info_desc) > 120 and not _is_generic_tiktok_desc(og_info_desc):
         desc = og_info_desc
 
     INVALID_TITLES = ('tiktok', 'shop', 'trang chủ', 'home', 'make your day', 'security check', 'just a moment')
@@ -609,7 +609,7 @@ def _fetch_tiktok_cloud(url):
                     pass
         if len(images) < 3:
             images += _cdn_scan(html, len(images))
-        note = '' if desc else '\n[Mô tả chi tiết (chất liệu, màu sắc, size...) cần nhập thêm thủ công từ trang sản phẩm]'
+        note = '' if desc else '[Copy nội dung từ tab "Mô tả" trên TikTok Shop và dán vào đây]'
         return {'productName': name, 'productDescription': desc + note, 'images': images}, None
 
     return None, None
