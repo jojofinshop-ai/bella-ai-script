@@ -302,8 +302,12 @@ def _fetch_with_playwright_headless(url):
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            args=['--no-sandbox', '--disable-setuid-sandbox',
-                  '--disable-dev-shm-usage', '--disable-gpu'],
+            args=[
+                '--no-sandbox', '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage', '--disable-gpu',
+                '--single-process', '--no-zygote',
+                '--disable-extensions', '--disable-background-networking',
+            ],
         )
         ctx = browser.new_context(
             user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -396,11 +400,17 @@ def _fetch_tiktok_cloud(url):
     except Exception as e:
         return None, f'Không thể tải trang: {str(e)}'
 
-    # Track URLs đã download để tránh duplicate cross-source
-    _downloaded_urls = set()
+    # Track image keys đã download — normalize URL để tránh duplicate cùng ảnh khác size/params
+    _seen_img_keys = set()
+
+    def _img_key(u):
+        """Normalize TikTok CDN URL: bỏ query params và ~tplv transform suffix."""
+        base = u.split('?')[0]   # bỏ ?x-expires=...
+        base = base.split('~')[0]  # bỏ ~tplv-resize-jpeg:720:720...
+        return base
 
     def _cdn_scan(html_text, existing_count=0):
-        """Scan HTML source tìm ảnh TikTok/ByteDance CDN, bỏ qua URL đã download."""
+        """Scan HTML source tìm ảnh TikTok/ByteDance CDN, bỏ qua URL cùng ảnh đã download."""
         cdn_re = re.compile(
             r'https://[a-z0-9\-]+\.(?:ibyteimg|tiktokcdn|ibytedtos|tiktokstaticb)\.com'
             r'/[^\s"\'<>\]\\]+\.(?:jpeg|jpg|png|webp)(?:[?~][^\s"\'<>\]]*)?'
@@ -409,14 +419,15 @@ def _fetch_tiktok_cloud(url):
         seen_local, result = set(), []
         for u in cdn_re.findall(html_text):
             u = u.replace('\\u002F', '/').replace('%2F', '/')
-            if u not in _downloaded_urls and u not in seen_local and not any(x in u.lower() for x in SKIP):
-                seen_local.add(u)
+            key = _img_key(u)
+            if key not in _seen_img_keys and key not in seen_local and not any(x in u.lower() for x in SKIP):
+                seen_local.add(key)
                 result.append(u)
         images = []
         for i, img_url in enumerate(result[:max(0, 4 - existing_count)]):
             try:
                 images.append({'id': f'tt-cdn-{i}', 'dataUrl': _download_image_b64(img_url, UA_DESKTOP)})
-                _downloaded_urls.add(img_url)
+                _seen_img_keys.add(_img_key(img_url))
             except Exception:
                 pass
         return images
@@ -425,12 +436,14 @@ def _fetch_tiktok_cloud(url):
         images = []
         for i, img in enumerate(img_list[:4]):
             img_url = img if isinstance(img, str) else img.get('url', img.get('src', img.get('urlList', [''])[0] if isinstance(img.get('urlList'), list) else ''))
-            if img_url and img_url.startswith('http') and img_url not in _downloaded_urls:
-                try:
-                    images.append({'id': f'{prefix}-{i}', 'dataUrl': _download_image_b64(img_url, UA_DESKTOP)})
-                    _downloaded_urls.add(img_url)
-                except Exception:
-                    pass
+            if img_url and img_url.startswith('http'):
+                key = _img_key(img_url)
+                if key not in _seen_img_keys:
+                    try:
+                        images.append({'id': f'{prefix}-{i}', 'dataUrl': _download_image_b64(img_url, UA_DESKTOP)})
+                        _seen_img_keys.add(key)
+                    except Exception:
+                        pass
         return images
 
     def _is_generic_tiktok_desc(text):
