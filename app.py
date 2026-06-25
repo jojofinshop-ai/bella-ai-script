@@ -355,8 +355,8 @@ def _fetch_with_playwright_headless(url):
             return None, str(e)
 
 
-def _fetch_shopee_data(url):
-    import re, urllib.request as _req, json as _json
+def _fetch_shopee_data(url, opener=None):
+    import re, urllib.request as _req, json as _json, http.cookiejar as _cj
     # Format 1: /product-name-i.SHOPID.ITEMID
     m = re.search(r'-i\.(\d+)\.(\d+)', url)
     if m:
@@ -368,20 +368,87 @@ def _fetch_shopee_data(url):
             shopid, itemid = m2.group(1), m2.group(2)
         else:
             return None, 'Không nhận dạng được URL Shopee. Hãy dùng link trực tiếp đến sản phẩm.'
-    api = f'https://shopee.vn/api/v4/item/get?itemid={itemid}&shopid={shopid}'
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Referer': 'https://shopee.vn/',
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json',
-    }
-    r = _req.Request(api, headers=headers)
-    with _req.urlopen(r, timeout=15) as resp:
-        data = _json.loads(resp.read())
-    item = (data.get('data') or data.get('item') or {})
-    if not item:
-        return None, 'Không lấy được dữ liệu. Sản phẩm có thể đã bị ẩn hoặc xóa.'
-    return item, None
+
+    UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+
+    # Nếu chưa có opener (cookie session), tạo mới và ghé trang chủ lấy cookie
+    if opener is None:
+        cj = _cj.CookieJar()
+        opener = _req.build_opener(_req.HTTPCookieProcessor(cj))
+        try:
+            seed_req = _req.Request(
+                f'https://shopee.vn/product-i.{shopid}.{itemid}',
+                headers={'User-Agent': UA, 'Accept': 'text/html', 'Accept-Language': 'vi-VN,vi;q=0.9'}
+            )
+            with opener.open(seed_req, timeout=10):
+                pass
+        except Exception:
+            pass
+
+    # Thử nhiều endpoint API
+    apis = [
+        f'https://shopee.vn/api/v4/item/get?itemid={itemid}&shopid={shopid}',
+        f'https://shopee.vn/api/v4/pdp/get_pc?item_id={itemid}&shop_id={shopid}',
+    ]
+    last_err = None
+    for api in apis:
+        try:
+            api_req = _req.Request(api, headers={
+                'User-Agent': UA,
+                'Referer': f'https://shopee.vn/product-i.{shopid}.{itemid}',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'vi-VN,vi;q=0.9',
+            })
+            with opener.open(api_req, timeout=15) as resp:
+                data = _json.loads(resp.read())
+            item = (data.get('data') or data.get('item') or {})
+            if item:
+                return item, None
+        except Exception as e:
+            last_err = e
+
+    # Fallback: parse HTML meta tags (og:title / og:description / JSON-LD)
+    try:
+        page_url = f'https://shopee.vn/product-i.{shopid}.{itemid}'
+        page_req = _req.Request(page_url, headers={
+            'User-Agent': UA,
+            'Accept': 'text/html,application/xhtml+xml',
+            'Accept-Language': 'vi-VN,vi;q=0.9',
+            'Referer': 'https://www.google.com/',
+        })
+        with opener.open(page_req, timeout=20) as resp:
+            html = resp.read().decode('utf-8', errors='ignore')
+
+        name, desc, imgs = '', '', []
+        og_t = re.search(r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']', html)
+        og_d = re.search(r'<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']{10,})["\']', html)
+        og_i = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html)
+        if og_t:
+            name = re.sub(r'\s*[\|\-–]\s*Shopee.*$', '', og_t.group(1)).strip()
+        if og_d:
+            desc = og_d.group(1).strip()
+
+        # JSON-LD
+        ld = re.search(r'<script type=["\']application/ld\+json["\']>(.*?)</script>', html, re.DOTALL)
+        if ld:
+            try:
+                ld_data = _json.loads(ld.group(1))
+                if isinstance(ld_data, list):
+                    ld_data = next((d for d in ld_data if d.get('@type') == 'Product'), {})
+                if not name:
+                    name = ld_data.get('name', '')
+                if not desc:
+                    desc = ld_data.get('description', '')
+            except Exception:
+                pass
+
+        if name:
+            return {'name': name, 'description': desc, 'images': []}, None
+    except Exception:
+        pass
+
+    return None, f'Lỗi Shopee API: {str(last_err) if last_err else "Không lấy được dữ liệu"}'
 
 
 def _fetch_tiktok_cloud(url):
@@ -655,22 +722,23 @@ def fetch_url():
     # ── Shopee: gọi API nội bộ (hoạt động cả trên cloud) ─────────────────────
     if 'shopee.vn' in url:
         try:
-            # Resolve short link s.shopee.vn (dùng JS redirect, không phải HTTP redirect)
+            import http.cookiejar as _cj
+            cj = _cj.CookieJar()
+            shopee_opener = _req.build_opener(_req.HTTPCookieProcessor(cj))
+
+            # Resolve short link s.shopee.vn
             if 's.shopee.vn' in url or (re.search(r'shopee\.vn/[A-Za-z0-9_-]{6,20}$', url) and not re.search(r'-i\.\d+\.\d+', url)):
                 try:
                     req = _req.Request(url, headers={'User-Agent': UA, 'Accept': 'text/html'})
-                    with _req.urlopen(req, timeout=10) as resp:
+                    with shopee_opener.open(req, timeout=10) as resp:
                         resolved = resp.url
                         html_s = resp.read().decode('utf-8', errors='ignore')
-                    # HTTP redirect hoạt động? (hỗ trợ cả 2 format URL Shopee)
                     if re.search(r'-i\.(\d+)\.(\d+)', resolved) or re.search(r'shopee\.vn/[^/?#]+/(\d+)/(\d+)', resolved):
                         url = resolved
                     else:
-                        # Tìm URL thật trong JS/meta của trang
                         for pat in [
                             r'location\.href\s*=\s*["\']([^"\']+shopee[^"\']*i\.\d+\.\d+[^"\']*)["\']',
                             r'window\.location\s*=\s*["\']([^"\']+shopee[^"\']*i\.\d+\.\d+[^"\']*)["\']',
-                            r'content=["\']0;\s*url=([^"\']+shopee[^"\']*i\.\d+\.\d+[^"\']*)["\']',
                             r'"(https://shopee\.vn/[^"]+i\.\d+\.\d+[^"]*)"',
                         ]:
                             m2 = re.search(pat, html_s)
@@ -679,7 +747,8 @@ def fetch_url():
                                 break
                 except Exception:
                     pass
-            item, err = _fetch_shopee_data(url)
+
+            item, err = _fetch_shopee_data(url, opener=shopee_opener)
             if err:
                 return jsonify({'success': False, 'error': err}), 400
             name = item.get('name', '')
