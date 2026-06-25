@@ -729,6 +729,7 @@ def fetch_url():
             cj = _cj.CookieJar()
             shopee_opener = _req.build_opener(_req.HTTPCookieProcessor(cj))
 
+            html_s = ''
             # Resolve short link s.shopee.vn
             if 's.shopee.vn' in url or (re.search(r'shopee\.vn/[A-Za-z0-9_-]{6,20}$', url) and not re.search(r'-i\.\d+\.\d+', url)):
                 try:
@@ -751,6 +752,51 @@ def fetch_url():
                 except Exception:
                     pass
 
+            # Thử parse og: tags từ HTML đã fetch (không cần gọi API)
+            def _parse_shopee_html(html):
+                if not html:
+                    return None, None, []
+                # og:title — thử cả 2 thứ tự attribute
+                for pat in [
+                    r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']{3,300})["\']',
+                    r'<meta[^>]+content=["\']([^"\']{3,300})["\'][^>]*property=["\']og:title["\']',
+                ]:
+                    mt = re.search(pat, html)
+                    if mt:
+                        name = re.sub(r'\s*[\|\-–]\s*(Shopee|Shop).*$', '', mt.group(1), flags=re.IGNORECASE).strip()
+                        if name and len(name) > 3:
+                            break
+                else:
+                    name = ''
+                # og:description
+                desc = ''
+                for pat in [
+                    r'<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']{5,})["\']',
+                    r'<meta[^>]+content=["\']([^"\']{5,})["\'][^>]*property=["\']og:description["\']',
+                ]:
+                    md = re.search(pat, html)
+                    if md:
+                        desc = md.group(1).strip()
+                        break
+                # og:image
+                imgs = []
+                mi = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html)
+                if mi:
+                    imgs = [{'id': 'sp-0', 'dataUrl': None, '_url': mi.group(1)}]
+                return name or None, desc, imgs
+
+            og_name, og_desc, og_imgs = _parse_shopee_html(html_s)
+            if og_name:
+                # Tải ảnh từ og:image URL nếu có
+                images = []
+                for ig in og_imgs:
+                    try:
+                        images.append({'id': ig['id'], 'dataUrl': _download_image_b64(ig['_url'], UA)})
+                    except Exception:
+                        pass
+                return jsonify({'success': True, 'productName': og_name, 'productDescription': og_desc or '', 'images': images})
+
+            # Fallback: gọi Shopee API (thường bị 403 từ cloud)
             item, err = _fetch_shopee_data(url, opener=shopee_opener)
             if err:
                 return jsonify({'success': False, 'error': err}), 400
