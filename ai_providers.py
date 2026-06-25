@@ -111,16 +111,17 @@ def analyze_images_with_gemini(gemini_api_keys, images: list) -> str:
         '- Cách mặc & phối đồ thấy trong ảnh (nếu có model mặc)\n'
         'Chỉ mô tả những gì thực sự nhìn thấy. Không bịa đặt.'
     )
-    models = ['gemini-2.0-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-flash']
+    models = ['gemini-2.0-flash', 'gemini-1.5-flash']
     for key in keys:
         for model in models:
             settings = {'apiKey': key, 'modelName': model, 'temperature': 0.2, 'maxTokens': 0}
             try:
                 return call_gemini(settings, system_prompt, user_prompt, images)
             except Exception as e:
-                if '429' in str(e):
+                err_s = str(e)
+                if '429' in err_s or '404' in err_s or '503' in err_s:
                     continue
-                break  # lỗi khác → thử key tiếp theo
+                break
     return ''
 
 
@@ -139,6 +140,11 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list) -> dict
     keys = _parse_gemini_keys(gemini_api_keys)
     if not keys or not image_data_urls:
         raise ValueError('Cần Gemini API key và ảnh')
+    # Cảnh báo nếu key sai format (Gemini key phải bắt đầu AIza)
+    valid_keys = [k for k in keys if k.startswith('AIza')]
+    if not valid_keys:
+        raise ValueError('Gemini API key không hợp lệ. Key phải bắt đầu bằng "AIza..." — lấy tại aistudio.google.com')
+    keys = valid_keys
     n = len(image_data_urls)
     system_prompt = 'Bạn là công cụ đọc thông tin sản phẩm từ ảnh chụp màn hình. Trả về JSON chính xác.'
     user_prompt = (
@@ -151,8 +157,8 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list) -> dict
     )
     import json as _json, re
     images = [{'dataUrl': u} for u in image_data_urls]
-    # Thử từng model, từng key — mỗi model có quota riêng
-    models = ['gemini-2.0-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-flash']
+    # Thử từng key, từng model — mỗi model có quota riêng
+    models = ['gemini-2.0-flash', 'gemini-1.5-flash']
     last_err = None
     for key in keys:
         for model in models:
@@ -165,10 +171,11 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list) -> dict
                 raise ValueError('Gemini không trả về JSON hợp lệ')
             except Exception as e:
                 last_err = e
-                if '429' in str(e):
-                    continue  # thử model tiếp theo
-                raise  # lỗi khác → báo ngay
-    raise last_err or ValueError('Tất cả Gemini API key và model đều bị rate limit. Thêm key hoặc đợi 1 phút.')
+                err_s = str(e)
+                if '429' in err_s or '404' in err_s or '503' in err_s:
+                    continue  # rate limit hoặc model unavailable → thử tiếp
+                raise  # 401/403 (key sai) → báo ngay
+    raise last_err or ValueError('Tất cả Gemini API key đều bị rate limit. Thêm key hoặc đợi 1 phút.')
 
 
 def call_ai(settings: dict, system_prompt: str, user_prompt: str, images: list) -> str:
