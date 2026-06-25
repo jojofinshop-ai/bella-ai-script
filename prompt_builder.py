@@ -334,8 +334,17 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
     )
 
     if section == 'script':
+        s2 = current_script.get('section2', {})
+        analysis_parts = list(filter(None, [
+            f"Pain point: {s2.get('painPoints','')}" if s2.get('painPoints') else '',
+            f"Insight khách hàng: {s2.get('insight','')}" if s2.get('insight') else '',
+            f"Điểm nổi bật sản phẩm: {s2.get('highlights','')}" if s2.get('highlights') else '',
+            f"Lợi ích chính: {s2.get('mainBenefits','')}" if s2.get('mainBenefits') else '',
+            f"Tình huống dùng: {s2.get('usageSituations','')}" if s2.get('usageSituations') else '',
+        ]))
+        analysis_block = ('\n' + '\n'.join(analysis_parts)) if analysis_parts else ''
         hook_line = f'\nHook mở đầu bắt buộc dùng: "{selected_hook}"' if selected_hook else ''
-        user = f"""{base}
+        user = f"""{base}{analysis_block}
 {context_line}{hook_line}
 
 Tạo kịch bản mới và timeline quay tương ứng. Lời thoại tự nhiên, hành động đan xen sau mỗi 1-2 câu.{"" if not selected_hook else " Câu đầu tiên của kịch bản PHẢI là hook đã cho, không được thay đổi."}
