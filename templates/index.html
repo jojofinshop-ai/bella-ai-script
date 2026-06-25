@@ -145,7 +145,19 @@
               </span>
             </button>
           </div>
-          <p class="text-xs text-gray-400">Hỗ trợ tốt: Shopee. TikTok Shop / trang cần đăng nhập → dùng nút bên dưới.</p>
+          <p class="text-xs text-gray-400">Hỗ trợ tốt: Shopee. TikTok Shop → chụp màn hình tab "Mô tả" rồi dùng nút bên dưới.</p>
+          <!-- Scan ảnh màn hình -->
+          <div class="flex items-center gap-2">
+            <input type="file" accept="image/*" x-ref="scanInput" class="hidden"
+              @change="scanProductImage($event)">
+            <button @click="$refs.scanInput.click()" :disabled="isScanningImage"
+              class="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-dashed border-purple-300 text-purple-600 hover:bg-purple-50 disabled:opacity-50 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0"/></svg>
+              <span x-show="!isScanningImage">📷 Scan ảnh mô tả sản phẩm</span>
+              <span x-show="isScanningImage">Đang đọc ảnh...</span>
+            </button>
+            <span class="text-xs text-gray-400">← chụp màn hình tab "Mô tả" TikTok</span>
+          </div>
           <div x-show="fetchUrlError" class="text-xs rounded-lg px-3 py-2 space-y-1.5 bg-red-50 border border-red-200 text-red-700">
             <p x-text="fetchUrlError"></p>
             <button x-show="fetchUrlNeedsAuth" @click="openInBrowser(productUrl)"
@@ -960,6 +972,7 @@ function bellaApp() {
     fetchUrlError: null,
     fetchUrlNeedsAuth: false,
     fetchUrlSuccess: false,
+    isScanningImage: false,
 
     // Settings
     settings: {
@@ -1038,6 +1051,42 @@ function bellaApp() {
     },
     suggestedModels() {
       return PROVIDER_MODELS[this.settings.provider] || [];
+    },
+
+    async scanProductImage(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const geminiKey = (this.settings.apiKeys || {}).gemini || '';
+      if (!geminiKey) {
+        this.showToast('Cần nhập Gemini API key trong tab Cài đặt để dùng tính năng Scan ảnh', 'error');
+        event.target.value = '';
+        return;
+      }
+      this.isScanningImage = true;
+      try {
+        // Đọc file thành dataUrl
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const res = await fetch('/api/scan-product', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ image: dataUrl, settings: this.settings }),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+        if (data.productName) this.form.productName = data.productName;
+        if (data.productDescription) this.form.productDescription = data.productDescription;
+        this.showToast('Đã đọc thông tin sản phẩm từ ảnh!', 'success');
+      } catch(e) {
+        this.showToast('Lỗi scan ảnh: ' + e.message, 'error');
+      } finally {
+        this.isScanningImage = false;
+        event.target.value = '';
+      }
     },
 
     async fetchProductUrl() {

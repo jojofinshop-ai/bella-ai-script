@@ -815,6 +815,23 @@ def regenerate_section():
         return jsonify({'success': False, 'error': msg}), 500
 
 
+@app.route('/api/scan-product', methods=['POST'])
+def scan_product():
+    try:
+        data = request.get_json()
+        image_data_url = data.get('image', '')
+        gemini_key = (data.get('settings', {}).get('apiKeys') or {}).get('gemini', '')
+        if not gemini_key:
+            return jsonify({'success': False, 'error': 'Cần nhập Gemini API key trong Cài đặt để dùng tính năng này'}), 400
+        if not image_data_url:
+            return jsonify({'success': False, 'error': 'Không nhận được ảnh'}), 400
+        from ai_providers import scan_product_from_screenshot
+        result = scan_product_from_screenshot(gemini_key, image_data_url)
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/test-connection', methods=['POST'])
 def test_connection():
     try:
