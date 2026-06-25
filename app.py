@@ -373,36 +373,84 @@ def _fetch_tiktok_cloud(url):
                     pass
         return images
 
-    # ── 1. __NEXT_DATA__ JSON (TikTok Shop là Next.js app) ───────────────────
+    def _is_generic_tiktok_desc(text):
+        """TikTok luôn dùng og:description = text marketing chung, không phải mô tả sản phẩm thật."""
+        markers = ('săn giá siêu hời', 'freeship mặt hàng', 'ưu đãi độc quyền',
+                   'mua ngay để nhận', 'trên tiktok shop', 'make your day')
+        tl = text.lower()
+        return sum(1 for m in markers if m in tl) >= 2
+
+    def _deep_find_product(obj, depth=0):
+        """Recursive search trong JSON để tìm object chứa tên + mô tả sản phẩm thật."""
+        if depth > 8 or not isinstance(obj, (dict, list)):
+            return None
+        if isinstance(obj, list):
+            for item in obj:
+                r = _deep_find_product(item, depth + 1)
+                if r: return r
+            return None
+        # Kiểm tra nếu dict này trông như product object
+        name = (obj.get('title') or obj.get('name') or obj.get('itemName') or
+                obj.get('productName') or '').strip()
+        desc = (obj.get('description') or obj.get('content') or obj.get('detail') or
+                obj.get('itemDescription') or obj.get('productDesc') or '').strip()
+        if name and 5 < len(name) < 300 and desc and len(desc) > 30 and not _is_generic_tiktok_desc(desc):
+            imgs = (obj.get('images') or obj.get('imageUrls') or obj.get('imgUrlList') or [])
+            return {'name': name, 'desc': desc, 'imgs': imgs}
+        # Đệ quy xuống các key con có tên liên quan đến sản phẩm
+        PRODUCT_KEYS = ('product', 'item', 'productInfo', 'itemInfo', 'itemStruct',
+                        'productDetail', 'data', 'initialData', 'serverSideProps',
+                        'pageProps', 'props', 'detail', 'info', 'pdp', 'goods')
+        for key, val in obj.items():
+            if isinstance(val, (dict, list)):
+                if key in PRODUCT_KEYS or any(k in key.lower() for k in ('product', 'item', 'goods')):
+                    r = _deep_find_product(val, depth + 1)
+                    if r: return r
+        return None
+
+    # ── 1. Tìm trong __NEXT_DATA__ (recursive) ───────────────────────────────
     m = re.search(r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>', html, re.DOTALL)
     if m:
         try:
             nd = _json.loads(m.group(1))
-            props = nd.get('props', {}).get('pageProps', {})
-            product = (
-                props.get('product') or
-                props.get('item') or
-                props.get('productInfo') or
-                props.get('itemInfo', {}).get('item') or
-                props.get('data', {}).get('product') or
-                props.get('initialData', {}).get('product') or
-                {}
-            )
-            name = (product.get('title') or product.get('name') or
-                    product.get('itemName') or '').strip()
-            desc = (product.get('description') or product.get('content') or
-                    product.get('itemDescription') or '').strip()
-            if name and len(name) > 3:
-                img_list = (product.get('images') or product.get('imageUrls') or
-                            product.get('imgUrlList') or [])
-                images = _download_img_list(img_list, 'tt-nd')
+            found = _deep_find_product(nd)
+            if found:
+                images = _download_img_list(found['imgs'], 'tt-nd')
                 if len(images) < 2:
                     images += _cdn_scan(html, len(images))
-                return {'productName': name, 'productDescription': desc, 'images': images}, None
+                return {'productName': found['name'], 'productDescription': found['desc'], 'images': images}, None
         except Exception:
             pass
 
-    # ── 2. JSON-LD structured data ───────────────────────────────────────────
+    # ── 2. Tìm trong tất cả script tags khác (window.__xxx__, JSON blobs) ─────
+    for script_text in re.findall(r'<script[^>]*>(.*?)</script>', html, re.DOTALL):
+        if len(script_text) < 100 or 'function' in script_text[:50]:
+            continue
+        # Tìm JSON object lớn trong script tag
+        for json_match in re.finditer(r'\{["\'](?:product|item|goods|pdp)["\']', script_text):
+            start = json_match.start()
+            # Lấy từ vị trí bắt đầu đến hết, thử parse
+            chunk = script_text[start:start+50000]
+            # Tìm balanced JSON
+            depth_c, end = 0, -1
+            for ci, ch in enumerate(chunk):
+                if ch == '{': depth_c += 1
+                elif ch == '}':
+                    depth_c -= 1
+                    if depth_c == 0: end = ci + 1; break
+            if end > 0:
+                try:
+                    obj = _json.loads(chunk[:end])
+                    found = _deep_find_product(obj)
+                    if found:
+                        images = _download_img_list(found['imgs'], 'tt-sc')
+                        if len(images) < 2:
+                            images += _cdn_scan(html, len(images))
+                        return {'productName': found['name'], 'productDescription': found['desc'], 'images': images}, None
+                except Exception:
+                    pass
+
+    # ── 3. JSON-LD structured data ───────────────────────────────────────────
     for ld_text in re.findall(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.DOTALL):
         try:
             ld = _json.loads(ld_text)
@@ -411,11 +459,10 @@ def _fetch_tiktok_cloud(url):
             if ld.get('@type') in ('Product', 'ItemPage', 'Offer'):
                 name = ld.get('name', '').strip()
                 desc = ld.get('description', '').strip()
+                if _is_generic_tiktok_desc(desc): desc = ''
                 if name and len(name) > 3:
-                    # Lấy tất cả ảnh từ JSON-LD image array
                     raw_imgs = ld.get('image', [])
-                    if isinstance(raw_imgs, str):
-                        raw_imgs = [raw_imgs]
+                    if isinstance(raw_imgs, str): raw_imgs = [raw_imgs]
                     images = _download_img_list(raw_imgs, 'tt-ld')
                     if len(images) < 2:
                         images += _cdn_scan(html, len(images))
@@ -423,7 +470,7 @@ def _fetch_tiktok_cloud(url):
         except Exception:
             pass
 
-    # ── 3. og:title / og:description + thu thập TẤT CẢ og:image ─────────────
+    # ── 4. og:title + lọc bỏ mô tả chung chung ──────────────────────────────
     class _MetaParser(HTMLParser):
         def __init__(self):
             super().__init__()
@@ -435,7 +482,7 @@ def _fetch_tiktok_cloud(url):
                 prop = a.get('property') or a.get('name') or ''
                 c = a.get('content', '')
                 if prop == 'og:image' and c:
-                    self.og_images.append(c)   # thu thập list, không override
+                    self.og_images.append(c)
                 elif prop in ('og:title', 'og:description',
                               'twitter:title', 'twitter:description', 'description'):
                     self.d[prop] = c
@@ -447,16 +494,18 @@ def _fetch_tiktok_cloud(url):
     p = _MetaParser(); p.feed(html[:200000])
     d = p.d
     name = (d.get('og:title') or d.get('twitter:title') or d.get('title') or '').strip()
-    desc = (d.get('og:description') or d.get('twitter:description') or d.get('description') or '').strip()
+    raw_desc = (d.get('og:description') or d.get('twitter:description') or d.get('description') or '').strip()
+    # Lọc bỏ mô tả marketing chung của TikTok — không có ích gì cho AI
+    desc = '' if _is_generic_tiktok_desc(raw_desc) else raw_desc
 
     skip_titles = ('tiktok', 'shop', 'trang chủ', 'home', 'make your day')
     if name and not any(t in name.lower() for t in skip_titles) and len(name) > 3:
-        # Tải tất cả og:image thu thập được
         images = _download_img_list(p.og_images, 'tt-og')
-        # Bổ sung bằng CDN scan nếu chưa đủ 3 ảnh
         if len(images) < 3:
             images += _cdn_scan(html, len(images))
-        return {'productName': name, 'productDescription': desc, 'images': images}, None
+        # Nếu không lấy được mô tả thật → thông báo cho user biết cần nhập thêm
+        note = '\n[Mô tả chi tiết (chất liệu, màu sắc, size...) cần nhập thêm thủ công từ trang sản phẩm]' if not desc else ''
+        return {'productName': name, 'productDescription': desc + note, 'images': images}, None
 
     return None, None
 
