@@ -647,12 +647,28 @@ def fetch_url():
     # ── Shopee: gọi API nội bộ (hoạt động cả trên cloud) ─────────────────────
     if 'shopee.vn' in url:
         try:
-            # Follow redirect nếu là short link s.shopee.vn
-            if 's.shopee.vn' in url or re.search(r'shopee\.vn/[A-Za-z0-9_-]{6,20}$', url):
+            # Resolve short link s.shopee.vn (dùng JS redirect, không phải HTTP redirect)
+            if 's.shopee.vn' in url or (re.search(r'shopee\.vn/[A-Za-z0-9_-]{6,20}$', url) and not re.search(r'-i\.\d+\.\d+', url)):
                 try:
-                    req = _req.Request(url, headers={'User-Agent': UA})
+                    req = _req.Request(url, headers={'User-Agent': UA, 'Accept': 'text/html'})
                     with _req.urlopen(req, timeout=10) as resp:
-                        url = resp.url
+                        resolved = resp.url
+                        html_s = resp.read().decode('utf-8', errors='ignore')
+                    # HTTP redirect hoạt động?
+                    if re.search(r'-i\.(\d+)\.(\d+)', resolved):
+                        url = resolved
+                    else:
+                        # Tìm URL thật trong JS/meta của trang
+                        for pat in [
+                            r'location\.href\s*=\s*["\']([^"\']+shopee[^"\']*i\.\d+\.\d+[^"\']*)["\']',
+                            r'window\.location\s*=\s*["\']([^"\']+shopee[^"\']*i\.\d+\.\d+[^"\']*)["\']',
+                            r'content=["\']0;\s*url=([^"\']+shopee[^"\']*i\.\d+\.\d+[^"\']*)["\']',
+                            r'"(https://shopee\.vn/[^"]+i\.\d+\.\d+[^"]*)"',
+                        ]:
+                            m2 = re.search(pat, html_s)
+                            if m2:
+                                url = m2.group(1)
+                                break
                 except Exception:
                     pass
             item, err = _fetch_shopee_data(url)
@@ -957,14 +973,27 @@ def debug_urllib():
 def debug_shopee():
     import urllib.request as _req, re, traceback
     test_url = request.args.get('url', 'https://s.shopee.vn/8KnQUMkqDK')
-    UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+    UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     result = {'input_url': test_url}
     try:
         req = _req.Request(test_url, headers={'User-Agent': UA, 'Accept': 'text/html'})
         with _req.urlopen(req, timeout=15) as resp:
             result['final_url'] = resp.url
             result['status'] = resp.status
-            result['has_item_id'] = bool(re.search(r'-i\.(\d+)\.(\d+)', resp.url))
+            html = resp.read().decode('utf-8', errors='ignore')
+        result['html_len'] = len(html)
+        result['html_sample'] = html[:1000]
+        result['has_item_id'] = bool(re.search(r'-i\.(\d+)\.(\d+)', resp.url))
+        # Tìm URL thật trong JS/meta
+        for pat in [r'location\.href\s*=\s*["\']([^"\']+shopee[^"\']+)["\']',
+                    r'window\.location\s*=\s*["\']([^"\']+shopee[^"\']+)["\']',
+                    r'content=["\']0;\s*url=([^"\']+shopee[^"\']+)["\']',
+                    r'href=["\']([^"\']+shopee\.vn/[^"\']+i\.\d+\.\d+[^"\']*)["\']']:
+            m = re.search(pat, html)
+            if m:
+                result['js_redirect_url'] = m.group(1)
+                result['js_has_item_id'] = bool(re.search(r'-i\.(\d+)\.(\d+)', m.group(1)))
+                break
     except Exception as e:
         result['error'] = traceback.format_exc()[-600:]
     return jsonify(result)
