@@ -121,24 +121,24 @@ def analyze_images_with_gemini(gemini_api_key: str, images: list) -> str:
         return ''
 
 
-def scan_product_from_screenshot(gemini_api_key: str, image_data_url: str) -> dict:
-    """Dùng Gemini Vision đọc ảnh chụp màn hình sản phẩm, trả về {productName, productDescription}."""
-    if not gemini_api_key or not image_data_url:
+def scan_product_from_screenshot(gemini_api_key: str, image_data_urls: list) -> dict:
+    """Dùng Gemini Vision đọc 1 hoặc nhiều ảnh chụp màn hình sản phẩm, trả về {productName, productDescription}."""
+    if not gemini_api_key or not image_data_urls:
         raise ValueError('Cần Gemini API key và ảnh')
+    n = len(image_data_urls)
     settings = {'apiKey': gemini_api_key, 'modelName': 'gemini-2.0-flash', 'temperature': 0.1, 'maxTokens': 0}
     system_prompt = 'Bạn là công cụ đọc thông tin sản phẩm từ ảnh chụp màn hình. Trả về JSON chính xác.'
     user_prompt = (
-        'Đây là ảnh chụp màn hình trang sản phẩm (TikTok Shop, Shopee, hoặc website bán hàng).\n'
-        'Hãy đọc và trích xuất:\n'
+        f'Đây là {n} ảnh chụp màn hình trang sản phẩm (TikTok Shop, Shopee, hoặc website bán hàng).\n'
+        'Hãy đọc TẤT CẢ ảnh và trích xuất:\n'
         '1. Tên sản phẩm (tiêu đề/heading chính)\n'
-        '2. Toàn bộ nội dung mô tả sản phẩm (chất liệu, kích thước, tính năng, ưu điểm...)\n\n'
+        '2. Toàn bộ nội dung mô tả sản phẩm từ tất cả ảnh (chất liệu, kích thước, tính năng, ưu điểm...)\n\n'
         'Trả về JSON (chỉ JSON, không giải thích thêm):\n'
         '{"productName": "...", "productDescription": "..."}'
     )
-    import json as _json
-    raw = call_gemini(settings, system_prompt, user_prompt, [{'dataUrl': image_data_url}])
-    # Parse JSON từ response
-    import re
+    import json as _json, re
+    images = [{'dataUrl': u} for u in image_data_urls]
+    raw = call_gemini(settings, system_prompt, user_prompt, images)
     m = re.search(r'\{[\s\S]*\}', raw)
     if m:
         return _json.loads(m.group(0))

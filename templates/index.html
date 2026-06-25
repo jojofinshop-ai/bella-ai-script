@@ -148,7 +148,7 @@
           <p class="text-xs text-gray-400">Hỗ trợ tốt: Shopee. TikTok Shop → chụp màn hình tab "Mô tả" rồi dùng nút bên dưới.</p>
           <!-- Scan ảnh màn hình -->
           <div class="flex items-center gap-2">
-            <input type="file" accept="image/*" x-ref="scanInput" class="hidden"
+            <input type="file" accept="image/*" multiple x-ref="scanInput" class="hidden"
               @change="scanProductImage($event)">
             <button @click="$refs.scanInput.click()" :disabled="isScanningImage"
               class="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-dashed border-purple-300 text-purple-600 hover:bg-purple-50 disabled:opacity-50 transition-colors">
@@ -1054,8 +1054,8 @@ function bellaApp() {
     },
 
     async scanProductImage(event) {
-      const file = event.target.files?.[0];
-      if (!file) return;
+      const files = Array.from(event.target.files || []);
+      if (!files.length) return;
       const geminiKey = (this.settings.apiKeys || {}).gemini || '';
       if (!geminiKey) {
         this.showToast('Cần nhập Gemini API key trong tab Cài đặt để dùng tính năng Scan ảnh', 'error');
@@ -1064,23 +1064,24 @@ function bellaApp() {
       }
       this.isScanningImage = true;
       try {
-        // Đọc file thành dataUrl
-        const dataUrl = await new Promise((resolve, reject) => {
+        // Đọc tất cả files thành dataUrl
+        const readFile = f => new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = e => resolve(e.target.result);
           reader.onerror = reject;
-          reader.readAsDataURL(file);
+          reader.readAsDataURL(f);
         });
+        const dataUrls = await Promise.all(files.map(readFile));
         const res = await fetch('/api/scan-product', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ image: dataUrl, settings: this.settings }),
+          body: JSON.stringify({ images: dataUrls, settings: this.settings }),
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
         if (data.productName) this.form.productName = data.productName;
         if (data.productDescription) this.form.productDescription = data.productDescription;
-        this.showToast('Đã đọc thông tin sản phẩm từ ảnh!', 'success');
+        this.showToast(`Đã đọc thông tin từ ${files.length} ảnh!`, 'success');
       } catch(e) {
         this.showToast('Lỗi scan ảnh: ' + e.message, 'error');
       } finally {
