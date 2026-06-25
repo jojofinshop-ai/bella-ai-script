@@ -295,6 +295,61 @@ def _fetch_with_playwright(url, injected_cookies=None, cookie_domain=None):
             return None, str(e)
 
 
+def _fetch_with_playwright_headless(url):
+    """Headless Playwright — chạy trên cloud server, không cần GUI, render JavaScript đầy đủ."""
+    from playwright.sync_api import sync_playwright, TimeoutError as PwTimeout
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=['--no-sandbox', '--disable-setuid-sandbox',
+                  '--disable-dev-shm-usage', '--disable-gpu'],
+        )
+        ctx = browser.new_context(
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            locale='vi-VN',
+            viewport={'width': 1280, 'height': 800},
+        )
+        page = ctx.new_page()
+        try:
+            page.goto(url, timeout=30000, wait_until='domcontentloaded')
+            try:
+                page.wait_for_load_state('networkidle', timeout=12000)
+            except PwTimeout:
+                pass
+            page.wait_for_timeout(2500)
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight * 0.4)")
+            page.wait_for_timeout(1500)
+
+            dom = page.evaluate(_READ_DOM_JS)
+            name = dom.get('title', '').strip()
+            desc = dom.get('desc', '').strip()
+            img_urls = dom.get('productImgs', [])
+
+            images = []
+            for i, iurl in enumerate(img_urls[:4]):
+                try:
+                    resp = page.request.get(iurl, timeout=10000)
+                    if resp.ok:
+                        mime = resp.headers.get('content-type', 'image/jpeg').split(';')[0].strip()
+                        b64 = base64.b64encode(resp.body()).decode()
+                        images.append({'id': f'cl-{i}', 'dataUrl': f'data:{mime};base64,{b64}'})
+                except Exception:
+                    pass
+
+            browser.close()
+
+            if name and len(name) > 3 and not any(k in name for k in ('Security Check', 'Verify', 'Captcha')):
+                return {'productName': name, 'productDescription': desc, 'images': images}, None
+            return None, 'Không đọc được thông tin sản phẩm'
+        except Exception as e:
+            try:
+                browser.close()
+            except Exception:
+                pass
+            return None, str(e)
+
+
 def _fetch_shopee_data(url):
     import re, urllib.request as _req, json as _json
     m = re.search(r'-i\.(\d+)\.(\d+)', url)
@@ -571,12 +626,19 @@ def fetch_url():
     # ── TikTok Shop ──────────────────────────────────────────────────────────
     if 'tiktok.com' in url or 'tiktokshop' in url:
         if IS_CLOUD:
-            # Cloud: dùng urllib + extract JSON/meta (không có Playwright)
-            result, err = _fetch_tiktok_cloud(url)
+            # Cloud: dùng headless Playwright (render JS đầy đủ, không cần GUI)
+            try:
+                result, err = _fetch_with_playwright_headless(url)
+                if result and result.get('productName'):
+                    return jsonify({'success': True, **result})
+            except Exception as e:
+                err = str(e)
+            # Fallback: urllib + parse HTML/JSON (không render JS)
+            result, err2 = _fetch_tiktok_cloud(url)
             if result and result.get('productName'):
                 return jsonify({'success': True, **result})
             return jsonify({'success': False,
-                            'error': err or 'Không lấy được thông tin từ link này. Link TikTok Shop cần đăng nhập — vui lòng nhập tên và mô tả sản phẩm thủ công.'})
+                            'error': err2 or err or 'Không lấy được thông tin. Vui lòng nhập tên và mô tả thủ công.'})
         else:
             # Local (exe): dùng Playwright persistent profile với session
             chrome_cookies = _get_chrome_cookies('tiktok.com')
