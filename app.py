@@ -448,7 +448,10 @@ def _fetch_shopee_data(url, opener=None):
     except Exception:
         pass
 
-    return None, f'Lỗi Shopee API: {str(last_err) if last_err else "Không lấy được dữ liệu"}'
+    err_str = str(last_err) if last_err else ''
+    if '403' in err_str or 'Forbidden' in err_str:
+        return None, 'Shopee chặn truy cập từ server (403). Hãy chụp màn hình sản phẩm và dùng nút "Scan ảnh mô tả sản phẩm" để đọc tự động.'
+    return None, f'Lỗi Shopee: {err_str or "Không lấy được dữ liệu"}'
 
 
 def _fetch_tiktok_cloud(url):
