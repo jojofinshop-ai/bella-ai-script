@@ -319,7 +319,7 @@ def _fetch_shopee_data(url):
 
 def _fetch_tiktok_cloud(url):
     """Lấy thông tin sản phẩm TikTok Shop trên cloud (không dùng Playwright).
-    Follow redirect từ vt.tiktok.com rồi extract từ __NEXT_DATA__ / JSON-LD / meta tags.
+    Follow redirect từ vt.tiktok.com rồi extract từ __NEXT_DATA__ / JSON-LD / meta tags + CDN scan.
     """
     import urllib.request as _req
     import json as _json
@@ -341,19 +341,51 @@ def _fetch_tiktok_cloud(url):
     except Exception as e:
         return None, f'Không thể tải trang: {str(e)}'
 
+    def _cdn_scan(html_text, existing_count=0):
+        """Scan HTML source tìm ảnh TikTok/ByteDance CDN (kể cả trong JSON strings)."""
+        cdn_re = re.compile(
+            r'https://[a-z0-9\-]+\.(?:ibyteimg|tiktokcdn|ibytedtos|tiktokstaticb)\.com'
+            r'/[^\s"\'<>\]\\]+\.(?:jpeg|jpg|png|webp)(?:[?~][^\s"\'<>\]]*)?'
+        )
+        SKIP = ('avatar', 'logo', 'icon', '100x100', '50x50', '30x30', 'header', 'banner/bg')
+        seen, result = set(), []
+        for u in cdn_re.findall(html_text):
+            u = u.replace('\\u002F', '/').replace('%2F', '/')
+            if u not in seen and not any(x in u.lower() for x in SKIP):
+                seen.add(u)
+                result.append(u)
+        images = []
+        for i, img_url in enumerate(result[:max(0, 4 - existing_count)]):
+            try:
+                images.append({'id': f'tt-cdn-{i}', 'dataUrl': _download_image_b64(img_url, UA_DESKTOP)})
+            except Exception:
+                pass
+        return images
+
+    def _download_img_list(img_list, prefix='tt'):
+        images = []
+        for i, img in enumerate(img_list[:4]):
+            img_url = img if isinstance(img, str) else img.get('url', img.get('src', img.get('urlList', [''])[0] if isinstance(img.get('urlList'), list) else ''))
+            if img_url and img_url.startswith('http'):
+                try:
+                    images.append({'id': f'{prefix}-{i}', 'dataUrl': _download_image_b64(img_url, UA_DESKTOP)})
+                except Exception:
+                    pass
+        return images
+
     # ── 1. __NEXT_DATA__ JSON (TikTok Shop là Next.js app) ───────────────────
     m = re.search(r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>', html, re.DOTALL)
     if m:
         try:
             nd = _json.loads(m.group(1))
             props = nd.get('props', {}).get('pageProps', {})
-            # Thử nhiều đường dẫn khác nhau trong JSON
             product = (
                 props.get('product') or
                 props.get('item') or
                 props.get('productInfo') or
                 props.get('itemInfo', {}).get('item') or
                 props.get('data', {}).get('product') or
+                props.get('initialData', {}).get('product') or
                 {}
             )
             name = (product.get('title') or product.get('name') or
@@ -361,15 +393,11 @@ def _fetch_tiktok_cloud(url):
             desc = (product.get('description') or product.get('content') or
                     product.get('itemDescription') or '').strip()
             if name and len(name) > 3:
-                images = []
-                img_list = product.get('images') or product.get('imageUrls') or []
-                for i, img in enumerate(img_list[:4]):
-                    img_url = img if isinstance(img, str) else img.get('url', img.get('src', ''))
-                    if img_url:
-                        try:
-                            images.append({'id': f'tt-{i}', 'dataUrl': _download_image_b64(img_url, UA_DESKTOP)})
-                        except Exception:
-                            pass
+                img_list = (product.get('images') or product.get('imageUrls') or
+                            product.get('imgUrlList') or [])
+                images = _download_img_list(img_list, 'tt-nd')
+                if len(images) < 2:
+                    images += _cdn_scan(html, len(images))
                 return {'productName': name, 'productDescription': desc, 'images': images}, None
         except Exception:
             pass
@@ -384,34 +412,32 @@ def _fetch_tiktok_cloud(url):
                 name = ld.get('name', '').strip()
                 desc = ld.get('description', '').strip()
                 if name and len(name) > 3:
-                    images = []
-                    img_url = ''
-                    if isinstance(ld.get('image'), str):
-                        img_url = ld['image']
-                    elif isinstance(ld.get('image'), list) and ld['image']:
-                        img_url = ld['image'][0]
-                    if img_url:
-                        try:
-                            images.append({'id': 'tt-ld-0', 'dataUrl': _download_image_b64(img_url, UA_DESKTOP)})
-                        except Exception:
-                            pass
+                    # Lấy tất cả ảnh từ JSON-LD image array
+                    raw_imgs = ld.get('image', [])
+                    if isinstance(raw_imgs, str):
+                        raw_imgs = [raw_imgs]
+                    images = _download_img_list(raw_imgs, 'tt-ld')
+                    if len(images) < 2:
+                        images += _cdn_scan(html, len(images))
                     return {'productName': name, 'productDescription': desc, 'images': images}, None
         except Exception:
             pass
 
-    # ── 3. og:title / og:description meta tags ───────────────────────────────
+    # ── 3. og:title / og:description + thu thập TẤT CẢ og:image ─────────────
     class _MetaParser(HTMLParser):
         def __init__(self):
             super().__init__()
-            self.d = {}; self._in_title = False; self._title = ''
+            self.d = {}; self.og_images = []; self._in_title = False; self._title = ''
         def handle_starttag(self, tag, attrs):
             a = dict(attrs)
             if tag == 'title': self._in_title = True
             elif tag == 'meta':
                 prop = a.get('property') or a.get('name') or ''
                 c = a.get('content', '')
-                if prop in ('og:title', 'og:description', 'og:image',
-                            'twitter:title', 'twitter:description', 'description'):
+                if prop == 'og:image' and c:
+                    self.og_images.append(c)   # thu thập list, không override
+                elif prop in ('og:title', 'og:description',
+                              'twitter:title', 'twitter:description', 'description'):
                     self.d[prop] = c
         def handle_data(self, d):
             if self._in_title: self._title += d
@@ -423,16 +449,13 @@ def _fetch_tiktok_cloud(url):
     name = (d.get('og:title') or d.get('twitter:title') or d.get('title') or '').strip()
     desc = (d.get('og:description') or d.get('twitter:description') or d.get('description') or '').strip()
 
-    # Loại bỏ các title chung chung của TikTok (không phải tên sản phẩm)
     skip_titles = ('tiktok', 'shop', 'trang chủ', 'home', 'make your day')
     if name and not any(t in name.lower() for t in skip_titles) and len(name) > 3:
-        images = []
-        img_url = d.get('og:image', '')
-        if img_url:
-            try:
-                images.append({'id': 'tt-og-0', 'dataUrl': _download_image_b64(img_url, UA_DESKTOP)})
-            except Exception:
-                pass
+        # Tải tất cả og:image thu thập được
+        images = _download_img_list(p.og_images, 'tt-og')
+        # Bổ sung bằng CDN scan nếu chưa đủ 3 ảnh
+        if len(images) < 3:
+            images += _cdn_scan(html, len(images))
         return {'productName': name, 'productDescription': desc, 'images': images}, None
 
     return None, None
