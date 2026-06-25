@@ -1,0 +1,13 @@
+﻿__pycache__/
+*.pyc
+*.pyo
+dist/
+build/
+installer_output/
+*.spec
+bella_browser_profile/
+bella_settings.json
+*.ico
+*.png
+!templates/
+.env

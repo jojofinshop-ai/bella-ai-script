@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>BELLA AI Script Generator</title>
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BELLA AI">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="theme-color" content="#9333ea">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<style>
+  [x-cloak] { display: none !important; }
+  .action-badge { background: #f3e8ff; color: #7c3aed; border-radius: 6px; padding: 2px 8px; font-size: 12px; display: inline-block; }
+  .dialogue-line { font-size: 16px; font-weight: 500; line-height: 1.6; }
+  .gradient-btn { background: linear-gradient(135deg, #9333ea, #f43f5e); }
+  .gradient-btn:hover { background: linear-gradient(135deg, #7e22ce, #e11d48); }
+  .tab-active { border-bottom: 2px solid #9333ea; color: #9333ea; font-weight: 600; }
+  textarea { font-family: inherit; }
+  .shimmer { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+  pre { white-space: pre-wrap; word-break: break-word; }
+  .pwa-banner { background: linear-gradient(135deg, #9333ea, #f43f5e); }
+  @supports (padding-top: env(safe-area-inset-top)) {
+    body { padding-top: env(safe-area-inset-top); }
+  }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen" x-data="bellaApp()" x-init="init()" x-cloak>
+
+<!-- iOS Add to Home Screen Banner -->
+<div x-show="showInstallBanner" x-transition class="pwa-banner text-white px-4 py-3 flex items-center justify-between gap-3">
+  <div class="flex items-center gap-2 text-sm">
+    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+    <span>Thêm vào màn hình chính: nhấn <strong>Chia sẻ</strong> rồi chọn <strong>Thêm vào MH chính</strong></span>
+  </div>
+  <button @click="showInstallBanner=false; localStorage.setItem('bella_pwa_dismissed','1')" class="flex-shrink-0 text-white/80 hover:text-white">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+  </button>
+</div>
+
+<!-- Header -->
+<header class="bg-white border-b shadow-sm sticky top-0 z-50">
+  <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg gradient-btn flex items-center justify-center">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 9-14 9V3z"/></svg>
+      </div>
+      <div>
+        <div class="text-sm font-bold bg-gradient-to-r from-purple-600 to-rose-500 bg-clip-text text-transparent leading-none">BELLA AI</div>
+        <div class="text-xs text-gray-400 leading-none mt-0.5">OneShot Script Generator</div>
+      </div>
+    </div>
+    <nav class="flex gap-0.5">
+      <template x-for="tab in tabs" :key="tab.id">
+        <button @click="activeTab = tab.id" :class="activeTab===tab.id ? 'tab-active bg-purple-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="px-2 sm:px-3 py-1.5 text-sm rounded-md transition-all flex items-center gap-1">
+          <span class="sm:hidden" x-text="tab.icon"></span>
+          <span class="hidden sm:inline" x-text="tab.label"></span>
+        </button>
+      </template>
+    </nav>
+  </div>
+</header>
+
+<!-- Loading overlay -->
+<div x-show="isGenerating" class="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center">
+  <div class="bg-white rounded-2xl border shadow-xl p-8 flex flex-col items-center gap-4">
+    <div class="relative w-16 h-16">
+      <div class="w-16 h-16 rounded-full border-4 border-purple-100 border-t-purple-500 spin"></div>
+      <div class="absolute inset-0 flex items-center justify-center text-xl">✨</div>
+    </div>
+    <div class="text-center">
+      <p class="font-semibold text-gray-800">Đang tạo kịch bản...</p>
+      <p class="text-sm text-gray-500 mt-1">AI đang phân tích và viết kịch bản</p>
+    </div>
+    <div class="flex gap-1">
+      <div class="w-2 h-2 rounded-full bg-purple-400" style="animation: bounce 0.6s infinite 0s"></div>
+      <div class="w-2 h-2 rounded-full bg-purple-400" style="animation: bounce 0.6s infinite 0.15s"></div>
+      <div class="w-2 h-2 rounded-full bg-purple-400" style="animation: bounce 0.6s infinite 0.3s"></div>
+    </div>
+  </div>
+</div>
+
+<div class="max-w-5xl mx-auto px-4 py-6">
+
+  <!-- ====== TAB: GENERATE ====== -->
+  <div x-show="activeTab==='generate'">
+
+    <!-- No API key warning -->
+    <div x-show="!(settings.apiKeys && settings.apiKeys[settings.provider])" class="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+      <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      <div>
+        <p class="font-medium text-amber-800">Chưa nhập API key</p>
+        <p class="text-sm text-amber-700 mt-0.5">Vào tab <strong>Cài đặt</strong> để nhập API key và chọn AI provider.</p>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div x-show="generateError" class="mb-4 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+      <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      <div>
+        <p class="font-medium text-red-800">Lỗi</p>
+        <p class="text-sm text-red-700 mt-0.5" x-text="generateError"></p>
+      </div>
+    </div>
+
+    <!-- FORM (shown when no script yet) -->
+    <div x-show="!currentScript">
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center gap-2 bg-purple-50 text-purple-700 text-sm px-4 py-1.5 rounded-full mb-3">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 9-14 9V3z"/></svg>
+          AI Script Generator
+        </div>
+        <h1 class="text-2xl font-bold text-gray-900">Tạo kịch bản OneShot TikTok Shop</h1>
+        <p class="text-gray-500 text-sm mt-2">Nhập thông tin sản phẩm — AI tạo kịch bản chuyên nghiệp</p>
+      </div>
+
+      <!-- URL Fetch Card -->
+      <div class="bg-white rounded-xl border shadow-sm mb-4">
+        <div class="p-4 border-b flex items-center gap-2">
+          <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+          <span class="font-semibold text-sm">Lấy thông tin từ link sản phẩm</span>
+          <span class="ml-auto text-xs text-gray-400">Shopee / TikTok Shop / Lazada</span>
+        </div>
+        <div class="p-4 space-y-2">
+          <div class="flex gap-2">
+            <input x-model="productUrl" type="url"
+              placeholder="https://shopee.vn/... hoặc link sản phẩm khác"
+              class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+              @keydown.enter="fetchProductUrl()"
+              @paste.stop>
+            <button @click="fetchProductUrl()" :disabled="isFetchingUrl || !productUrl.trim()"
+              class="px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all whitespace-nowrap disabled:opacity-50 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400">
+              <span x-show="!isFetchingUrl">Lấy thông tin</span>
+              <span x-show="isFetchingUrl" class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <span x-text="fetchUrlStatus || 'Đang tải...'"></span>
+              </span>
+            </button>
+          </div>
+          <p class="text-xs text-gray-400">Hỗ trợ tốt: Shopee. TikTok Shop / trang cần đăng nhập → dùng nút bên dưới.</p>
+          <div x-show="fetchUrlError" class="text-xs rounded-lg px-3 py-2 space-y-1.5 bg-red-50 border border-red-200 text-red-700">
+            <p x-text="fetchUrlError"></p>
+            <button x-show="fetchUrlNeedsAuth" @click="openInBrowser(productUrl)"
+              class="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium underline">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              Mở trong trình duyệt để đăng nhập →
+            </button>
+          </div>
+          <div x-show="fetchUrlSuccess" class="text-xs bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-green-700 flex items-center gap-2">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Đã lấy thông tin! Kiểm tra tên và mô tả bên dưới.
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 1: Thông tin sản phẩm -->
+      <div class="bg-white rounded-xl border shadow-sm mb-4">
+        <div class="p-4 border-b flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center">1</span>
+          <span class="font-semibold text-sm">Thông tin sản phẩm</span>
+          <span class="ml-auto text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Bắt buộc</span>
+        </div>
+        <div class="p-4 space-y-4">
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm <span class="text-red-500">*</span></label>
+            <input x-model="form.productName" type="text" placeholder="VD: Bộ bầu mặc nhà cotton form rộng"
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              :class="formErrors.productName ? 'border-red-400' : 'border-gray-300'">
+            <p x-show="formErrors.productName" class="text-red-500 text-xs mt-1" x-text="formErrors.productName"></p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Mô tả sản phẩm <span class="text-red-500">*</span></label>
+            <textarea x-model="form.productDescription" rows="4" placeholder="VD: Chất liệu cotton mềm mát, thấm hút mồ hôi, form rộng, mặc trước và sau sinh, phù hợp mẹ bầu 40-75kg..."
+              class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 resize-y"
+              :class="formErrors.productDescription ? 'border-red-400' : 'border-gray-300'"></textarea>
+            <p x-show="formErrors.productDescription" class="text-red-500 text-xs mt-1" x-text="formErrors.productDescription"></p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Ảnh sản phẩm
+              <span x-show="!settings.allowWithoutImage" class="text-red-500">*</span>
+              <span x-show="settings.allowWithoutImage" class="text-gray-400 font-normal">(Tùy chọn)</span>
+            </label>
+
+            <!-- Drop zone -->
+            <div @dragover.prevent @drop.prevent="handleDrop($event)"
+              @click="$refs.fileInput.click()"
+              class="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors"
+              :class="isDragging ? 'border-purple-400 bg-purple-50' : 'border-gray-300 hover:border-purple-300 hover:bg-gray-50'"
+              @dragenter="isDragging=true" @dragleave="isDragging=false">
+              <input x-ref="fileInput" type="file" class="hidden" multiple accept="image/jpeg,image/png,image/webp" @change="handleFileInput($event)">
+              <div class="flex flex-col items-center gap-2">
+                <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                <p class="text-sm text-gray-600">Kéo thả ảnh hoặc <span class="text-purple-600 font-medium">click để chọn</span></p>
+                <p class="text-xs text-gray-400">JPG, PNG, WEBP • Tối đa 10MB/ảnh • Tối đa 5 ảnh</p>
+              </div>
+            </div>
+
+            <p x-show="formErrors.images" class="text-red-500 text-xs mt-1" x-text="formErrors.images"></p>
+            <p x-show="imageError" class="text-red-500 text-xs mt-1" x-text="imageError"></p>
+
+            <!-- Image preview -->
+            <div x-show="form.images.length > 0" class="grid grid-cols-3 gap-2 mt-2 sm:grid-cols-4 lg:grid-cols-5">
+              <template x-for="(img, i) in form.images" :key="img.id">
+                <div class="group relative aspect-square rounded-lg overflow-hidden border bg-gray-100">
+                  <img :src="img.dataUrl" class="w-full h-full object-cover">
+                  <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-start justify-end p-1">
+                    <button @click.stop="removeImage(i)" class="w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center">✕</button>
+                  </div>
+                </div>
+              </template>
+            </div>
+            <p x-show="form.images.length > 0" class="text-xs text-gray-400 mt-1" x-text="`${form.images.length}/5 ảnh`"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Tùy chọn -->
+      <div class="bg-white rounded-xl border shadow-sm mb-6">
+        <div class="p-4 border-b flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-xs font-bold flex items-center justify-center">2</span>
+          <span class="font-semibold text-sm">Tùy chọn video</span>
+          <span class="ml-auto text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Tùy chọn</span>
+        </div>
+        <div class="p-4 space-y-4">
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Đối tượng khách hàng</label>
+            <input x-model="form.targetAudience" type="text" placeholder="VD: Mẹ bầu 5-8 tháng, mẹ sau sinh... (để trống AI tự suy luận)"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Kiểu quay</label>
+              <select x-model="form.shootingStyle" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                <option value="one-shot">🎬 One Shot</option>
+                <option value="review">👗 Review mặc sản phẩm</option>
+                <option value="koc-review">⭐ KOC Review</option>
+                <option value="tiktok-shop">🛍️ TikTok Shop</option>
+                <option value="ugc">👤 UGC</option>
+                <option value="talking-head">🗣️ Talking Head</option>
+                <option value="pov">👁️ POV</option>
+                <option value="livestream-teaser">📡 Livestream teaser</option>
+                <option value="voiceover">🎙️ Voice Over (ElevenLabs)</option>
+                <option value="custom">✏️ Tùy chỉnh...</option>
+              </select>
+              <input x-show="form.shootingStyle==='custom'" x-model="form.shootingStyleCustom" type="text" placeholder="Nhập kiểu quay..." class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Thời lượng</label>
+              <select x-model="form.duration" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                <option value="15s">15 giây</option>
+                <option value="30s">30 giây</option>
+                <option value="45s">45 giây</option>
+                <option value="60s">60 giây</option>
+                <option value="90s">90 giây</option>
+                <option value="custom">Tùy chỉnh...</option>
+              </select>
+              <input x-show="form.duration==='custom'" x-model="form.durationCustom" type="text" placeholder="VD: 35 giây" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Giọng điệu</label>
+              <select x-model="form.tone" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                <option value="natural-koc">🌿 Tự nhiên như KOC</option>
+                <option value="friendly">💬 Gần gũi</option>
+                <option value="cute">🌸 Dễ thương</option>
+                <option value="light-elegant">✨ Sang nhẹ</option>
+                <option value="tiktok-nhay">🔥 Nhây nhây bắt trend TikTok</option>
+                <option value="light-humor">😄 Hài hước nhẹ</option>
+                <option value="soft-close">💰 Chốt sale mềm</option>
+                <option value="real-review">🔍 Review trải nghiệm thật</option>
+                <option value="custom">✏️ Tùy chỉnh...</option>
+              </select>
+              <input x-show="form.tone==='custom'" x-model="form.toneCustom" type="text" placeholder="Nhập giọng điệu..." class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Mục tiêu video</label>
+              <select x-model="form.videoGoal" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                <option value="increase-conversion">📈 Tăng chuyển đổi</option>
+                <option value="build-trust">🤝 Tạo niềm tin</option>
+                <option value="introduce-new">🆕 Giới thiệu sản phẩm mới</option>
+                <option value="push-bestseller">🔥 Đẩy sản phẩm bán chạy</option>
+                <option value="solve-pain">💊 Xử lý nỗi đau khách hàng</option>
+                <option value="increase-comments">💬 Tăng bình luận</option>
+                <option value="click-to-cart">🛒 Kéo click vào giỏ hàng</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button @click="generateScript()" :disabled="isGenerating"
+        class="w-full gradient-btn text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 text-base transition-all disabled:opacity-60">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 9-14 9V3z"/></svg>
+        Tạo kịch bản AI
+      </button>
+    </div>
+
+    <!-- RESULT (shown after generate) -->
+    <div x-show="currentScript">
+
+      <!-- Action bar -->
+      <div class="flex flex-wrap items-center gap-2 bg-white border rounded-xl p-3 mb-4 shadow-sm">
+        <button @click="generateScript()" class="gradient-btn text-white text-sm px-4 py-2 rounded-lg flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Tạo lại
+        </button>
+        <button @click="currentScript=null; generateError=null" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50">
+          Kịch bản mới
+        </button>
+        <button @click="copyFullScript()" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          Copy tất cả
+        </button>
+        <button @click="saveToHistory()" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 flex items-center gap-1.5" x-show="!settings.autoSave">
+          Lưu lịch sử
+        </button>
+        <div class="ml-auto flex gap-1.5">
+          <button @click="downloadScript('txt')" class="border text-xs px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">TXT</button>
+          <button @click="downloadScript('md')" class="border text-xs px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">MD</button>
+          <button @click="downloadScript('json')" class="border text-xs px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">JSON</button>
+        </div>
+      </div>
+
+      <!-- Section error banner -->
+      <div x-show="sectionError" x-transition class="mb-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center gap-3 text-sm text-red-700">
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 3a9 9 0 110 18A9 9 0 0112 3z"/></svg>
+        <span x-text="sectionError"></span>
+      </div>
+
+      <!-- 1. Hook gợi ý -->
+      <div class="bg-white border rounded-xl shadow-sm mb-4">
+        <div class="p-4 border-b flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span class="font-semibold text-sm">1. Hook gợi ý</span>
+          </div>
+          <button @click="regenerateSection('hooks')" :disabled="!!regeneratingSection" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg x-show="regeneratingSection==='hooks'" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <svg x-show="regeneratingSection!=='hooks'" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Tạo lại
+          </button>
+        </div>
+        <div class="p-4 space-y-3">
+          <template x-for="(hook, i) in currentScript.section3.hooks" :key="i">
+            <div :class="hook.isRecommended ? 'border-purple-300 bg-purple-50' : 'border-gray-200 bg-white'" class="border rounded-lg p-4 relative">
+              <div x-show="hook.isRecommended" class="inline-flex items-center gap-1 text-purple-700 bg-purple-100 text-xs px-2 py-0.5 rounded-full mb-2">
+                <span>&#11088;</span> Khuyên dùng
+              </div>
+              <p class="text-base font-medium" style="color:#1f2937" x-text="'&quot;' + hook.text + '&quot;'"></p>
+              <button @click="copyText(hook.text)" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 p-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- 2. Kịch bản chính -->
+      <div class="bg-white border rounded-xl shadow-sm mb-4">
+        <div class="p-4 border-b flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            <span class="font-semibold text-sm">2. Kịch bản chính</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button @click="regenerateSection('script')" :disabled="!!regeneratingSection" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+              <svg x-show="regeneratingSection==='script'" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              <svg x-show="regeneratingSection!=='script'" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Tạo lại
+            </button>
+            <button @click="copyScriptText()" class="border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50">Copy</button>
+          </div>
+        </div>
+        <div class="p-4">
+          <div class="flex flex-wrap gap-2 mb-4">
+            <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full" x-text="`⏱ ${currentScript.section4.duration}`"></span>
+            <span class="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full max-w-xs truncate" x-text="`Hook: ${currentScript.section4.hook}`"></span>
+          </div>
+          <!-- Voice Over mode: ElevenLabs script + hành động on-camera -->
+          <template x-if="currentScript.section4.voScript">
+            <div class="space-y-3">
+              <!-- Track tiếng: ElevenLabs script -->
+              <div class="bg-gray-900 rounded-xl p-4">
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-medium">🎙️ Track tiếng — ElevenLabs Script</span>
+                  <button @click="copyText(currentScript.section4.voScript)" class="ml-auto text-xs text-gray-400 hover:text-white flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    Copy
+                  </button>
+                </div>
+                <pre class="text-sm text-gray-100 whitespace-pre-wrap leading-relaxed font-mono" x-text="currentScript.section4.voScript"></pre>
+              </div>
+              <!-- Track hình: hành động on-camera đồng bộ -->
+              <template x-if="currentScript.section4.lines && currentScript.section4.lines.length > 0">
+                <div class="bg-blue-950 rounded-xl p-4">
+                  <div class="flex items-center gap-2 mb-3">
+                    <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full font-medium">📹 Track hình — Hành động on-camera</span>
+                    <span class="text-xs text-blue-400">Đồng bộ theo từng câu trong voScript</span>
+                  </div>
+                  <div class="space-y-1.5">
+                    <template x-for="(line, i) in currentScript.section4.lines" :key="i">
+                      <div class="flex gap-2 items-start">
+                        <span class="text-blue-400 text-xs font-mono shrink-0 mt-0.5" x-text="`${i+1}.`"></span>
+                        <p class="text-sm text-blue-200" x-text="line.text"></p>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+          <!-- Normal OneShot mode -->
+          <template x-if="!currentScript.section4.voScript">
+            <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+              <template x-for="(line, i) in currentScript.section4.lines" :key="i">
+                <div>
+                  <div x-show="line.type==='action'" class="action-badge" x-text="`(${line.text})`"></div>
+                  <p x-show="line.type==='dialogue'" class="dialogue-line pl-1" style="color:#1f2937" x-text="line.text"></p>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- 3. Timeline quay -->
+      <div class="bg-white border rounded-xl shadow-sm mb-4">
+        <div class="p-4 border-b flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="font-semibold text-sm" x-text="currentScript.section4 && currentScript.section4.voScript ? '3. Timeline quay + lồng tiếng' : '3. Timeline quay'"></span>
+          </div>
+          <button @click="copyText(currentScript.section5.timeline.map(p => p.voice ? `${p.timeRange}\n🎙 ${p.voice}\n📹 ${p.action||''}` : `${p.timeRange}: ${p.description||''}`).join('\n\n'))" class="border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50">Copy</button>
+        </div>
+        <div class="p-4 space-y-2">
+          <template x-for="(point, i) in currentScript.section5.timeline" :key="i">
+            <div class="rounded-lg border border-gray-100 overflow-hidden">
+              <!-- Header: timestamp -->
+              <div class="bg-gray-50 px-3 py-1.5 flex items-center gap-2">
+                <span class="bg-blue-500 text-white text-xs font-mono px-2 py-0.5 rounded font-semibold" x-text="point.timeRange"></span>
+              </div>
+              <!-- Voice line (nếu có field voice riêng) -->
+              <template x-if="point.voice">
+                <div class="px-3 py-2 flex gap-2 items-start border-b border-gray-50">
+                  <span class="text-purple-500 text-xs shrink-0 mt-0.5 font-semibold">🎙</span>
+                  <p class="text-sm text-gray-800 font-mono leading-relaxed" x-text="point.voice"></p>
+                </div>
+              </template>
+              <!-- Action line (nếu có field action riêng) -->
+              <template x-if="point.action">
+                <div class="px-3 py-2 flex gap-2 items-start bg-blue-50">
+                  <span class="text-blue-500 text-xs shrink-0 mt-0.5 font-semibold">📹</span>
+                  <p class="text-sm text-blue-700 italic" x-text="point.action"></p>
+                </div>
+              </template>
+              <!-- Fallback: description cũ (OneShot / backward compat) -->
+              <template x-if="!point.voice && !point.action && point.description">
+                <div class="px-3 py-2">
+                  <p class="text-sm text-gray-700" x-text="point.description"></p>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- 4. Caption TikTok -->
+      <div class="bg-white border rounded-xl shadow-sm mb-4">
+        <div class="p-4 border-b flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+            <span class="font-semibold text-sm">4. Caption TikTok</span>
+          </div>
+          <button @click="regenerateSection('caption')" :disabled="!!regeneratingSection" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg x-show="regeneratingSection==='caption'" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <svg x-show="regeneratingSection!=='caption'" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Tạo lại
+          </button>
+        </div>
+        <div class="p-4 space-y-3">
+          <template x-for="(caption, i) in currentScript.section7.captions" :key="i">
+            <div class="bg-gray-50 border rounded-lg p-3 relative">
+              <p class="text-[10px] font-semibold text-gray-400 uppercase mb-1" x-text="`Caption ${i+1}`"></p>
+              <p class="text-sm text-gray-700 pr-8" x-text="caption"></p>
+              <button @click="copyText(caption)" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              </button>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- 5. Hashtag -->
+      <div class="bg-white border rounded-xl shadow-sm mb-4">
+        <div class="p-4 border-b flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-blue-500 font-bold text-sm">#</span>
+            <span class="font-semibold text-sm">5. Hashtag</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button @click="regenerateSection('hashtag')" :disabled="!!regeneratingSection" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+              <svg x-show="regeneratingSection==='hashtag'" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              <svg x-show="regeneratingSection!=='hashtag'" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Tạo lại
+            </button>
+            <button @click="copyText(currentScript.section8.hashtags.join(' '))" class="border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50">Copy</button>
+          </div>
+        </div>
+        <div class="p-4 flex flex-wrap gap-1.5">
+          <template x-for="(tag, i) in currentScript.section8.hashtags" :key="i">
+            <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full" x-text="tag"></span>
+          </template>
+        </div>
+      </div>
+
+      <!-- 6. Thông tin video -->
+      <div class="bg-white border rounded-xl shadow-sm mb-4">
+        <div class="p-4 border-b flex items-center gap-2">
+          <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.069A1 1 0 0121 8.876V15.12a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          <span class="font-semibold text-sm">6. Thông tin video</span>
+        </div>
+        <div class="p-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <template x-for="field in infoFields()" :key="field.label">
+            <div class="bg-gray-50 rounded-lg p-2.5">
+              <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide" x-text="field.label"></p>
+              <p class="text-sm font-medium mt-0.5 text-gray-800" x-text="field.value"></p>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- 7. Phân tích nhanh -->
+      <div class="bg-white border rounded-xl shadow-sm mb-4">
+        <div class="p-4 border-b flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <span class="font-semibold text-sm">7. Phân tích nhanh</span>
+          </div>
+          <button @click="regenerateSection('analysis')" :disabled="!!regeneratingSection" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg x-show="regeneratingSection==='analysis'" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <svg x-show="regeneratingSection!=='analysis'" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Tạo lại
+          </button>
+        </div>
+        <div class="p-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Khách hàng mục tiêu</p><p class="text-sm text-gray-700" x-text="currentScript.section2.targetCustomer"></p></div>
+          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Pain point</p><p class="text-sm text-gray-700" x-text="currentScript.section2.painPoints"></p></div>
+          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Insight</p><p class="text-sm text-gray-700" x-text="currentScript.section2.insight"></p></div>
+          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Điểm nổi bật</p><p class="text-sm text-gray-700" x-text="currentScript.section2.highlights"></p></div>
+          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Lợi ích chính</p><p class="text-sm text-gray-700" x-text="currentScript.section2.mainBenefits"></p></div>
+          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Tình huống sử dụng</p><p class="text-sm text-gray-700" x-text="currentScript.section2.usageSituations"></p></div>
+        </div>
+      </div>
+
+      <!-- 8. Lưu ý khi quay -->
+      <div class="bg-white border rounded-xl shadow-sm mb-4">
+        <div class="p-4 border-b flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            <span class="font-semibold text-sm">8. Lưu ý khi quay</span>
+          </div>
+          <button @click="regenerateSection('tips')" :disabled="!!regeneratingSection" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg x-show="regeneratingSection==='tips'" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <svg x-show="regeneratingSection!=='tips'" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Tạo lại
+          </button>
+        </div>
+        <div class="p-4">
+          <ul class="space-y-2">
+            <template x-for="(tip, i) in currentScript.section9.tips" :key="i">
+              <li class="flex items-start gap-2 text-sm text-gray-700">
+                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0"></span>
+                <span x-text="tip"></span>
+              </li>
+            </template>
+          </ul>
+        </div>
+      </div>
+
+    </div><!-- end result -->
+  </div><!-- end generate tab -->
+
+  <!-- ====== TAB: HISTORY ====== -->
+  <div x-show="activeTab==='history'">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-xl font-bold">Lịch sử kịch bản</h2>
+        <p class="text-sm text-gray-500 mt-0.5">100 kịch bản gần nhất</p>
+      </div>
+      <button x-show="history.length>0" @click="confirmClearHistory()" class="text-sm text-red-500 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50">Xóa tất cả</button>
+    </div>
+
+    <div class="mb-4">
+      <input x-model="historySearch" type="text" placeholder="Tìm kiếm theo tên sản phẩm, provider..."
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 pl-9 relative">
+    </div>
+
+    <!-- Empty state -->
+    <div x-show="history.length===0" class="text-center py-20">
+      <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <h3 class="font-semibold text-gray-700">Chưa có kịch bản nào</h3>
+      <p class="text-sm text-gray-400 mt-1">Kịch bản sẽ xuất hiện ở đây sau khi bạn generate</p>
+    </div>
+
+    <!-- History list -->
+    <div class="space-y-2">
+      <template x-for="item in filteredHistory()" :key="item.id">
+        <div class="bg-white border rounded-xl shadow-sm p-4 hover:border-purple-200 transition-colors cursor-pointer" @click="viewHistoryItem(item)">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold text-sm text-gray-800 truncate" x-text="item.productName"></p>
+              <div class="flex flex-wrap gap-1.5 mt-1.5">
+                <span class="bg-purple-50 text-purple-700 text-[11px] px-2 py-0.5 rounded-full" x-text="item.provider"></span>
+                <span class="bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 rounded-full font-mono" x-text="item.modelName"></span>
+                <span x-show="item.shootingStyle" class="bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 rounded-full" x-text="item.shootingStyle"></span>
+              </div>
+              <p class="text-[11px] text-gray-400 mt-1.5" x-text="formatDate(item.createdAt)"></p>
+            </div>
+            <div class="flex gap-1">
+              <button @click.stop="deleteHistoryItem(item.id)" class="p-1.5 text-gray-400 hover:text-red-500 rounded">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- History detail modal -->
+    <div x-show="selectedHistoryItem" class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" @click.self="selectedHistoryItem=null">
+      <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div class="p-4 border-b flex items-center justify-between">
+          <div>
+            <h3 class="font-semibold" x-text="selectedHistoryItem?.productName"></h3>
+            <p class="text-xs text-gray-400" x-text="selectedHistoryItem ? `${formatDate(selectedHistoryItem.createdAt)} • ${selectedHistoryItem.provider} • ${selectedHistoryItem.modelName}` : ''"></p>
+          </div>
+          <button @click="selectedHistoryItem=null" class="text-gray-400 hover:text-gray-600 p-1">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="overflow-y-auto flex-1 p-4">
+          <div x-show="selectedHistoryItem">
+            <!-- Script lines from history -->
+            <div class="bg-gray-50 rounded-xl p-4 mb-3">
+              <p class="text-xs font-semibold text-gray-400 uppercase mb-2">Kịch bản</p>
+              <div class="space-y-2">
+                <template x-for="(line, i) in (selectedHistoryItem?.script?.section4?.lines || [])" :key="i">
+                  <div>
+                    <span x-show="line.type==='action'" class="action-badge" x-text="`(${line.text})`"></span>
+                    <p x-show="line.type==='dialogue'" class="dialogue-line text-gray-800" x-text="line.text"></p>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div class="text-xs text-gray-500 space-y-1">
+              <p><strong>Caption 1:</strong> <span x-text="selectedHistoryItem?.script?.section7?.captions?.[0]"></span></p>
+              <p><strong>Hashtag:</strong> <span x-text="(selectedHistoryItem?.script?.section8?.hashtags || []).join(' ')"></span></p>
+            </div>
+          </div>
+        </div>
+        <div class="p-4 border-t flex items-center gap-2">
+          <button @click="loadHistoryItem(selectedHistoryItem)" class="gradient-btn text-white text-sm px-4 py-2 rounded-lg flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            Mở kịch bản
+          </button>
+          <div class="flex gap-2 ml-auto">
+            <button @click="downloadHistoryItem(selectedHistoryItem, 'txt')" class="border text-sm px-4 py-2 rounded-lg hover:bg-gray-50">TXT</button>
+            <button @click="downloadHistoryItem(selectedHistoryItem, 'md')" class="border text-sm px-4 py-2 rounded-lg hover:bg-gray-50">MD</button>
+            <button @click="downloadHistoryItem(selectedHistoryItem, 'json')" class="border text-sm px-4 py-2 rounded-lg hover:bg-gray-50">JSON</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== TAB: SETTINGS ====== -->
+  <div x-show="activeTab==='settings'">
+    <div class="mb-6">
+      <h2 class="text-xl font-bold">Cài đặt</h2>
+      <p class="text-sm text-gray-500 mt-1">Cài đặt AI provider, model và tùy chỉnh ứng dụng</p>
+    </div>
+
+    <!-- AI Provider -->
+    <div class="bg-white border rounded-xl shadow-sm mb-4">
+      <div class="p-4 border-b font-semibold text-sm">AI Provider</div>
+      <div class="p-4 space-y-4">
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Provider</label>
+          <select x-model="settings.provider" @change="onProviderChange()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+            <option value="openai">OpenAI / ChatGPT</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="custom">Custom OpenAI-compatible</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+          <div class="relative">
+            <input :type="showApiKey ? 'text' : 'password'"
+              :value="settings.apiKeys[settings.provider] ?? ''"
+              @input="settings.apiKeys[settings.provider] = $event.target.value"
+              :placeholder="settings.provider==='openai' ? 'sk-...' : settings.provider==='gemini' ? 'AIza...' : 'API key...'"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm pr-10 focus:outline-none focus:ring-2 focus:ring-purple-400">
+            <button @click="showApiKey=!showApiKey" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg x-show="!showApiKey" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              <svg x-show="showApiKey" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+            </button>
+          </div>
+          <p class="text-xs text-gray-400 mt-1">Mỗi provider có API key riêng, tự động lưu khi đổi provider.</p>
+        </div>
+
+        <!-- Gemini key dùng để phân tích ảnh khi provider là OpenAI/DeepSeek -->
+        <div x-show="settings.provider !== 'gemini'" class="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span class="text-sm font-medium text-blue-800">Gemini key để phân tích ảnh <span class="text-xs font-normal text-blue-500">(tuỳ chọn)</span></span>
+          </div>
+          <input type="password"
+            :value="settings.apiKeys.gemini ?? ''"
+            @input="settings.apiKeys.gemini = $event.target.value"
+            placeholder="AIza... (Google AI Studio - miễn phí)"
+            class="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
+          <p class="text-xs text-blue-600">Khi upload ảnh sản phẩm: Gemini phân tích ảnh → truyền kết quả cho <span x-text="settings.provider === 'deepseek' ? 'DeepSeek' : 'ChatGPT'"></span> viết kịch bản. Tiết kiệm chi phí hơn nhiều so với dùng ChatGPT phân tích ảnh.</p>
+        </div>
+
+        <div x-show="settings.provider !== 'gemini'">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Base URL</label>
+          <input x-model="settings.baseUrl" type="text" placeholder="https://api.openai.com/v1"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
+          <input x-model="settings.modelName" type="text" placeholder="gpt-4o"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+          <div class="flex flex-wrap gap-1.5 mt-2">
+            <template x-for="m in suggestedModels()" :key="m">
+              <button @click="settings.modelName=m" :class="settings.modelName===m ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="text-xs px-2 py-1 rounded-full transition-colors" x-text="m"></button>
+            </template>
+          </div>
+          <div x-show="settings.provider==='deepseek'" class="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-700">
+            ⚠️ DeepSeek không hỗ trợ ảnh. AI sẽ tạo kịch bản từ tên và mô tả sản phẩm.
+          </div>
+        </div>
+
+        <hr>
+
+        <div>
+          <div class="flex justify-between mb-1">
+            <label class="text-sm font-medium text-gray-700">Temperature (Độ sáng tạo)</label>
+            <span class="text-sm text-gray-500 font-mono" x-text="settings.temperature.toFixed(1)"></span>
+          </div>
+          <input type="range" min="0" max="2" step="0.1" x-model="settings.temperature" class="w-full accent-purple-600">
+          <div class="flex justify-between text-xs text-gray-400 mt-0.5">
+            <span>Chính xác (0)</span><span>Cân bằng (1)</span><span>Sáng tạo (2)</span>
+          </div>
+        </div>
+
+        <div x-show="false">
+          <div class="flex justify-between mb-1">
+            <label class="text-sm font-medium text-gray-700">Max Output Tokens</label>
+            <span class="text-sm text-gray-500 font-mono" x-text="parseInt(settings.maxTokens).toLocaleString()"></span>
+          </div>
+          <input type="range" min="1000" max="16000" step="500" x-model="settings.maxTokens" class="w-full accent-purple-600">
+          <div class="flex justify-between text-xs text-gray-400 mt-0.5">
+            <span>1,000</span><span>8,000 (khuyên dùng)</span><span>16,000</span>
+          </div>
+        </div>
+
+        <hr>
+
+        <div class="space-y-2">
+          <button @click="testConnection()" :disabled="testingConnection" class="w-full border border-gray-300 rounded-lg py-2.5 text-sm font-medium hover:bg-gray-50 flex items-center justify-center gap-2 disabled:opacity-60">
+            <svg x-show="testingConnection" class="w-4 h-4 spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <span x-text="testingConnection ? 'Đang kiểm tra...' : 'Kiểm tra kết nối'"></span>
+          </button>
+          <div x-show="testResult" :class="testResult?.success ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'" class="border rounded-lg p-3 text-sm flex items-center gap-2">
+            <span x-text="testResult?.success ? '✓' : '✗'"></span>
+            <span x-text="testResult?.message"></span>
+          </div>
+        </div>
+
+        <button @click="saveSettings()" class="w-full gradient-btn text-white font-medium py-2.5 rounded-lg">
+          Lưu cài đặt
+        </button>
+      </div>
+    </div>
+
+    <!-- General settings -->
+    <div class="bg-white border rounded-xl shadow-sm">
+      <div class="p-4 border-b font-semibold text-sm">Cài đặt chung</div>
+      <div class="p-4 space-y-4">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <p class="text-sm font-medium text-gray-700">Cho phép generate không cần ảnh</p>
+            <p class="text-xs text-gray-400 mt-0.5">AI tạo kịch bản từ tên và mô tả sản phẩm, không cần upload ảnh.</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" x-model="settings.allowWithoutImage" class="sr-only peer" @change="saveSettings()">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+          </label>
+        </div>
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <p class="text-sm font-medium text-gray-700">Tự động lưu lịch sử</p>
+            <p class="text-xs text-gray-400 mt-0.5">Tự động lưu kịch bản sau mỗi lần generate thành công.</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" x-model="settings.autoSave" class="sr-only peer" @change="saveSettings()">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== TAB: PROMPT ====== -->
+  <div x-show="activeTab==='prompt'">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-xl font-bold">Cài đặt Prompt</h2>
+        <p class="text-sm text-gray-500 mt-1">Chỉnh sửa các khối prompt theo ý muốn</p>
+      </div>
+      <div class="flex gap-2">
+        <button @click="resetPrompts()" class="border text-sm px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50">Reset mặc định</button>
+        <button @click="savePrompts()" class="gradient-btn text-white text-sm px-4 py-1.5 rounded-lg">Lưu</button>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <template x-for="block in promptBlocks" :key="block.key">
+        <div class="bg-white border rounded-xl shadow-sm">
+          <div class="p-4 border-b">
+            <p class="font-semibold text-sm" x-text="block.title"></p>
+            <p class="text-xs text-gray-400 mt-0.5" x-text="block.desc"></p>
+          </div>
+          <div class="p-4">
+            <textarea x-model="promptSettings[block.key]" rows="6"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-purple-400 resize-y"
+              :placeholder="block.key==='additionalPrompt' ? 'VD: Viết hài hước hơn, tập trung vào mẹ sau sinh, nhấn mạnh mặc mùa hè...' : ''"></textarea>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <div class="flex gap-2 mt-4">
+      <button @click="exportPrompts()" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50">Export JSON</button>
+      <button @click="importPrompts()" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50">Import JSON</button>
+      <input type="file" accept=".json" x-ref="promptImportInput" class="hidden" @change="handlePromptImport($event)">
+    </div>
+  </div>
+
+</div><!-- end container -->
+
+<!-- Toast -->
+<div x-show="toast.show" x-transition class="fixed bottom-4 right-4 z-50">
+  <div :class="toast.type==='error' ? 'bg-red-600' : toast.type==='success' ? 'bg-green-600' : 'bg-gray-800'" class="text-white px-4 py-3 rounded-xl shadow-lg text-sm max-w-sm">
+    <span x-text="toast.message"></span>
+  </div>
+</div>
+
+<script>
+const DEFAULT_PROMPTS = {
+  rolePrompt: `Bạn là Content Creator kiêm TikTok Shop Seller có hơn 10 năm kinh nghiệm, chuyên tạo video chuyển đổi cao cho ngành thời trang nữ và thời trang bầu.\n\nBạn hiểu cách viết kịch bản video ngắn TikTok Shop, Douyin, UGC, KOC review, livestream teaser.\n\nBạn viết tự nhiên như người thật, không văn mẫu, không nói kiểu MC quảng cáo.`,
+  bellaContext: `Tôi là nhân viên của BELLA.\n\nTôi quay video TikTok Shop theo dạng One Shot, quay liên tục từ đầu đến cuối, không cắt cảnh.\n\nNgười mẫu đã mặc sẵn sản phẩm.\n\nNgười mẫu vừa đi, vừa tạo dáng, vừa nói chuyện với camera như đang chia sẻ trải nghiệm thật.\n\nVideo không đọc thông số sản phẩm.\nVideo không đọc nguyên mô tả sản phẩm.\nVideo không nói theo kiểu MC bán hàng.\n\nPhải giống một KOC đang review sau khi đã mặc sản phẩm.`,
+  productAnalysisRules: `AI phải tự phân tích sản phẩm để xác định:\n\n- Khách hàng mục tiêu\n- Pain point của khách hàng\n- Điểm nổi bật nhất của sản phẩm\n- Lợi ích thực tế khi sử dụng\n- Tình huống sử dụng phù hợp\n- Hành động nên quay để showcase sản phẩm\n- Chi tiết sản phẩm nên zoom hoặc chỉ tay\n- Lý do khách nên quan tâm\n- Insight mua hàng\n\nKhông được bê nguyên mô tả sản phẩm vào kịch bản.\nPhải chuyển thành lời nói tự nhiên.`,
+  hookRules: `Hook nằm trong 3 giây đầu. Hook phải khiến người xem dừng lướt ngay lập tức.\n\nKhông được mở đầu bằng:\n- "Đây là..."\n- "Hôm nay mình giới thiệu..."\n- "Mẹ nào cần..."\n- "Xin chào mọi người..."\n- "Sản phẩm này..."\n- "Bên em có..."\n\nMỗi lần tạo phải đổi hook. Không được lặp hook cũ.\n\nVí dụ hook tốt:\n- "Trời nóng thế này mà mặc đồ bầu bí đúng là cực hình."\n- "Em mặc bộ này từ sáng đến giờ vẫn thấy mát."\n- "Mặc thử mới hiểu vì sao khách bên BELLA quay lại mua thêm màu."\n\nViết 3 hook khác nhau. Đánh dấu hook chính nên dùng.`,
+  dialogueRules: `Lời thoại phải:\n- Như đang nói chuyện thật, không phải đọc bài\n- Câu ngắn, có nhịp điệu tự nhiên\n- Tự nhiên, có cảm xúc thật\n- Không văn mẫu, không khoa trương\n- Không lặp ý, không lặp từ, không lặp cấu trúc câu\n- Không đọc thông số khô khan\n- Không nói như quảng cáo truyền thống\n- Không dùng quá nhiều từ sáo rỗng như "siêu phẩm", "đỉnh của chóp", "hot hit"\n- Nên dùng ngôi "em" và gọi người xem là "mẹ" hoặc "chị"`,
+  benefitRules: `Luôn chuyển tính năng thành lợi ích thực tế.\n\nKHÔNG viết: "Vải cotton."\nPHẢI viết: "Chất vải này mặc mùa hè rất mát, ở nhà cả ngày cũng không bị bí."\n\nKHÔNG viết: "Form rộng."\nPHẢI viết: "Bụng lớn lên từng tháng vẫn mặc rất thoải mái."\n\nKHÔNG viết: "Có túi."\nPHẢI viết: "Có túi nên ở nhà cầm điện thoại, chìa khóa hay khăn nhỏ đều tiện."`,
+  actionRules: `Sau mỗi 1-2 câu thoại phải có một hành động. Không để nhân vật đứng yên quá lâu.\n\nHành động phải phù hợp với loại sản phẩm.\n\nDanh sách hành động:\n- (Bước nhẹ về phía camera)\n- (Xoay người một vòng chậm)\n- (Vuốt nhẹ phần bụng)\n- (Kéo nhẹ gấu áo)\n- (Vò nhẹ chất vải)\n- (Kéo nhẹ ống quần)\n- (Nghiêng người để thấy form)\n- (Tiến sát camera)\n- (Chỉ nhẹ vào phần túi)\n- (Ngồi xuống rồi đứng lên)\n- (Cười nhẹ)\n- (Quay nghiêng 45 độ)`,
+  endingRules: `Kết thúc nhẹ nhàng, không ép mua.\n\nVí dụ kết tốt:\n- "Nếu thích kiểu mặc nhà vừa mát vừa xinh thì mẫu này rất đáng thử."\n- "Mình nghĩ đây là bộ mặc rất đáng có trong thai kỳ."\n- "Ai thích mặc thoải mái mà vẫn gọn người thì xem thử mẫu này nha."\n\nKHÔNG dùng CTA gắt như: "Mua ngay", "Chốt đơn ngay", "Không mua là tiếc"`,
+  additionalPrompt: ''
+};
+
+const PROVIDER_MODELS = {
+  openai: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-4o', 'gpt-4o-mini', 'gpt-4.1'],
+  deepseek: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-chat', 'deepseek-reasoner'],
+  gemini: ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'],
+  custom: []
+};
+
+const PROVIDER_URLS = {
+  openai: 'https://api.openai.com/v1',
+  deepseek: 'https://api.deepseek.com/v1',
+  gemini: '',
+  custom: ''
+};
+
+function bellaApp() {
+  return {
+    activeTab: 'generate',
+    tabs: [
+      {id:'generate', label:'Tạo kịch bản', icon:'▶'},
+      {id:'history', label:'Lịch sử', icon:'🕐'},
+      {id:'settings', label:'Cài đặt', icon:'⚙️'},
+      {id:'prompt', label:'Prompt', icon:'📝'},
+    ],
+
+    // Form
+    form: {
+      productName: '', productDescription: '', images: [],
+      targetAudience: '', shootingStyle: 'one-shot', shootingStyleCustom: '',
+      duration: '30s', durationCustom: '', tone: 'natural-koc', toneCustom: '',
+      videoGoal: 'increase-conversion'
+    },
+    formErrors: {},
+    isDragging: false,
+    imageError: '',
+
+    // State
+    isGenerating: false,
+    generateError: null,
+    currentScript: null,
+    regeneratingSection: null,
+    sectionError: null,
+
+    // URL fetch
+    productUrl: '',
+    isFetchingUrl: false,
+    fetchUrlStatus: '',
+    fetchUrlError: null,
+    fetchUrlNeedsAuth: false,
+    fetchUrlSuccess: false,
+
+    // Settings
+    settings: {
+      provider: 'openai',
+      apiKeys: { openai: '', deepseek: '', gemini: '', custom: '' },
+      baseUrl: 'https://api.openai.com/v1',
+      modelName: 'gpt-4o', temperature: 0.8, maxTokens: 0,
+      allowWithoutImage: true, autoSave: true
+    },
+    showApiKey: false,
+    testingConnection: false,
+    testResult: null,
+
+    // Prompt
+    promptSettings: {...DEFAULT_PROMPTS},
+    promptBlocks: [
+      {key:'rolePrompt', title:'Vai trò AI', desc:'Định nghĩa nhân cách và chuyên môn của AI'},
+      {key:'bellaContext', title:'Bối cảnh BELLA', desc:'Mô tả quy trình và phong cách quay của BELLA'},
+      {key:'productAnalysisRules', title:'Quy tắc phân tích sản phẩm', desc:'Cách AI phân tích sản phẩm'},
+      {key:'hookRules', title:'Quy tắc Hook', desc:'Quy tắc viết hook mở đầu'},
+      {key:'dialogueRules', title:'Quy tắc lời thoại', desc:'Tiêu chuẩn lời thoại trong kịch bản'},
+      {key:'benefitRules', title:'Quy tắc chuyển tính năng thành lợi ích', desc:'Cách chuyển đổi tính năng'},
+      {key:'actionRules', title:'Quy tắc hành động', desc:'Hành động đan xen trong kịch bản'},
+      {key:'endingRules', title:'Quy tắc kết thúc', desc:'Cách kết thúc video tự nhiên'},
+      {key:'additionalPrompt', title:'Prompt bổ sung', desc:'Yêu cầu riêng cho lần generate này'},
+    ],
+
+    // History
+    history: [],
+    historySearch: '',
+    selectedHistoryItem: null,
+
+    // Toast
+    toast: {show: false, message: '', type: 'info'},
+
+    // PWA banner (chỉ hiện trên iOS Safari, chưa dismiss)
+    showInstallBanner: false,
+
+    init() {
+      this.loadSettings();
+      this.loadPrompts();
+      this.loadHistory();
+
+      // Hiện banner nếu là iOS Safari và chưa cài PWA và chưa dismiss
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      const isSafari = /safari/i.test(navigator.userAgent) && !/chrome|crios|fxios/i.test(navigator.userAgent);
+      const isStandalone = window.navigator.standalone === true;
+      const dismissed = localStorage.getItem('bella_pwa_dismissed');
+      this.showInstallBanner = isIOS && isSafari && !isStandalone && !dismissed;
+    },
+
+    // ---- SETTINGS ----
+    loadSettings() {
+      try {
+        const s = JSON.parse(localStorage.getItem('bella_settings') || '{}');
+        // Migration: nếu format cũ có apiKey chung → chuyển sang apiKeys object
+        if (s.apiKey && !s.apiKeys) {
+          s.apiKeys = { openai: '', deepseek: '', gemini: '', custom: '' };
+          s.apiKeys[s.provider || 'openai'] = s.apiKey;
+          delete s.apiKey;
+        }
+        if (!s.apiKeys) s.apiKeys = { openai: '', deepseek: '', gemini: '', custom: '' };
+        s.maxTokens = 0; // Không giới hạn output token
+        this.settings = {...this.settings, ...s};
+      } catch {}
+    },
+    saveSettings() {
+      localStorage.setItem('bella_settings', JSON.stringify(this.settings));
+      this.showToast('Đã lưu cài đặt!', 'success');
+    },
+    onProviderChange() {
+      this.settings.baseUrl = PROVIDER_URLS[this.settings.provider] || '';
+      const models = PROVIDER_MODELS[this.settings.provider];
+      if (models && models.length > 0) this.settings.modelName = models[0];
+      this.testResult = null;
+    },
+    suggestedModels() {
+      return PROVIDER_MODELS[this.settings.provider] || [];
+    },
+
+    async fetchProductUrl() {
+      const url = this.productUrl.trim();
+      if (!url) return;
+      this.isFetchingUrl = true;
+      this.fetchUrlStatus = 'Đang tải trang...';
+      this.fetchUrlError = null;
+      this.fetchUrlNeedsAuth = false;
+      this.fetchUrlSuccess = false;
+
+      // Hiện thông báo phù hợp theo loại link
+      if (url.includes('tiktok.com')) {
+        this.fetchUrlStatus = 'Đang mở trình duyệt... (đăng nhập nếu được yêu cầu)';
+      }
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 200000); // 200s
+        const res = await fetch('/api/fetch-url', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ url }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        const data = await res.json();
+        if (!data.success) {
+          this.fetchUrlError = data.error;
+          this.fetchUrlNeedsAuth = !!data.needsAuth;
+          return;
+        }
+        if (data.productName) this.form.productName = data.productName;
+        if (data.productDescription) this.form.productDescription = data.productDescription;
+        if (data.images && data.images.length > 0) {
+          for (const img of data.images) {
+            if (this.form.images.length >= 5) break;
+            this.form.images.push(img);
+          }
+        }
+        this.fetchUrlSuccess = true;
+        this.showToast('Đã lấy thông tin từ link sản phẩm!', 'success');
+      } catch(e) {
+        this.fetchUrlError = e.name === 'AbortError' ? 'Quá thời gian chờ. Thử lại.' : e.message;
+      } finally {
+        this.isFetchingUrl = false;
+        this.fetchUrlStatus = '';
+      }
+    },
+    async openInBrowser(url) {
+      try {
+        await fetch('/api/open-browser', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ url })
+        });
+      } catch(e) {
+        window.open(url, '_blank');
+      }
+    },
+
+    async testConnection() {
+      this.testingConnection = true;
+      this.testResult = null;
+      try {
+        const res = await fetch('/api/test-connection', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({settings: {...this.settings, apiKey: this.settings.apiKeys[this.settings.provider] || ''}})
+        });
+        this.testResult = await res.json();
+      } catch {
+        this.testResult = {success: false, message: 'Không thể kết nối đến server'};
+      } finally {
+        this.testingConnection = false;
+      }
+    },
+
+    // ---- PROMPTS ----
+    loadPrompts() {
+      try {
+        const p = JSON.parse(localStorage.getItem('bella_prompts') || '{}');
+        this.promptSettings = {...DEFAULT_PROMPTS, ...p};
+      } catch {}
+    },
+    savePrompts() {
+      localStorage.setItem('bella_prompts', JSON.stringify(this.promptSettings));
+      this.showToast('Đã lưu cài đặt prompt!', 'success');
+    },
+    resetPrompts() {
+      if (confirm('Reset về prompt mặc định? Mọi thay đổi sẽ mất.')) {
+        this.promptSettings = {...DEFAULT_PROMPTS};
+        localStorage.removeItem('bella_prompts');
+        this.showToast('Đã reset về mặc định', 'info');
+      }
+    },
+    exportPrompts() {
+      const json = JSON.stringify(this.promptSettings, null, 2);
+      const blob = new Blob([json], {type: 'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'bella_prompts.json';
+      a.click();
+    },
+    importPrompts() {
+      this.$refs.promptImportInput.click();
+    },
+    handlePromptImport(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          this.promptSettings = {...DEFAULT_PROMPTS, ...data};
+          this.savePrompts();
+          this.showToast('Import thành công!', 'success');
+        } catch {
+          this.showToast('File JSON không hợp lệ', 'error');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    },
+
+    // ---- IMAGES ----
+    handleDrop(e) {
+      this.isDragging = false;
+      this.addFiles(e.dataTransfer.files);
+    },
+    handleFileInput(e) {
+      this.addFiles(e.target.files);
+      e.target.value = '';
+    },
+    addFiles(fileList) {
+      this.imageError = '';
+      for (const file of fileList) {
+        if (this.form.images.length >= 5) { this.imageError = 'Tối đa 5 ảnh'; return; }
+        if (!['image/jpeg','image/png','image/webp'].includes(file.type)) {
+          this.imageError = `"${file.name}" không phải JPG/PNG/WEBP`; continue;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          this.imageError = `"${file.name}" quá lớn. Tối đa 10MB`; continue;
+        }
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          this.form.images.push({id: Date.now() + Math.random(), name: file.name, size: file.size, type: file.type, dataUrl: ev.target.result});
+        };
+        reader.readAsDataURL(file);
+      }
+    },
+    removeImage(i) { this.form.images.splice(i, 1); },
+
+    // ---- GENERATE ----
+    validate() {
+      this.formErrors = {};
+      if (!this.form.productName.trim()) this.formErrors.productName = 'Tên sản phẩm là bắt buộc';
+      if (!this.form.productDescription.trim()) this.formErrors.productDescription = 'Mô tả sản phẩm là bắt buộc';
+      if (!this.settings.allowWithoutImage && this.form.images.length === 0) this.formErrors.images = 'Vui lòng upload ít nhất 1 ảnh sản phẩm';
+      return Object.keys(this.formErrors).length === 0;
+    },
+    async generateScript() {
+      if (!this.validate()) return;
+      this.isGenerating = true;
+      this.generateError = null;
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            productName: this.form.productName,
+            productDescription: this.form.productDescription,
+            images: this.form.images,
+            settings: {...this.settings, apiKey: this.settings.apiKeys[this.settings.provider] || ''},
+            promptSettings: this.promptSettings,
+            input: this.form
+          })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Lỗi không xác định');
+        this.currentScript = data.script;
+        if (this.settings.autoSave) this.saveToHistory();
+        // Cảnh báo nếu kịch bản chính bị rỗng (AI bị cắt token)
+        const s4 = data.script?.section4;
+        const hasContent = s4?.voScript || s4?.lines?.length;
+        if (!hasContent) {
+          this.generateError = 'Kịch bản chính bị thiếu nội dung (AI hết token). Bấm "Tạo lại" ở mục 1 để tạo lại nhanh, hoặc bấm "Tạo lại" toàn bộ.';
+        }
+      } catch (e) {
+        this.generateError = e.message;
+      } finally {
+        this.isGenerating = false;
+      }
+    },
+
+    async regenerateSection(section) {
+      if (this.regeneratingSection) return;
+      this.regeneratingSection = section;
+      this.sectionError = null;
+      try {
+        const res = await fetch('/api/regenerate-section', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            section,
+            productName: this.form.productName,
+            productDescription: this.form.productDescription,
+            settings: {...this.settings, apiKey: this.settings.apiKeys[this.settings.provider] || ''},
+            input: this.form,
+            currentScript: this.currentScript,
+          })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Lỗi không xác định');
+        // Merge các section trả về vào currentScript hiện tại
+        this.currentScript = {...this.currentScript, ...data.data};
+        if (this.settings.autoSave) this.saveToHistory();
+      } catch(e) {
+        this.sectionError = e.message;
+        setTimeout(() => this.sectionError = null, 6000);
+      } finally {
+        this.regeneratingSection = null;
+      }
+    },
+
+    // ---- RESULT ----
+    infoFields() {
+      if (!this.currentScript) return [];
+      const s = this.currentScript.section1;
+      return [
+        {label: 'Sản phẩm', value: s.productName},
+        {label: 'Đối tượng', value: s.targetAudience},
+        {label: 'Kiểu quay', value: s.shootingStyle},
+        {label: 'Thời lượng', value: s.duration},
+        {label: 'Giọng điệu', value: s.tone},
+        {label: 'Mục tiêu', value: s.videoGoal},
+      ];
+    },
+    async copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        this.showToast('Đã copy!', 'success');
+      } catch {
+        this.showToast('Copy thất bại', 'error');
+      }
+    },
+    copyFullScript() {
+      if (!this.currentScript) return;
+      const s = this.currentScript;
+      const isVO = !!s.section4.voScript;
+      const lines = [
+        isVO ? `KỊCH BẢN VOICE OVER - ${s.section1.productName}` : `KỊCH BẢN ONESHOT - ${s.section1.productName}`,
+        `Thời lượng: ${s.section4.duration}`,
+        `Hook: ${s.section4.hook}`, '',
+      ];
+      if (isVO) {
+        lines.push('=== TRACK TIẾNG (ElevenLabs Script) ===');
+        lines.push(s.section4.voScript);
+        if (s.section4.lines && s.section4.lines.length > 0) {
+          lines.push('', '=== TRACK HÌNH (Hành động on-camera) ===');
+          s.section4.lines.forEach(l => {
+            if (l.type === 'action') lines.push(`📌 ${l.text}`);
+            else lines.push(`🎙 ${l.text}`);
+          });
+        }
+      } else {
+        lines.push('KỊCH BẢN:');
+        lines.push(...s.section4.lines.map(l => l.type === 'action' ? `(${l.text})` : l.text));
+      }
+      lines.push('', 'CAPTION:');
+      lines.push(...s.section7.captions.map((c,i) => `${i+1}. ${c}`));
+      lines.push('', 'HASHTAG:', s.section8.hashtags.join(' '));
+      this.copyText(lines.join('\n'));
+    },
+    copyScriptText() {
+      if (!this.currentScript) return;
+      const s4 = this.currentScript.section4;
+      const text = s4.voScript
+        ? s4.voScript
+        : s4.lines.map(l => l.type === 'action' ? `(${l.text})` : l.text).join('\n\n');
+      this.copyText(text);
+    },
+    downloadScript(format) {
+      if (!this.currentScript) return;
+      const item = {
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+        productName: this.form.productName,
+        provider: this.settings.provider,
+        modelName: this.settings.modelName,
+        input: this.form,
+        script: this.currentScript
+      };
+      this.doDownload(item, format);
+    },
+    doDownload(item, format) {
+      let content, ext, mime;
+      if (format === 'json') {
+        content = JSON.stringify(item, null, 2);
+        ext = 'json'; mime = 'application/json';
+      } else if (format === 'md') {
+        content = this.buildMarkdown(item);
+        ext = 'md'; mime = 'text/markdown';
+      } else {
+        content = this.buildText(item);
+        ext = 'txt'; mime = 'text/plain';
+      }
+      const blob = new Blob([content], {type: mime + ';charset=utf-8'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `BELLA_${item.productName.replace(/[^\w\s]/g,'').trim().replace(/\s+/g,'_').slice(0,40)}_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.${ext}`;
+      a.click();
+    },
+    buildText(item) {
+      const s = item.script;
+      const isVO = !!s.section4.voScript;
+      const scriptLines = [];
+      if (isVO) {
+        scriptLines.push('--- TRACK TIẾNG (ElevenLabs Script) ---', s.section4.voScript, '');
+        if (s.section4.lines && s.section4.lines.length > 0) {
+          scriptLines.push('--- TRACK HÌNH (Hành động on-camera) ---');
+          s.section4.lines.forEach(l => {
+            scriptLines.push(l.type === 'action' ? `📌 ${l.text}` : `🎙 ${l.text}`);
+          });
+          scriptLines.push('');
+        }
+      } else {
+        scriptLines.push('--- KỊCH BẢN ---', `Hook: ${s.section4.hook}`, '');
+        scriptLines.push(...s.section4.lines.map(l => l.type === 'action' ? `(${l.text})` : l.text));
+        scriptLines.push('');
+      }
+      return [
+        isVO ? '═══ BELLA AI VOICE OVER SCRIPT ═══' : '═══ BELLA AI ONESHOT SCRIPT ═══',
+        `Ngày: ${this.formatDate(item.createdAt)} | ${item.provider} | ${item.modelName}`, '',
+        '--- THÔNG TIN VIDEO ---',
+        `Sản phẩm: ${s.section1.productName}`,
+        `Đối tượng: ${s.section1.targetAudience}`,
+        `Thời lượng: ${s.section4.duration}`, '',
+        '--- PHÂN TÍCH ---',
+        `Pain point: ${s.section2.painPoints}`,
+        `Insight: ${s.section2.insight}`, '',
+        '--- HOOK ---',
+        ...s.section3.hooks.map((h,i) => `Hook ${i+1}${h.isRecommended?' (Khuyên dùng)':''}: ${h.text}`), '',
+        ...scriptLines,
+        '--- TIMELINE ---',
+        ...s.section5.timeline.map(t => t.voice ? `${t.timeRange}\n  🎙 ${t.voice}\n  📹 ${t.action||''}` : `${t.timeRange}: ${t.description||''}`), '',
+        '--- CAPTION ---',
+        ...s.section7.captions.map((c,i) => `${i+1}. ${c}`), '',
+        '--- HASHTAG ---',
+        s.section8.hashtags.join(' '), '',
+        isVO ? '--- LƯU Ý QUAY & LỒNG TIẾNG ---' : '--- LƯU Ý KHI QUAY ---',
+        ...s.section9.tips.map(t => `• ${t}`)
+      ].join('\n');
+    },
+    buildMarkdown(item) {
+      const s = item.script;
+      const isVO = !!s.section4.voScript;
+      const scriptSection = [];
+      if (isVO) {
+        scriptSection.push('## Track tiếng — ElevenLabs Script', '', '```', s.section4.voScript, '```', '');
+        if (s.section4.lines && s.section4.lines.length > 0) {
+          scriptSection.push('## Track hình — Hành động on-camera', '');
+          s.section4.lines.forEach(l => {
+            scriptSection.push(l.type === 'action' ? `📌 *${l.text}*\n` : `🎙 \`${l.text}\`\n`);
+          });
+          scriptSection.push('');
+        }
+      } else {
+        scriptSection.push('## Kịch bản', '');
+        scriptSection.push(...s.section4.lines.map(l => l.type === 'action' ? `> *(${l.text})*\n` : `${l.text}\n`));
+        scriptSection.push('');
+      }
+      return [
+        isVO ? '# BELLA AI VOICE OVER SCRIPT' : '# BELLA AI ONESHOT SCRIPT', '',
+        `> ${this.formatDate(item.createdAt)} | **${item.provider}** | **${item.modelName}**`, '',
+        '## Thông tin video', '',
+        `| Trường | Giá trị |`,
+        `|--------|---------|`,
+        `| Sản phẩm | ${s.section1.productName} |`,
+        `| Thời lượng | ${s.section4.duration} |`, '',
+        '## Hook', '',
+        ...s.section3.hooks.map((h,i) => `### Hook ${i+1}${h.isRecommended?' ⭐':''}\n\n> ${h.text}\n`), '',
+        ...scriptSection,
+        '## Caption', '',
+        ...s.section7.captions.map((c,i) => `**Caption ${i+1}**\n\n${c}\n`), '',
+        '## Hashtag', '',
+        s.section8.hashtags.join(' ')
+      ].join('\n');
+    },
+
+    // ---- HISTORY ----
+    loadHistory() {
+      try {
+        this.history = JSON.parse(localStorage.getItem('bella_history') || '[]');
+      } catch { this.history = []; }
+    },
+    saveToHistory() {
+      if (!this.currentScript) return;
+      const item = {
+        id: Date.now().toString() + Math.random().toString(36).slice(2),
+        createdAt: new Date().toISOString(),
+        productName: this.form.productName,
+        provider: this.settings.provider,
+        modelName: this.settings.modelName,
+        shootingStyle: this.form.shootingStyle === 'custom' ? this.form.shootingStyleCustom : this.form.shootingStyle,
+        input: JSON.parse(JSON.stringify(this.form)),
+        script: this.currentScript
+      };
+      this.history = [item, ...this.history].slice(0, 100);
+      localStorage.setItem('bella_history', JSON.stringify(this.history));
+      if (!this.settings.autoSave) this.showToast('Đã lưu vào lịch sử!', 'success');
+    },
+    filteredHistory() {
+      const q = this.historySearch.toLowerCase().trim();
+      if (!q) return this.history;
+      return this.history.filter(h =>
+        h.productName.toLowerCase().includes(q) ||
+        (h.provider || '').toLowerCase().includes(q) ||
+        (h.modelName || '').toLowerCase().includes(q)
+      );
+    },
+    viewHistoryItem(item) { this.selectedHistoryItem = item; },
+    loadHistoryItem(item) {
+      if (!item) return;
+      if (item.input) this.form = {...this.form, ...item.input};
+      this.currentScript = item.script;
+      this.generateError = null;
+      this.selectedHistoryItem = null;
+      this.activeTab = 'generate';
+    },
+    deleteHistoryItem(id) {
+      this.history = this.history.filter(h => h.id !== id);
+      localStorage.setItem('bella_history', JSON.stringify(this.history));
+      if (this.selectedHistoryItem?.id === id) this.selectedHistoryItem = null;
+      this.showToast('Đã xóa', 'info');
+    },
+    confirmClearHistory() {
+      if (confirm(`Xóa toàn bộ ${this.history.length} kịch bản? Không thể khôi phục.`)) {
+        this.history = [];
+        localStorage.removeItem('bella_history');
+        this.showToast('Đã xóa toàn bộ lịch sử', 'info');
+      }
+    },
+    downloadHistoryItem(item, format) {
+      if (!item) return;
+      this.doDownload(item, format);
+    },
+    formatDate(iso) {
+      return new Date(iso).toLocaleString('vi-VN', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    },
+
+    // ---- TOAST ----
+    showToast(message, type = 'info') {
+      this.toast = {show: true, message, type};
+      setTimeout(() => { this.toast.show = false; }, 2500);
+    }
+  };
+}
+</script>
+<style>
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+</style>
+</body>
+</html>

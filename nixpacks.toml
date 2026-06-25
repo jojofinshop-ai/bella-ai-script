@@ -1,0 +1,5 @@
+﻿[phases.install]
+cmds = ["pip install -r requirements_cloud.txt"]
+
+[variables]
+PYTHON_VERSION = "3.11"
