@@ -307,7 +307,7 @@ SECTION_SYSTEM = "Bạn là chuyên gia viết kịch bản TikTok Shop cho BELL
 
 
 def build_section_prompt(section: str, product_name: str, product_desc: str,
-                         input_data: dict, current_script: dict) -> tuple:
+                         input_data: dict, current_script: dict, selected_hook: str = '') -> tuple:
     """Trả về (system_prompt, user_prompt) để tạo lại 1 section cụ thể."""
     shooting = input_data.get('shootingStyle', 'one-shot')
     shooting_label = input_data.get('shootingStyleCustom', '') if shooting == 'custom' else SHOOTING_LABELS.get(shooting, shooting)
@@ -334,13 +334,14 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
     )
 
     if section == 'script':
+        hook_line = f'\nHook mở đầu bắt buộc dùng: "{selected_hook}"' if selected_hook else ''
         user = f"""{base}
-{context_line}
+{context_line}{hook_line}
 
-Tạo kịch bản mới và timeline quay tương ứng. Lời thoại tự nhiên, hành động đan xen sau mỗi 1-2 câu.
+Tạo kịch bản mới và timeline quay tương ứng. Lời thoại tự nhiên, hành động đan xen sau mỗi 1-2 câu.{"" if not selected_hook else " Câu đầu tiên của kịch bản PHẢI là hook đã cho, không được thay đổi."}
 
 ```json
-{{"section4":{{"duration":"{duration_label}","hook":"câu hook mở đầu","lines":[{{"type":"action","text":"hành động"}},{{"type":"dialogue","text":"lời thoại"}}],"rawScript":""}},"section5":{{"timeline":[{{"timeRange":"0-3s","description":"hook + bước vào khung hình"}}]}}}}
+{{"section4":{{"duration":"{duration_label}","hook":"{selected_hook or 'câu hook mở đầu'}","lines":[{{"type":"action","text":"hành động"}},{{"type":"dialogue","text":"lời thoại"}}],"rawScript":""}},"section5":{{"timeline":[{{"timeRange":"0-3s","description":"hook + bước vào khung hình"}}]}}}}
 ```"""
 
     elif section == 'hooks':

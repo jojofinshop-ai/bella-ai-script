@@ -615,6 +615,7 @@ def regenerate_section():
         settings     = dict(data.get('settings', {}))
         input_data   = data.get('input', {})
         current_script = data.get('currentScript', {})
+        selected_hook  = data.get('selectedHook', '').strip()
 
         if not product_name:
             return jsonify({'success': False, 'error': 'Thiếu tên sản phẩm'}), 400
@@ -629,7 +630,7 @@ def regenerate_section():
 
         from prompt_builder import build_section_prompt, _try_parse_json
         system_prompt, user_prompt = build_section_prompt(
-            section, product_name, product_desc, input_data, current_script
+            section, product_name, product_desc, input_data, current_script, selected_hook
         )
 
         from ai_providers import call_ai

@@ -357,16 +357,30 @@
         </div>
         <div class="p-4 space-y-3">
           <template x-for="(hook, i) in currentScript.section3.hooks" :key="i">
-            <div :class="hook.isRecommended ? 'border-purple-300 bg-purple-50' : 'border-gray-200 bg-white'" class="border rounded-lg p-4 relative">
-              <div x-show="hook.isRecommended" class="inline-flex items-center gap-1 text-purple-700 bg-purple-100 text-xs px-2 py-0.5 rounded-full mb-2">
-                <span>&#11088;</span> Khuyên dùng
+            <div @click="selectHook(i)"
+                 :class="{
+                   'border-green-500 bg-green-50 ring-2 ring-green-200': selectedHookIndex === i,
+                   'border-purple-300 bg-purple-50': hook.isRecommended && selectedHookIndex !== i,
+                   'border-gray-200 bg-white hover:border-gray-300': !hook.isRecommended && selectedHookIndex !== i,
+                   'cursor-pointer': !regeneratingSection,
+                   'cursor-not-allowed opacity-60': !!regeneratingSection,
+                 }"
+                 class="border rounded-lg p-4 relative select-none transition-all">
+              <div class="flex items-center gap-2 flex-wrap mb-2">
+                <div x-show="selectedHookIndex === i" class="inline-flex items-center gap-1 text-green-700 bg-green-100 text-xs px-2 py-0.5 rounded-full">
+                  <span>&#10003;</span> Đang dùng
+                </div>
+                <div x-show="hook.isRecommended" class="inline-flex items-center gap-1 text-purple-700 bg-purple-100 text-xs px-2 py-0.5 rounded-full">
+                  <span>&#11088;</span> Khuyên dùng
+                </div>
               </div>
-              <p class="text-base font-medium" style="color:#1f2937" x-text="'&quot;' + hook.text + '&quot;'"></p>
-              <button @click="copyText(hook.text)" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 p-1">
+              <p class="text-base font-medium pr-8" style="color:#1f2937" x-text="'&quot;' + hook.text + '&quot;'"></p>
+              <button @click.stop="copyText(hook.text)" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 p-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
               </button>
             </div>
           </template>
+          <p class="text-xs text-gray-400 text-center pt-1">Bấm vào hook để chọn — kịch bản sẽ tự tạo lại theo hook đó</p>
         </div>
       </div>
 
@@ -932,6 +946,7 @@ function bellaApp() {
     currentScript: null,
     regeneratingSection: null,
     sectionError: null,
+    selectedHookIndex: null,
 
     // URL fetch
     productUrl: '',
@@ -1199,6 +1214,10 @@ function bellaApp() {
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'Lỗi không xác định');
         this.currentScript = data.script;
+        // Auto-chọn hook khuyên dùng
+        const _hooks = data.script?.section3?.hooks || [];
+        const _recIdx = _hooks.findIndex(h => h.isRecommended);
+        this.selectedHookIndex = _recIdx >= 0 ? _recIdx : 0;
         if (this.settings.autoSave) this.saveToHistory();
         // Cảnh báo nếu kịch bản chính bị rỗng (AI bị cắt token)
         const s4 = data.script?.section4;
@@ -1218,6 +1237,9 @@ function bellaApp() {
       this.regeneratingSection = section;
       this.sectionError = null;
       try {
+        const _selHookText = (section === 'script' && this.selectedHookIndex !== null)
+          ? (this.currentScript?.section3?.hooks?.[this.selectedHookIndex]?.text || '')
+          : '';
         const res = await fetch('/api/regenerate-section', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -1228,12 +1250,19 @@ function bellaApp() {
             settings: {...this.settings, apiKey: this.settings.apiKeys[this.settings.provider] || ''},
             input: this.form,
             currentScript: this.currentScript,
+            selectedHook: _selHookText,
           })
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'Lỗi không xác định');
         // Merge các section trả về vào currentScript hiện tại
         this.currentScript = {...this.currentScript, ...data.data};
+        // Sau khi tạo lại hooks → reset về hook khuyên dùng
+        if (section === 'hooks') {
+          const _hs = this.currentScript?.section3?.hooks || [];
+          const _ri = _hs.findIndex(h => h.isRecommended);
+          this.selectedHookIndex = _ri >= 0 ? _ri : 0;
+        }
         if (this.settings.autoSave) this.saveToHistory();
       } catch(e) {
         this.sectionError = e.message;
@@ -1241,6 +1270,13 @@ function bellaApp() {
       } finally {
         this.regeneratingSection = null;
       }
+    },
+
+    selectHook(i) {
+      if (this.regeneratingSection) return;
+      if (this.selectedHookIndex === i) return;
+      this.selectedHookIndex = i;
+      this.regenerateSection('script');
     },
 
     // ---- RESULT ----
