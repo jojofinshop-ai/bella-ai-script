@@ -977,8 +977,7 @@ def scan_product():
         if not gemini_keys:
             raw = (data.get('settings', {}).get('apiKeys') or {}).get('gemini', '')
             gemini_keys = [k.strip() for k in raw.replace(',', '\n').split('\n') if k.strip()]
-        if not gemini_keys:
-            return jsonify({'success': False, 'error': 'Cần nhập Gemini API key trong Cài đặt để dùng tính năng này'}), 400
+        # Không bắt buộc Gemini key — backend tự fallback sang ChatGPT nếu cần
         from ai_providers import scan_product_from_screenshot
         main_settings = data.get('settings', {})
         result = scan_product_from_screenshot(gemini_keys, images, main_settings=main_settings)
