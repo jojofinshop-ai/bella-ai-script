@@ -66,9 +66,10 @@ def generate():
                 images_to_send = images
             else:
                 # Dùng Gemini key riêng để phân tích ảnh, kết quả nhúng vào prompt text
-                gemini_key = (settings.get('apiKeys') or {}).get('gemini', '')
-                if gemini_key:
-                    image_analysis = analyze_images_with_gemini(gemini_key, images)
+                raw_gemini = (settings.get('apiKeys') or {}).get('gemini', '')
+                gemini_keys = [k.strip() for k in raw_gemini.replace(',', '\n').split('\n') if k.strip()]
+                if gemini_keys:
+                    image_analysis = analyze_images_with_gemini(gemini_keys, images)
                 # Không gửi ảnh cho OpenAI/DeepSeek dù có hay không có phân tích
 
         user_prompt = build_user_prompt(input_data, has_images, image_analysis)
@@ -850,15 +851,18 @@ def regenerate_section():
 def scan_product():
     try:
         data = request.get_json()
-        # Hỗ trợ cả single image và multiple images
         images = data.get('images') or ([data['image']] if data.get('image') else [])
-        gemini_key = (data.get('settings', {}).get('apiKeys') or {}).get('gemini', '')
-        if not gemini_key:
-            return jsonify({'success': False, 'error': 'Cần nhập Gemini API key trong Cài đặt để dùng tính năng này'}), 400
         if not images:
             return jsonify({'success': False, 'error': 'Không nhận được ảnh'}), 400
+        # Nhận mảng keys hoặc single key
+        gemini_keys = data.get('geminiKeys') or []
+        if not gemini_keys:
+            raw = (data.get('settings', {}).get('apiKeys') or {}).get('gemini', '')
+            gemini_keys = [k.strip() for k in raw.replace(',', '\n').split('\n') if k.strip()]
+        if not gemini_keys:
+            return jsonify({'success': False, 'error': 'Cần nhập Gemini API key trong Cài đặt để dùng tính năng này'}), 400
         from ai_providers import scan_product_from_screenshot
-        result = scan_product_from_screenshot(gemini_key, images)
+        result = scan_product_from_screenshot(gemini_keys, images)
         return jsonify({'success': True, **result})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

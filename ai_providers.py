@@ -94,17 +94,13 @@ def call_gemini(settings: dict, system_prompt: str, user_prompt: str, images: li
     return text
 
 
-def analyze_images_with_gemini(gemini_api_key: str, images: list) -> str:
-    """Dùng Gemini Flash (rẻ) để phân tích toàn bộ ảnh sản phẩm, trả về text mô tả."""
-    if not gemini_api_key or not images:
+def analyze_images_with_gemini(gemini_api_keys, images: list) -> str:
+    """Dùng Gemini Flash (rẻ) để phân tích toàn bộ ảnh sản phẩm, trả về text mô tả.
+    Hỗ trợ nhiều API key — tự động chuyển key khi gặp 429."""
+    keys = _parse_gemini_keys(gemini_api_keys)
+    if not keys or not images:
         return ''
     n = len(images)
-    settings = {
-        'apiKey': gemini_api_key,
-        'modelName': 'gemini-2.0-flash',
-        'temperature': 0.2,
-        'maxTokens': 0,  # không giới hạn output
-    }
     system_prompt = 'Bạn là chuyên gia phân tích sản phẩm thời trang. Mô tả chính xác, chi tiết những gì thấy trong ảnh.'
     user_prompt = (
         f'Tôi gửi {n} ảnh sản phẩm. Hãy phân tích TẤT CẢ {n} ảnh và tổng hợp thành 1 mô tả đầy đủ:\n'
@@ -115,18 +111,32 @@ def analyze_images_with_gemini(gemini_api_key: str, images: list) -> str:
         '- Cách mặc & phối đồ thấy trong ảnh (nếu có model mặc)\n'
         'Chỉ mô tả những gì thực sự nhìn thấy. Không bịa đặt.'
     )
-    try:
-        return call_gemini(settings, system_prompt, user_prompt, images)
-    except Exception:
-        return ''
+    for key in keys:
+        settings = {'apiKey': key, 'modelName': 'gemini-2.0-flash', 'temperature': 0.2, 'maxTokens': 0}
+        try:
+            return call_gemini(settings, system_prompt, user_prompt, images)
+        except Exception as e:
+            if '429' in str(e) and key != keys[-1]:
+                continue
+    return ''
 
 
-def scan_product_from_screenshot(gemini_api_key: str, image_data_urls: list) -> dict:
-    """Dùng Gemini Vision đọc 1 hoặc nhiều ảnh chụp màn hình sản phẩm, trả về {productName, productDescription}."""
-    if not gemini_api_key or not image_data_urls:
+def _parse_gemini_keys(keys_input) -> list:
+    """Chuyển string hoặc list thành danh sách API key sạch."""
+    if isinstance(keys_input, list):
+        return [k.strip() for k in keys_input if k and k.strip()]
+    if isinstance(keys_input, str):
+        return [k.strip() for k in keys_input.replace(',', '\n').split('\n') if k.strip()]
+    return []
+
+
+def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list) -> dict:
+    """Dùng Gemini Vision đọc 1 hoặc nhiều ảnh chụp màn hình sản phẩm, trả về {productName, productDescription}.
+    Hỗ trợ nhiều API key — tự động chuyển key khi gặp 429 rate limit."""
+    keys = _parse_gemini_keys(gemini_api_keys)
+    if not keys or not image_data_urls:
         raise ValueError('Cần Gemini API key và ảnh')
     n = len(image_data_urls)
-    settings = {'apiKey': gemini_api_key, 'modelName': 'gemini-2.0-flash', 'temperature': 0.1, 'maxTokens': 0}
     system_prompt = 'Bạn là công cụ đọc thông tin sản phẩm từ ảnh chụp màn hình. Trả về JSON chính xác.'
     user_prompt = (
         f'Đây là {n} ảnh chụp màn hình trang sản phẩm (TikTok Shop, Shopee, hoặc website bán hàng).\n'
@@ -136,10 +146,11 @@ def scan_product_from_screenshot(gemini_api_key: str, image_data_urls: list) -> 
         'Trả về JSON (chỉ JSON, không giải thích thêm):\n'
         '{"productName": "...", "productDescription": "..."}'
     )
-    import json as _json, re, time
+    import json as _json, re
     images = [{'dataUrl': u} for u in image_data_urls]
     last_err = None
-    for attempt in range(3):
+    for key in keys:
+        settings = {'apiKey': key, 'modelName': 'gemini-2.0-flash', 'temperature': 0.1, 'maxTokens': 0}
         try:
             raw = call_gemini(settings, system_prompt, user_prompt, images)
             m = re.search(r'\{[\s\S]*\}', raw)
@@ -148,10 +159,9 @@ def scan_product_from_screenshot(gemini_api_key: str, image_data_urls: list) -> 
             raise ValueError('Gemini không trả về JSON hợp lệ')
         except Exception as e:
             last_err = e
-            if '429' in str(e) and attempt < 2:
-                time.sleep(5 * (attempt + 1))  # 5s, 10s
-                continue
-            raise
+            if '429' in str(e) and key != keys[-1]:
+                continue  # thử key tiếp theo ngay lập tức
+            raise last_err
     raise last_err
 
 
