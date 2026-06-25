@@ -378,12 +378,13 @@ def _fetch_shopee_data(url):
 
 def _fetch_tiktok_cloud(url):
     """Lấy thông tin sản phẩm TikTok Shop trên cloud (không dùng Playwright).
-    Follow redirect từ vt.tiktok.com rồi extract từ __NEXT_DATA__ / JSON-LD / meta tags + CDN scan.
+    Follow redirect từ vt.tiktok.com rồi extract og_info từ redirect URL + __NEXT_DATA__ / meta tags + CDN scan.
     """
     import urllib.request as _req
     import json as _json
     import re
     from html.parser import HTMLParser
+    from urllib.parse import urlparse, parse_qs
 
     UA_DESKTOP = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     headers = {
@@ -396,9 +397,24 @@ def _fetch_tiktok_cloud(url):
     try:
         req = _req.Request(url, headers=headers)
         with _req.urlopen(req, timeout=20) as resp:
+            final_url = resp.url  # URL sau khi follow redirect
             html = resp.read().decode('utf-8', errors='ignore')
     except Exception as e:
         return None, f'Không thể tải trang: {str(e)}'
+
+    # ── KEY FIX: TikTok nhúng og_info (title=mô tả thật, image=ảnh) vào redirect URL ──
+    # vt.tiktok.com → tiktok.com/view/product/...?og_info={"title":"...","image":"..."}
+    og_info_desc = ''
+    og_info_img  = ''
+    try:
+        qs = parse_qs(urlparse(final_url).query)
+        og_raw = qs.get('og_info', [''])[0]
+        if og_raw:
+            og = _json.loads(og_raw)
+            og_info_desc = og.get('title', '').strip()
+            og_info_img  = og.get('image', '').strip()
+    except Exception:
+        pass
 
     # Track image keys đã download — normalize URL để tránh duplicate cùng ảnh khác size/params
     _seen_img_keys = set()
@@ -568,16 +584,32 @@ def _fetch_tiktok_cloud(url):
     d = p.d
     name = (d.get('og:title') or d.get('twitter:title') or d.get('title') or '').strip()
     raw_desc = (d.get('og:description') or d.get('twitter:description') or d.get('description') or '').strip()
-    # Lọc bỏ mô tả marketing chung của TikTok — không có ích gì cho AI
     desc = '' if _is_generic_tiktok_desc(raw_desc) else raw_desc
 
-    skip_titles = ('tiktok', 'shop', 'trang chủ', 'home', 'make your day')
-    if name and not any(t in name.lower() for t in skip_titles) and len(name) > 3:
+    # og_info_desc từ redirect URL là mô tả thật của sản phẩm — dùng khi og:description bị lọc
+    if not desc and og_info_desc and not _is_generic_tiktok_desc(og_info_desc):
+        desc = og_info_desc
+
+    INVALID_TITLES = ('tiktok', 'shop', 'trang chủ', 'home', 'make your day', 'security check', 'just a moment')
+    name_ok = name and not any(t in name.lower() for t in INVALID_TITLES) and len(name) > 3
+    if not name_ok and og_info_desc:
+        # Lấy câu đầu tiên của og_info_desc làm tên sản phẩm
+        name = og_info_desc[:120].rsplit(' ', 1)[0] if len(og_info_desc) > 120 else og_info_desc
+        name_ok = bool(name)
+
+    if name_ok:
         images = _download_img_list(p.og_images, 'tt-og')
+        if og_info_img:
+            key = _img_key(og_info_img)
+            if key not in _seen_img_keys:
+                try:
+                    images.insert(0, {'id': 'tt-oginfo', 'dataUrl': _download_image_b64(og_info_img, UA_DESKTOP)})
+                    _seen_img_keys.add(key)
+                except Exception:
+                    pass
         if len(images) < 3:
             images += _cdn_scan(html, len(images))
-        # Nếu không lấy được mô tả thật → thông báo cho user biết cần nhập thêm
-        note = '\n[Mô tả chi tiết (chất liệu, màu sắc, size...) cần nhập thêm thủ công từ trang sản phẩm]' if not desc else ''
+        note = '' if desc else '\n[Mô tả chi tiết (chất liệu, màu sắc, size...) cần nhập thêm thủ công từ trang sản phẩm]'
         return {'productName': name, 'productDescription': desc + note, 'images': images}, None
 
     return None, None
@@ -639,19 +671,12 @@ def fetch_url():
     # ── TikTok Shop ──────────────────────────────────────────────────────────
     if 'tiktok.com' in url or 'tiktokshop' in url:
         if IS_CLOUD:
-            # Cloud: dùng headless Playwright (render JS đầy đủ, không cần GUI)
-            try:
-                result, err = _fetch_with_playwright_headless(url)
-                if result and result.get('productName'):
-                    return jsonify({'success': True, **result})
-            except Exception as e:
-                err = str(e)
-            # Fallback: urllib + parse HTML/JSON (không render JS)
+            # Cloud: dùng urllib + og_info từ redirect URL (Playwright bị TikTok chặn Security Check)
             result, err2 = _fetch_tiktok_cloud(url)
             if result and result.get('productName'):
                 return jsonify({'success': True, **result})
             return jsonify({'success': False,
-                            'error': err2 or err or 'Không lấy được thông tin. Vui lòng nhập tên và mô tả thủ công.'})
+                            'error': err2 or 'Không lấy được thông tin. Vui lòng nhập tên và mô tả thủ công.'})
         else:
             # Local (exe): dùng Playwright persistent profile với session
             chrome_cookies = _get_chrome_cookies('tiktok.com')
