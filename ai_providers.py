@@ -186,24 +186,35 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list, main_se
                         continue
                     break  # lỗi khác (key sai) → sang key tiếp
 
-    # ── Fallback: dùng provider chính (ChatGPT/OpenAI) ──────────────────────
+    # ── Fallback: dùng provider chính (ChatGPT/OpenAI/custom) ───────────────
     if main_settings:
         provider = main_settings.get('provider', 'openai')
         model_name = main_settings.get('modelName', '')
-        if provider != 'gemini' and model_supports_vision(provider, model_name):
-            raw = call_openai_compatible(main_settings, system_prompt, user_prompt, images)
-            return _parse_json(raw)
-        elif provider == 'gemini':
-            # Provider chính là Gemini → thử với key trong settings
-            api_key = (main_settings.get('apiKeys') or {}).get('gemini', '') or main_settings.get('apiKey', '')
+        api_keys = main_settings.get('apiKeys') or {}
+        api_key = api_keys.get(provider, '') or main_settings.get('apiKey', '')
+
+        if provider == 'gemini':
+            if not api_key:
+                api_key = api_keys.get('gemini', '')
             if api_key and api_key.startswith('AIza'):
                 raw = call_gemini(
                     {'apiKey': api_key, 'modelName': model_name or 'gemini-2.5-flash', 'temperature': 0.1, 'maxTokens': 0},
                     system_prompt, user_prompt, images
                 )
                 return _parse_json(raw)
+        elif api_key:
+            # OpenAI / DeepSeek / custom — thử gửi ảnh trực tiếp
+            scan_settings = {
+                'apiKey': api_key,
+                'baseUrl': main_settings.get('baseUrl', 'https://api.openai.com/v1'),
+                'modelName': model_name,
+                'temperature': 0.1,
+                'maxTokens': 0,
+            }
+            raw = call_openai_compatible(scan_settings, system_prompt, user_prompt, images)
+            return _parse_json(raw)
 
-    raise ValueError('Không scan được ảnh. Kiểm tra API key hoặc thêm Gemini key trong Cài đặt.')
+    raise ValueError('Không scan được ảnh. Vui lòng kiểm tra API key trong Cài đặt.')
 
 
 def call_ai(settings: dict, system_prompt: str, user_prompt: str, images: list) -> str:
