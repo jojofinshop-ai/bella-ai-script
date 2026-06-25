@@ -316,6 +316,127 @@ def _fetch_shopee_data(url):
         return None, 'Không lấy được dữ liệu. Sản phẩm có thể đã bị ẩn hoặc xóa.'
     return item, None
 
+
+def _fetch_tiktok_cloud(url):
+    """Lấy thông tin sản phẩm TikTok Shop trên cloud (không dùng Playwright).
+    Follow redirect từ vt.tiktok.com rồi extract từ __NEXT_DATA__ / JSON-LD / meta tags.
+    """
+    import urllib.request as _req
+    import json as _json
+    import re
+    from html.parser import HTMLParser
+
+    UA_DESKTOP = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+    headers = {
+        'User-Agent': UA_DESKTOP,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'vi-VN,vi;q=0.9,en;q=0.8',
+        'Referer': 'https://www.google.com/',
+    }
+
+    try:
+        req = _req.Request(url, headers=headers)
+        with _req.urlopen(req, timeout=20) as resp:
+            html = resp.read().decode('utf-8', errors='ignore')
+    except Exception as e:
+        return None, f'Không thể tải trang: {str(e)}'
+
+    # ── 1. __NEXT_DATA__ JSON (TikTok Shop là Next.js app) ───────────────────
+    m = re.search(r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>', html, re.DOTALL)
+    if m:
+        try:
+            nd = _json.loads(m.group(1))
+            props = nd.get('props', {}).get('pageProps', {})
+            # Thử nhiều đường dẫn khác nhau trong JSON
+            product = (
+                props.get('product') or
+                props.get('item') or
+                props.get('productInfo') or
+                props.get('itemInfo', {}).get('item') or
+                props.get('data', {}).get('product') or
+                {}
+            )
+            name = (product.get('title') or product.get('name') or
+                    product.get('itemName') or '').strip()
+            desc = (product.get('description') or product.get('content') or
+                    product.get('itemDescription') or '').strip()
+            if name and len(name) > 3:
+                images = []
+                img_list = product.get('images') or product.get('imageUrls') or []
+                for i, img in enumerate(img_list[:4]):
+                    img_url = img if isinstance(img, str) else img.get('url', img.get('src', ''))
+                    if img_url:
+                        try:
+                            images.append({'id': f'tt-{i}', 'dataUrl': _download_image_b64(img_url, UA_DESKTOP)})
+                        except Exception:
+                            pass
+                return {'productName': name, 'productDescription': desc, 'images': images}, None
+        except Exception:
+            pass
+
+    # ── 2. JSON-LD structured data ───────────────────────────────────────────
+    for ld_text in re.findall(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.DOTALL):
+        try:
+            ld = _json.loads(ld_text)
+            if isinstance(ld, list):
+                ld = ld[0] if ld else {}
+            if ld.get('@type') in ('Product', 'ItemPage', 'Offer'):
+                name = ld.get('name', '').strip()
+                desc = ld.get('description', '').strip()
+                if name and len(name) > 3:
+                    images = []
+                    img_url = ''
+                    if isinstance(ld.get('image'), str):
+                        img_url = ld['image']
+                    elif isinstance(ld.get('image'), list) and ld['image']:
+                        img_url = ld['image'][0]
+                    if img_url:
+                        try:
+                            images.append({'id': 'tt-ld-0', 'dataUrl': _download_image_b64(img_url, UA_DESKTOP)})
+                        except Exception:
+                            pass
+                    return {'productName': name, 'productDescription': desc, 'images': images}, None
+        except Exception:
+            pass
+
+    # ── 3. og:title / og:description meta tags ───────────────────────────────
+    class _MetaParser(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.d = {}; self._in_title = False; self._title = ''
+        def handle_starttag(self, tag, attrs):
+            a = dict(attrs)
+            if tag == 'title': self._in_title = True
+            elif tag == 'meta':
+                prop = a.get('property') or a.get('name') or ''
+                c = a.get('content', '')
+                if prop in ('og:title', 'og:description', 'og:image',
+                            'twitter:title', 'twitter:description', 'description'):
+                    self.d[prop] = c
+        def handle_data(self, d):
+            if self._in_title: self._title += d
+        def handle_endtag(self, tag):
+            if tag == 'title': self._in_title = False; self.d.setdefault('title', self._title.strip())
+
+    p = _MetaParser(); p.feed(html[:200000])
+    d = p.d
+    name = (d.get('og:title') or d.get('twitter:title') or d.get('title') or '').strip()
+    desc = (d.get('og:description') or d.get('twitter:description') or d.get('description') or '').strip()
+
+    # Loại bỏ các title chung chung của TikTok (không phải tên sản phẩm)
+    skip_titles = ('tiktok', 'shop', 'trang chủ', 'home', 'make your day')
+    if name and not any(t in name.lower() for t in skip_titles) and len(name) > 3:
+        images = []
+        img_url = d.get('og:image', '')
+        if img_url:
+            try:
+                images.append({'id': 'tt-og-0', 'dataUrl': _download_image_b64(img_url, UA_DESKTOP)})
+            except Exception:
+                pass
+        return {'productName': name, 'productDescription': desc, 'images': images}, None
+
+    return None, None
+
 def _download_image_b64(url, ua):
     import urllib.request as _req
     r = _req.Request(url, headers={'User-Agent': ua})
@@ -337,9 +458,6 @@ def fetch_url():
     import re, urllib.request as _req
     from html.parser import HTMLParser
 
-    if IS_CLOUD:
-        return jsonify({'success': False, 'error': 'Tính năng lấy thông tin từ link không khả dụng trên phiên bản web. Vui lòng nhập tên và mô tả sản phẩm thủ công.'})
-
     data = request.get_json()
     url = data.get('url', '').strip()
     if not url:
@@ -349,7 +467,7 @@ def fetch_url():
 
     UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
-    # ── Shopee: gọi API nội bộ ──────────────────────────────────────────────
+    # ── Shopee: gọi API nội bộ (hoạt động cả trên cloud) ─────────────────────
     if 'shopee.vn' in url:
         try:
             item, err = _fetch_shopee_data(url)
@@ -373,18 +491,27 @@ def fetch_url():
         except Exception as e:
             return jsonify({'success': False, 'error': f'Lỗi Shopee API: {str(e)}'}), 500
 
-    # ── TikTok Shop: dùng Playwright persistent profile ──────────────────────
+    # ── TikTok Shop ──────────────────────────────────────────────────────────
     if 'tiktok.com' in url or 'tiktokshop' in url:
-        chrome_cookies = _get_chrome_cookies('tiktok.com')
-        try:
-            result, err = _fetch_with_playwright(url, injected_cookies=chrome_cookies, cookie_domain='.tiktok.com')
+        if IS_CLOUD:
+            # Cloud: dùng urllib + extract JSON/meta (không có Playwright)
+            result, err = _fetch_tiktok_cloud(url)
             if result and result.get('productName'):
                 return jsonify({'success': True, **result})
-            return jsonify({'success': False, 'needsAuth': True,
-                            'error': err or 'Không lấy được thông tin. Thử lại — nếu cần đăng nhập thì hoàn tất trong cửa sổ vừa mở.'})
-        except Exception as e:
-            return jsonify({'success': False, 'needsAuth': True,
-                            'error': f'Lỗi mở trình duyệt: {e}. Thử lại lần nữa.'})
+            return jsonify({'success': False,
+                            'error': err or 'Không lấy được thông tin từ link này. Link TikTok Shop cần đăng nhập — vui lòng nhập tên và mô tả sản phẩm thủ công.'})
+        else:
+            # Local (exe): dùng Playwright persistent profile với session
+            chrome_cookies = _get_chrome_cookies('tiktok.com')
+            try:
+                result, err = _fetch_with_playwright(url, injected_cookies=chrome_cookies, cookie_domain='.tiktok.com')
+                if result and result.get('productName'):
+                    return jsonify({'success': True, **result})
+                return jsonify({'success': False, 'needsAuth': True,
+                                'error': err or 'Không lấy được thông tin. Thử lại — nếu cần đăng nhập thì hoàn tất trong cửa sổ vừa mở.'})
+            except Exception as e:
+                return jsonify({'success': False, 'needsAuth': True,
+                                'error': f'Lỗi mở trình duyệt: {e}. Thử lại lần nữa.'})
 
     # ── Trang khác: parse HTML meta tags ────────────────────────────────────
     try:
@@ -397,12 +524,15 @@ def fetch_url():
         with _req.urlopen(req, timeout=15) as resp:
             status = resp.status
             if status in (401, 403):
-                return jsonify({'success': False, 'needsAuth': True,
-                                'error': 'Trang yêu cầu đăng nhập. Hãy mở trong trình duyệt, đăng nhập, rồi chụp màn hình sản phẩm.'})
+                needs_auth_msg = 'Trang yêu cầu đăng nhập. Hãy mở trong trình duyệt, đăng nhập, rồi nhập thông tin thủ công.' if IS_CLOUD else 'Trang yêu cầu đăng nhập. Hãy mở trong trình duyệt, đăng nhập, rồi chụp màn hình sản phẩm.'
+                return jsonify({'success': False, 'needsAuth': not IS_CLOUD, 'error': needs_auth_msg})
             html = resp.read().decode('utf-8', errors='ignore')
     except Exception as e:
         msg = str(e)
         needs = '403' in msg or 'forbidden' in msg.lower() or '401' in msg
+        if IS_CLOUD:
+            return jsonify({'success': False,
+                            'error': 'Trang chặn truy cập tự động. Vui lòng nhập thông tin sản phẩm thủ công.' if needs else f'Không thể tải trang: {msg}'})
         return jsonify({'success': False, 'needsAuth': needs,
                         'error': 'Trang chặn truy cập tự động. Hãy mở trong trình duyệt và dùng tính năng chụp màn hình.' if needs else f'Không thể tải trang: {msg}'})
 
@@ -437,7 +567,9 @@ def fetch_url():
             pass
 
     if not name and not desc:
-        # Fallback sang Playwright
+        if IS_CLOUD:
+            return jsonify({'success': False, 'error': 'Không đọc được nội dung trang. Vui lòng nhập thông tin sản phẩm thủ công.'})
+        # Local: Fallback sang Playwright
         try:
             result, err = _fetch_with_playwright(url)
             if result and result.get('productName'):
