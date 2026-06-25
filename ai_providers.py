@@ -139,18 +139,13 @@ def _parse_gemini_keys(keys_input) -> list:
     return []
 
 
-def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list) -> dict:
-    """Dùng Gemini Vision đọc 1 hoặc nhiều ảnh chụp màn hình sản phẩm, trả về {productName, productDescription}.
-    Hỗ trợ nhiều API key — tự động chuyển key khi gặp 429 rate limit."""
-    keys = _parse_gemini_keys(gemini_api_keys)
-    if not keys or not image_data_urls:
-        raise ValueError('Cần Gemini API key và ảnh')
-    # Cảnh báo nếu key sai format (Gemini key phải bắt đầu AIza)
-    valid_keys = [k for k in keys if k.startswith('AIza')]
-    if not valid_keys:
-        raise ValueError('Gemini API key không hợp lệ. Key phải bắt đầu bằng "AIza..." — lấy tại aistudio.google.com')
-    keys = valid_keys
+def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list, main_settings: dict = None) -> dict:
+    """Scan ảnh màn hình sản phẩm → {productName, productDescription}.
+    Thứ tự ưu tiên: Gemini (rẻ) → ChatGPT/provider chính (nếu Gemini fail)."""
+    import json as _json, re
     n = len(image_data_urls)
+    if not image_data_urls:
+        raise ValueError('Không có ảnh để scan')
     system_prompt = 'Bạn là công cụ đọc thông tin sản phẩm từ ảnh chụp màn hình. Trả về JSON chính xác.'
     user_prompt = (
         f'Đây là {n} ảnh chụp màn hình trang sản phẩm (TikTok Shop, Shopee, hoặc website bán hàng).\n'
@@ -160,32 +155,55 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list) -> dict
         'Trả về JSON (chỉ JSON, không giải thích thêm):\n'
         '{"productName": "...", "productDescription": "..."}'
     )
-    import json as _json, re
     images = [{'dataUrl': u} for u in image_data_urls]
-    # Thử từng key, từng model — mỗi model có quota riêng
-    models = [
-        'gemini-2.5-flash',           # mới nhất, quota cao hơn
-        'gemini-2.5-flash-lite-preview-06-17',  # lite version, ít tốn hơn
-        'gemini-2.0-flash',
-        'gemini-1.5-flash',
-    ]
-    last_err = None
-    for key in keys:
-        for model in models:
-            settings = {'apiKey': key, 'modelName': model, 'temperature': 0.1, 'maxTokens': 0}
-            try:
-                raw = call_gemini(settings, system_prompt, user_prompt, images)
-                m = re.search(r'\{[\s\S]*\}', raw)
-                if m:
-                    return _json.loads(m.group(0))
-                raise ValueError('Gemini không trả về JSON hợp lệ')
-            except Exception as e:
-                last_err = e
-                err_s = str(e)
-                if '429' in err_s or '404' in err_s or '503' in err_s:
-                    continue  # rate limit hoặc model unavailable → thử tiếp
-                raise  # 401/403 (key sai) → báo ngay
-    raise last_err or ValueError('Tất cả Gemini API key đều bị rate limit. Thêm key hoặc đợi 1 phút.')
+
+    def _parse_json(raw):
+        m = re.search(r'\{[\s\S]*\}', raw)
+        if m:
+            return _json.loads(m.group(0))
+        raise ValueError('AI không trả về JSON hợp lệ')
+
+    # ── Thử Gemini trước (rẻ hơn) ───────────────────────────────────────────
+    keys = [k for k in _parse_gemini_keys(gemini_api_keys) if k.startswith('AIza')]
+    if keys:
+        gemini_models = [
+            'gemini-2.5-flash',
+            'gemini-2.5-flash-lite-preview-06-17',
+            'gemini-2.0-flash',
+            'gemini-1.5-flash',
+        ]
+        for key in keys:
+            for model in gemini_models:
+                try:
+                    raw = call_gemini(
+                        {'apiKey': key, 'modelName': model, 'temperature': 0.1, 'maxTokens': 0},
+                        system_prompt, user_prompt, images
+                    )
+                    return _parse_json(raw)
+                except Exception as e:
+                    err_s = str(e)
+                    if '429' in err_s or '404' in err_s or '503' in err_s:
+                        continue
+                    break  # lỗi khác (key sai) → sang key tiếp
+
+    # ── Fallback: dùng provider chính (ChatGPT/OpenAI) ──────────────────────
+    if main_settings:
+        provider = main_settings.get('provider', 'openai')
+        model_name = main_settings.get('modelName', '')
+        if provider != 'gemini' and model_supports_vision(provider, model_name):
+            raw = call_openai_compatible(main_settings, system_prompt, user_prompt, images)
+            return _parse_json(raw)
+        elif provider == 'gemini':
+            # Provider chính là Gemini → thử với key trong settings
+            api_key = (main_settings.get('apiKeys') or {}).get('gemini', '') or main_settings.get('apiKey', '')
+            if api_key and api_key.startswith('AIza'):
+                raw = call_gemini(
+                    {'apiKey': api_key, 'modelName': model_name or 'gemini-2.5-flash', 'temperature': 0.1, 'maxTokens': 0},
+                    system_prompt, user_prompt, images
+                )
+                return _parse_json(raw)
+
+    raise ValueError('Không scan được ảnh. Kiểm tra API key hoặc thêm Gemini key trong Cài đặt.')
 
 
 def call_ai(settings: dict, system_prompt: str, user_prompt: str, images: list) -> str:

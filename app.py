@@ -934,7 +934,8 @@ def scan_product():
         if not gemini_keys:
             return jsonify({'success': False, 'error': 'Cần nhập Gemini API key trong Cài đặt để dùng tính năng này'}), 400
         from ai_providers import scan_product_from_screenshot
-        result = scan_product_from_screenshot(gemini_keys, images)
+        main_settings = data.get('settings', {})
+        result = scan_product_from_screenshot(gemini_keys, images, main_settings=main_settings)
         return jsonify({'success': True, **result})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
