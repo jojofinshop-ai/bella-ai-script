@@ -1074,8 +1074,10 @@ function bellaApp() {
       if (!files.length) return;
       const rawGeminiKey = (this.settings.apiKeys || {}).gemini || '';
       const geminiKeys = rawGeminiKey.split(/[\n,]/).map(k => k.trim()).filter(Boolean);
-      if (!geminiKeys.length) {
-        this.showToast('Cần nhập Gemini API key trong tab Cài đặt để dùng tính năng Scan ảnh', 'error');
+      // Kiểm tra có ít nhất 1 AI key nào đó (Gemini hoặc provider chính)
+      const mainKey = (this.settings.apiKeys || {})[this.settings.provider] || '';
+      if (!geminiKeys.length && !mainKey) {
+        this.showToast('Cần nhập API key trong tab Cài đặt để dùng tính năng Scan ảnh', 'error');
         event.target.value = '';
         return;
       }
