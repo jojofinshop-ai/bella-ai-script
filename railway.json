@@ -1,1 +1,1 @@
-{"build":{"builder":"DOCKERFILE"},"deploy":{"startCommand":"gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 300","healthcheckPath":"/","restartPolicyType":"ON_FAILURE"}}
+{"build":{"builder":"DOCKERFILE"},"deploy":{"startCommand":"python -m gunicorn -c gunicorn.conf.py app:app","healthcheckPath":"/","healthcheckTimeout":120,"restartPolicyType":"ON_FAILURE"}}
