@@ -953,6 +953,23 @@ def debug_urllib():
     return jsonify(result)
 
 
+@app.route('/api/debug-shopee')
+def debug_shopee():
+    import urllib.request as _req, re, traceback
+    test_url = request.args.get('url', 'https://s.shopee.vn/8KnQUMkqDK')
+    UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+    result = {'input_url': test_url}
+    try:
+        req = _req.Request(test_url, headers={'User-Agent': UA, 'Accept': 'text/html'})
+        with _req.urlopen(req, timeout=15) as resp:
+            result['final_url'] = resp.url
+            result['status'] = resp.status
+            result['has_item_id'] = bool(re.search(r'-i\.(\d+)\.(\d+)', resp.url))
+    except Exception as e:
+        result['error'] = traceback.format_exc()[-600:]
+    return jsonify(result)
+
+
 def run_flask():
     app.run(host='127.0.0.1', port=5001, debug=False, use_reloader=False)
 
