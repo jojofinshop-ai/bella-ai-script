@@ -1070,7 +1070,7 @@ function bellaApp() {
           reader.onload = e => {
             const img = new Image();
             img.onload = () => {
-              const MAX = 1280;
+              const MAX = 800;
               let w = img.width, h = img.height;
               if (w > MAX || h > MAX) {
                 if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -1099,7 +1099,12 @@ function bellaApp() {
         if (data.productDescription) this.form.productDescription = data.productDescription;
         this.showToast(`Đã đọc thông tin từ ${files.length} ảnh!`, 'success');
       } catch(e) {
-        this.showToast('Lỗi scan ảnh: ' + e.message, 'error');
+        const msg = e.message || '';
+        if (msg.includes('429')) {
+          this.showToast('Gemini API bị giới hạn tốc độ. Đợi 1 phút rồi thử lại.', 'error');
+        } else {
+          this.showToast('Lỗi scan ảnh: ' + msg, 'error');
+        }
       } finally {
         this.isScanningImage = false;
         event.target.value = '';
