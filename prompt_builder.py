@@ -450,6 +450,7 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         "- section5 timeline: 'voice' là lời thoại thuần (không tag), 'action' là hành động camera riêng biệt.",
         "- lines[]: số entry bằng số câu/đoạn trong voScript. Mô tả hành động cụ thể: cầm gì, góc máy, di chuyển.",
         f"- section7 captions: 3 kiểu {_caption_styles[0].split(' —')[0]} / {_caption_styles[1].split(' —')[0]} / {_caption_styles[2].split(' —')[0]}. Tối đa 100 ký tự mỗi caption.",
+        "- section8 hashtags: Brand(1-2) + Product(3) + Audience(2) + Usage(2) + TikTokShop(2) + Discovery(tối đa 1). Tổng 10-12 tag. Không spam viral tag, không lặp từ gốc.",
     ]
     return "\n".join(lines)
 
@@ -595,7 +596,7 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         "Lưu ý quan trọng:",
         "- Kịch bản: hoàn toàn mới mỗi lần, lời thoại tự nhiên như đang nói thật, hành động đan xen sau mỗi 1-2 câu.",
         "- Caption TikTok: Tối đa 100 ký tự. Phải đề cập tên/loại sản phẩm, có 1-2 emoji. Chỉ 1 câu duy nhất.",
-        "- Hashtag: mix đa dạng — 2-3 tag đặc trưng sản phẩm (niche/cụ thể), 3-4 tag danh mục rộng, 2 tag TikTok Shop chuẩn. Tổng 8-12 tag.",
+        "- Hashtag (section8): Brand(1-2) + Product(3) + Audience(2) + Usage(2) + TikTokShop(2) + Discovery(tối đa 1). Tổng đúng 10-12 tag. KHÔNG spam viral (#fyp #viral #xuhuong cùng lúc — chỉ được 1). KHÔNG lặp từ gốc liên tiếp trong Product.",
     ]
     return "\n".join(lines)
 
@@ -871,14 +872,37 @@ Quy tắc bắt buộc:
         captions = current_script.get('section7', {}).get('captions', [])
         caption_hint = ' '.join(captions[:2])[:300] if captions else ''
         user = f"""{base}
-Caption: {caption_hint}
 {context_line}
+{"Caption gợi ý: " + caption_hint if caption_hint else ""}
 
-Tạo 8-12 hashtag TikTok. Mix theo công thức:
-- 2-3 tag đặc trưng sản phẩm (niche, cụ thể, ít cạnh tranh)
-- 3-4 tag danh mục rộng (nhiều người tìm)
-- 2 tag TikTok Shop chuẩn (#tiktokshop #reviewsanpham hoặc tương tự)
-- Tag bằng tiếng Việt không dấu hoặc có dấu đều được
+# VAI TRÒ
+Bạn là TikTok SEO Specialist có kinh nghiệm tối ưu hàng nghìn video TikTok Shop.
+Nhiệm vụ: tạo bộ hashtag giúp TikTok hiểu đúng chủ đề và tiếp cận đúng khách hàng — không phải tạo thật nhiều tag.
+
+# CÔNG THỨC — Luôn đúng 10–12 hashtag, theo thứ tự:
+1. Brand (1-2 tag): thương hiệu cửa hàng. Ví dụ: #dambaubella #bella
+2. Product (3 tag): loại sản phẩm cụ thể, đa dạng, không lặp từ gốc.
+   Ví dụ: #aobau #babydollbau #aovoan  (KHÔNG: #aobau #aobauxinh #aobaudep)
+3. Audience (2 tag): đối tượng khách hàng.
+   Ví dụ: #mebau #thoitrangbau #mesausinh #thoitrangnu
+4. Usage (2 tag): tình huống sử dụng thật.
+   Ví dụ: #macnha #dichoicho #caphe #dibien #phodao #thoitranghangngay
+5. TikTok Shop (2 tag): ví dụ #tiktokshop #reviewthoitrang #reviewthat #reviewsanpham
+6. Discovery (chỉ 1 tag, không hơn): #xuhuong HOẶC #viral HOẶC #fyp HOẶC #foryou
+
+# QUY TẮC
+- Tự phân tích loại sản phẩm, khách hàng, tình huống từ mô tả — không cần user nhập thêm
+- KHÔNG spam viral tag: #xuhuong #fyp #viral #foryou không được xuất hiện cùng lúc, chỉ được 1
+- KHÔNG lặp từ gốc liên tiếp trong Product (đa dạng hóa)
+- Tổng đúng 10–12 hashtag
+
+# TỰ KIỂM TRA (tự làm trước khi output)
+- Có đúng 10–12 tag chưa?
+- Có tag nào không liên quan sản phẩm không?
+- Có lặp từ gốc trong Product không?
+- Có quá 1 hashtag discovery không?
+- Đủ Brand + Product + Audience + Usage + TikTok Shop + Discovery chưa?
+Nếu chưa đạt → tự tạo lại.
 
 ```json
 {{"section8":{{"hashtags":["#tag1","#tag2","#tag3"]}}}}
