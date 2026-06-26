@@ -64,6 +64,56 @@ TONE_GUIDE = {
     'real-review': 'Thật thà, có cả mặt tốt lẫn điểm cần lưu ý. Nghe đáng tin, không quá quảng cáo.',
 }
 
+VO_PERSONA_GUIDE = {
+    'natural-koc': (
+        "Persona: Người vừa trải nghiệm sản phẩm — đang kể lại cho bạn bè nghe.\n"
+        "Chân thật, không cường điệu. Dùng: 'mọi người', 'các mẹ', 'các chị', 'theo mình', 'công nhận', 'nói thật'.\n"
+        "Không hype, không quảng cáo cứng. Như đang nhận xét thật sau khi dùng."
+    ),
+    'friendly': (
+        "Persona: Người bạn thân đang gợi ý món đồ hay.\n"
+        "Ấm áp, gần gũi. Dùng: 'nè', 'nha', 'á', 'đó', 'chị em', 'mọi người'.\n"
+        "Không formal, không cứng nhắc. Nghe như đang nhắn tin cho bạn, không phải đọc quảng cáo."
+    ),
+    'cute': (
+        "Persona: Cô gái dễ thương đang chia sẻ món đồ yêu thích của mình.\n"
+        "Nhẹ nhàng, tươi vui. Có thể dùng: 'hihi', 'hehe', 'ui', 'cưng ghê', 'trời ơi'.\n"
+        "Dịu dàng nhưng vẫn tự nhiên. Không gượng ép, không quá lố."
+    ),
+    'light-elegant': (
+        "Persona: Người thanh lịch, tinh tế đang chia sẻ quan điểm cá nhân.\n"
+        "Không dùng từ lóng, không slang thô. Câu chữ chỉn chu nhưng không cứng nhắc.\n"
+        "Phải nghe như người đang nói chuyện — không phải đọc bài hay đọc quảng cáo."
+    ),
+    'tiktok-nhay': (
+        "Persona: TikToker Gen Z năng lượng cao — nhập vai hoàn toàn, không phải AI đang viết.\n"
+        "Xưng hô linh hoạt theo ngữ cảnh: 'ê', 'ê mọi người', 'mấy bà', 'các vợ', 'chị em', 'bro', 'alo'.\n"
+        "Phản ứng tự nhiên (không spam, chọn dùng 1-2 cái phù hợp): 'Ủa?', 'Thiệt luôn?', 'Má ơi.', "
+        "'Công nhận.', 'Đỉnh ghê.', 'Xịn dữ.', 'Mượt dữ.', 'Hết nước chấm.', 'Đúng kiểu luôn.'.\n"
+        "Kéo dài âm khi nhấn mạnh: 'Đẹpppp', 'Mềmmmm', 'Ghêeeee', 'Nooooo'.\n"
+        "Tiếng Anh đơn giản khi phù hợp: 'Wait...', 'OMG...', 'Bro...', 'Okay...'.\n"
+        "Câu chuyển ý đa dạng: 'Mà nè...', 'Chưa hết đâu.', 'Còn cái này nữa.', 'Quan trọng nè.'.\n"
+        "Câu hỏi kéo người xem: 'Thấy chưa?', 'Tin nổi không?', 'Mấy bà thấy sao?'.\n"
+        "Phủ định để tạo twist: 'Không không không...', 'Khoan...', 'Đừng vội...'.\n"
+        "QUAN TRỌNG: Mỗi video phải có cảm giác như một TikToker khác nhau. Tự sáng tạo, không lặp công thức."
+    ),
+    'light-humor': (
+        "Persona: Người hài hước vừa phải — dí dỏm nhưng không lố.\n"
+        "Hài có chừng mực, có thể pha châm biếm nhẹ nhàng hoặc nhận xét buồn cười.\n"
+        "Vẫn tự nhiên, không ép hài, không cố quá."
+    ),
+    'soft-close': (
+        "Persona: Người bạn chân thành đang giới thiệu món đồ thật sự tốt.\n"
+        "Tập trung vào giá trị thật. Không dùng: 'mua ngay kẻo hết', 'sale cuối', 'không mua là tiếc'.\n"
+        "Ưu tiên: 'nếu bạn đang cần...', 'mình thấy đáng...', 'thật ra cái này...'. Chốt nhẹ, không áp lực."
+    ),
+    'real-review': (
+        "Persona: Người vừa dùng sản phẩm xong — đang nói thật, không PR.\n"
+        "Có cả ưu và điểm cần lưu ý. Nghe đáng tin vì không hoàn hảo 100%.\n"
+        "Có thể dùng: 'thật ra', 'nói thật', 'mình dùng rồi nên biết', 'điểm này mình thích / chưa thích lắm'."
+    ),
+}
+
 GOAL_GUIDE = {
     'increase-conversion': 'CTA mạnh cuối video. Nhấn mạnh giá trị, deal, hoặc lý do mua ngay hôm nay.',
     'build-trust': 'Tập trung chất lượng, độ bền, trải nghiệm thật. Tránh ngôn ngữ quảng cáo.',
@@ -93,7 +143,7 @@ GOAL_LABELS = {
 
 
 def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: str = '') -> str:
-    """Prompt cho Voice Over (ElevenLabs Adam V3) — script giọng riêng, hành động camera riêng."""
+    """Prompt cho Voice Over (ElevenLabs V3 Enhance) — pure voice script, không emotion tag."""
     duration = input_data.get('duration', '30s')
     duration_label = input_data.get('durationCustom', '') if duration == 'custom' else DURATION_LABELS.get(duration, duration)
     goal_label = GOAL_LABELS.get(input_data.get('videoGoal', ''), input_data.get('videoGoal', ''))
@@ -104,27 +154,59 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
     img_line = ("Phân tích ảnh sản phẩm:\n" + image_analysis if image_analysis
                 else ("Đã đính kèm ảnh sản phẩm." if has_images else "Không có ảnh."))
 
-    tone_guide = TONE_GUIDE.get(tone, 'Tự nhiên, không quảng cáo cứng.')
+    persona_guide = VO_PERSONA_GUIDE.get(tone, 'Nói tự nhiên như người thật, không quảng cáo cứng.')
     goal_guide = GOAL_GUIDE.get(input_data.get('videoGoal', ''), '')
 
     lines = [
-        "Bạn là TikToker chuyên làm content giọng Adam trên ElevenLabs V3.",
-        f"Phong cách giọng: {tone_label} — {tone_guide}",
-        "Hook cực mạnh 3 giây đầu, có twist, nhịp nhanh. KHÔNG viết kiểu MC hay quảng cáo cứng.",
+        "# VAI TRÒ",
+        "Bạn là một Creator TikTok thật — đang nói chuyện trực tiếp với người xem.",
+        "Kiểu quay: Voice Over (ElevenLabs V3 Enhance).",
+        "ElevenLabs V3 Enhance tự nhận diện cảm xúc từ cách viết và tự thêm emotion vào giọng.",
+        "Nhiệm vụ của bạn: CHỈ viết lời thoại thuần túy. Không cần tag gì cả.",
+        "",
+        "# PERSONA",
+        f"Giọng điệu: {tone_label}",
+        persona_guide,
+        "",
         f"Mục tiêu video: {goal_label}" + (f" — {goal_guide}" if goal_guide else '') + ".",
-        "BẮT BUỘC chèn Audio Tag ElevenLabs vào đúng chỗ thể hiện cảm xúc — đây là yêu cầu quan trọng nhất.",
         "",
-        "Audio Tags hợp lệ (chỉ dùng những tag này, KHÔNG tự đặt tag khác):",
-        "[giggles] [playful] [sarcastic] [whispering] [laughs] [sighs] [clears throat] [excited] [sad]",
+        "# QUY TẮC BẮT BUỘC",
         "",
-        "Ví dụ voScript ĐÚNG:",
-        "[playful] Ê mấy má, cái quần này mà không mua là hối hận đó nha. [giggles]",
-        "[sarcastic] Ừ thôi cứ mặc quần chật đi, bụng to thêm chút rồi tính.",
-        "[whispering] Thiệt luôn á, em mặc vào là không muốn cởi ra luôn.",
+        "## TUYỆT ĐỐI KHÔNG được viết emotion tag",
+        "Không được có [playful], [giggles], [laughs], [excited], [whisper], [sarcastic], [whispering],",
+        "[sighs], [clears throat], [sad] hay bất kỳ dấu ngoặc vuông nào dạng tag cảm xúc.",
+        "ElevenLabs V3 Enhance tự xử lý. Nếu output có tag → sai hoàn toàn.",
         "",
-        "Ví dụ voScript SAI (KHÔNG làm thế này):",
-        "[cười nhẹ] Cái quần này... — SAI vì [cười nhẹ] không phải ElevenLabs tag",
-        "[vuốt bụng] Em thấy... — SAI vì đây là hành động camera, không phải audio tag",
+        "## KHÔNG viết như AI, MC, văn viết, quảng cáo",
+        "Không mở đầu bằng: 'Xin chào mọi người', 'Hôm nay mình sẽ', 'Mình xin giới thiệu',",
+        "'Trong video này', 'Đây là sản phẩm', 'Sản phẩm này được thiết kế để'.",
+        "Không dùng cấu trúc AI: 'Ngoài ra...', 'Đặc biệt...', 'Sản phẩm có...', 'Sản phẩm được...'.",
+        "",
+        "## Viết như người đang NÓI, không phải VIẾT",
+        "Được dùng câu đệm, phản ứng tự nhiên, ngắt nghỉ, câu bỏ lửng.",
+        "Ví dụ (chỉ là ví dụ, AI phải sáng tạo thêm, không lặp lại những cái này):",
+        "'Ủa...', 'À mà...', 'Khoan...', 'Wow...', 'Haha...', 'Công nhận...', 'Ghê vậy.', 'Thiệt luôn.'",
+        "Nếu viết 100 video cho cùng 1 sản phẩm, người nghe phải cảm giác như 100 Creator khác nhau.",
+        "",
+        "## CẤU TRÚC VIDEO",
+        "HOOK (0-3s): Câu mạnh nhất. Gây tò mò / bất ngờ / phủ định / câu hỏi / nhận xét thú vị.",
+        "Đi thẳng vào vấn đề. Không có lời chào, không giới thiệu bản thân.",
+        "BODY: Lời thoại tự nhiên như đang trò chuyện. Không cố tạo cảm xúc liên tục.",
+        "CTA: Tăng năng lượng cuối, tự nhiên, không ép mua.",
+        "",
+        "## ĐA DẠNG CẤU TRÚC CÂU",
+        "Kết hợp: câu ngắn, câu dài, câu hỏi, câu kể, câu bỏ lửng, câu cảm thán.",
+        "Không để tất cả câu giống nhau về độ dài hay nhịp điệu.",
+        "",
+        "## TỰ KIỂM TRA TRƯỚC KHI OUTPUT",
+        "Trước khi trả JSON, kiểm tra voScript:",
+        "- Có tag dạng [xxx] không? → Xóa hết.",
+        "- Có giống văn viết / MC / ChatGPT không? → Viết lại.",
+        "- Có câu mở đầu kiểu AI ('Xin chào', 'Hôm nay mình') không? → Thay hook khác.",
+        "- Có lặp từ / lặp cấu trúc câu không? → Đa dạng hóa.",
+        "- Có đúng Persona và Giọng điệu đã chọn không?",
+        "- Người nghe có cảm giác 'đây là Creator thật' không?",
+        "Nếu chưa đạt → tự chỉnh sửa trước khi xuất JSON.",
         "",
         "---",
         "",
@@ -138,8 +220,8 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         f"Thời lượng: {duration_label} | Phong cách: {tone_label} | Mục tiêu: {goal_label}",
         f"Ảnh: {img_line}",
         "",
-        "Bối cảnh: video OneShot quay liên tục, người quay KHÔNG NÓI — miệng im hoàn toàn.",
-        "Giọng Adam lồng vào sau khi edit. Người quay chỉ làm hành động khớp với giọng Adam.",
+        "Bối cảnh quay: video liên tục, người quay KHÔNG NÓI — miệng im hoàn toàn.",
+        "Giọng lồng vào sau khi edit qua ElevenLabs. Người quay chỉ làm hành động khớp với giọng.",
         "",
         "---",
         "",
@@ -149,25 +231,26 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         '{',
         '  "section1": {"productName":"","targetAudience":"","shootingStyle":"Voice Over (ElevenLabs)","duration":"","tone":"","videoGoal":""},',
         '  "section2": {"targetCustomer":"","painPoints":"","insight":"","highlights":"","mainBenefits":"","usageSituations":""},',
-        '  "section3": {"hooks":[{"text":"[playful] câu hook nhây nhây Adam đọc","isRecommended":true},{"text":"hook 2 có audio tag","isRecommended":false},{"text":"hook 3 có audio tag","isRecommended":false}]},',
+        '  "section3": {"hooks":[{"text":"câu hook tự nhiên mạnh 0-3s, không tag, không chào hỏi","isRecommended":true},{"text":"hook 2 kiểu khác — phủ định hoặc câu hỏi","isRecommended":false},{"text":"hook 3 kiểu khác — nhận xét bất ngờ","isRecommended":false}]},',
         '  "section7": {"captions":["caption ≤100 ký tự + 1-2 emoji","caption 2","caption 3"]},',
         '  "section8": {"hashtags":["#tag1","#tag2","#tiktokshop"]},',
         '  "section4": {',
         '    "duration":"30s",',
-        '    "hook":"câu hook ngắn không có tag",',
-        '    "voScript":"HOOK:\\n[playful] Câu hook cực mạnh có twist... [giggles]\\n\\nVOICE OVER:\\n[sarcastic] Câu 1 nhây nhây...\\n[whispering] Câu 2 bí mật...\\n[excited] Câu 3 hào hứng...\\n\\nCTA:\\n[playful] Câu kêu gọi tự nhiên...",',
-        '    "lines":[{"type":"action","text":"hành động camera cụ thể khi Adam đọc câu 1"},{"type":"action","text":"hành động camera khi Adam đọc câu 2"}],',
+        '    "hook":"câu hook ngắn (không tag)",',
+        '    "voScript":"HOOK:\\nCâu hook mạnh, tự nhiên, không tag...\\n\\nVOICE OVER:\\nCâu 1 như đang trò chuyện...\\nCâu 2 tự nhiên tiếp theo...\\n\\nCTA:\\nCâu kêu gọi cuối tự nhiên...",',
+        '    "lines":[{"type":"action","text":"hành động camera cụ thể khi voiceover câu 1"},{"type":"action","text":"hành động camera câu 2"}],',
         '    "rawScript":""',
         '  },',
-        '  "section5": {"timeline":[{"timeRange":"0-3s","voice":"[playful] Câu Adam đọc...","action":"hành động camera tương ứng"}]},',
-        '  "section9": {"tips":["tip quay (im lặng, tắt micro, ánh sáng)","tip edit lồng tiếng (sync audio, cut nhịp)"]}',
+        '  "section5": {"timeline":[{"timeRange":"0-3s","voice":"câu hook (không tag)","action":"hành động camera tương ứng"}]},',
+        '  "section9": {"tips":["tip quay (im lặng hoàn toàn, tắt micro, ánh sáng)","tip edit lồng tiếng (sync audio, cut theo nhịp giọng)"]}',
         '}',
         '```',
         "",
         "Lưu ý cuối:",
-        f"- Viết đủ nội dung cho {duration_label}, không được thiếu.",
-        "- section5 timeline: mỗi entry có 'voice' (câu Adam đọc kèm audio tag) và 'action' (hành động camera) riêng biệt.",
-        "- lines[]: số entry bằng số câu trong voScript. Hành động mô tả cụ thể: cầm gì, góc máy, di chuyển.",
+        f"- voScript: KHÔNG được chứa bất kỳ [tag] nào. Chỉ lời thoại thuần túy.",
+        f"- Viết đủ nội dung cho {duration_label}.",
+        "- section5 timeline: 'voice' là lời thoại thuần (không tag), 'action' là hành động camera riêng biệt.",
+        "- lines[]: số entry bằng số câu/đoạn trong voScript. Mô tả hành động cụ thể: cầm gì, góc máy, di chuyển.",
     ]
     return "\n".join(lines)
 
@@ -346,15 +429,26 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
         hook_line = f'\nHook mở đầu bắt buộc dùng: "{selected_hook}"' if selected_hook else ''
 
         if shooting == 'voiceover':
+            persona_guide = VO_PERSONA_GUIDE.get(tone, 'Nói tự nhiên như người thật.')
+            hook_instruction = f' Câu đầu tiên PHẢI là hook đã cho, không được thay đổi: "{selected_hook}"' if selected_hook else ''
             user = f"""{base}{analysis_block}
 {context_line}{hook_line}
 
-Tạo voScript (giọng Adam ElevenLabs có audio tags) và hành động camera tương ứng.{"" if not selected_hook else " Câu đầu tiên PHẢI là hook đã cho, không được thay đổi."}
+Persona: {persona_guide}
 
-Audio Tags hợp lệ (chỉ dùng những tag này): [giggles] [playful] [sarcastic] [whispering] [laughs] [sighs] [clears throat] [excited] [sad]
+Tạo voScript lời thoại thuần túy (ElevenLabs V3 Enhance tự thêm emotion — KHÔNG được viết tag [xxx] nào).{hook_instruction}
+
+Quy tắc viết voScript:
+- Viết như người đang NÓI, không phải viết văn
+- Không mở đầu kiểu AI/MC: 'Xin chào', 'Hôm nay mình', 'Đây là sản phẩm', 'Sản phẩm này được...'
+- Không dùng cấu trúc AI: 'Ngoài ra...', 'Đặc biệt...', 'Sản phẩm có...'
+- Được dùng câu đệm, phản ứng, ngắt nghỉ, câu bỏ lửng
+- Kết hợp câu ngắn, câu dài, câu hỏi, câu cảm thán
+- HOOK 0-3s: câu mạnh nhất, đi thẳng vào vấn đề
+- CTA cuối: tự nhiên, không ép mua
 
 ```json
-{{"section4":{{"duration":"{duration_label}","hook":"{selected_hook or 'câu hook mở đầu'}","voScript":"HOOK:\\n[playful] câu hook có audio tag...\\n\\nVOICE OVER:\\n[sarcastic] câu 1...\\n[whispering] câu 2...\\n\\nCTA:\\n[playful] kêu gọi...","lines":[{{"type":"action","text":"hành động camera khi Adam đọc câu 1"}},{{"type":"action","text":"hành động camera câu 2"}}],"rawScript":""}},"section5":{{"timeline":[{{"timeRange":"0-3s","voice":"[playful] câu hook...","action":"hành động camera tương ứng"}}]}}}}
+{{"section4":{{"duration":"{duration_label}","hook":"{selected_hook or 'câu hook tự nhiên mạnh, không tag'}","voScript":"HOOK:\\nCâu hook mạnh tự nhiên không có tag...\\n\\nVOICE OVER:\\nCâu 1 như đang nói chuyện thật...\\nCâu 2 tự nhiên...\\n\\nCTA:\\nCâu kêu gọi cuối tự nhiên...","lines":[{{"type":"action","text":"hành động camera cụ thể câu 1"}},{{"type":"action","text":"hành động camera câu 2"}}],"rawScript":""}},"section5":{{"timeline":[{{"timeRange":"0-3s","voice":"câu hook thuần (không tag)","action":"hành động camera tương ứng"}}]}}}}
 ```"""
         else:
             user = f"""{base}{analysis_block}
@@ -373,7 +467,28 @@ Tạo kịch bản mới và timeline quay tương ứng. Lời thoại tự nhi
             f"Insight: {s2.get('insight','')}" if s2.get('insight') else '',
             f"Điểm nổi bật: {s2.get('highlights','')}" if s2.get('highlights') else '',
         ]))
-        user = f"""{base}
+        if shooting == 'voiceover':
+            persona_guide = VO_PERSONA_GUIDE.get(tone, 'Nói tự nhiên như người thật.')
+            user = f"""{base}
+{analysis}
+{context_line}
+
+Persona: {persona_guide}
+
+Tạo 3 hook Voice Over khác nhau (0-3 giây đầu). Hook đầu tiên là hook khuyên dùng.
+
+Quy tắc hook Voice Over:
+- KHÔNG được có tag [xxx] nào — ElevenLabs V3 Enhance tự xử lý cảm xúc
+- Không mở đầu kiểu AI/MC: 'Xin chào', 'Hôm nay mình', 'Đây là sản phẩm'
+- Đi thẳng vào nội dung: gây tò mò / phủ định / câu hỏi / nhận xét bất ngờ
+- Viết như người đang nói chuyện thật, không phải viết văn
+- 3 hook phải 3 kiểu khác nhau hoàn toàn (tò mò / twist / pain point)
+
+```json
+{{"section3":{{"hooks":[{{"text":"hook 1 tự nhiên mạnh, không tag","isRecommended":true}},{{"text":"hook 2 kiểu khác, không tag","isRecommended":false}},{{"text":"hook 3 kiểu khác, không tag","isRecommended":false}}]}}}}
+```"""
+        else:
+            user = f"""{base}
 {analysis}
 {context_line}
 

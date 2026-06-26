@@ -171,6 +171,22 @@ def _get_chrome_cookies(domain):
 
 _PLAYWRIGHT_PROFILE = os.path.join(EXE_DIR, 'bella_browser_profile')
 
+def _find_chrome_executable():
+    """Tìm Chrome hoặc Edge có sẵn trên máy để dùng với Playwright."""
+    candidates = [
+        os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        r'C:\Program Files\Google\Chrome\Application\chrome.exe',
+        r'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
+        os.path.join(os.environ.get('PROGRAMFILES', ''), 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+        r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe',
+        r'C:\Program Files\Microsoft\Edge\Application\msedge.exe',
+    ]
+    for path in candidates:
+        if path and os.path.exists(path):
+            return path
+    return None
+
 _READ_DOM_JS = """() => {
     const m = (s) => document.querySelector(s)?.content || '';
     const title = document.querySelector('h1')?.innerText?.trim()
@@ -262,8 +278,9 @@ def _fetch_with_playwright(url, injected_cookies=None, cookie_domain=None):
 
     os.makedirs(_PLAYWRIGHT_PROFILE, exist_ok=True)
 
+    _chrome_exe = _find_chrome_executable()
     with sync_playwright() as p:
-        ctx = p.chromium.launch_persistent_context(
+        _pw_kwargs = dict(
             user_data_dir=_PLAYWRIGHT_PROFILE,
             headless=False,
             args=['--disable-blink-features=AutomationControlled', '--no-first-run'],
@@ -271,6 +288,9 @@ def _fetch_with_playwright(url, injected_cookies=None, cookie_domain=None):
             locale='vi-VN',
             viewport={'width': 1280, 'height': 800},
         )
+        if _chrome_exe:
+            _pw_kwargs['executable_path'] = _chrome_exe
+        ctx = p.chromium.launch_persistent_context(**_pw_kwargs)
 
         # Inject Chrome cookies vào persistent profile (hữu ích lần đầu chưa có session)
         if injected_cookies and cookie_domain:
@@ -385,8 +405,9 @@ def _fetch_with_playwright_headless(url):
     """Headless Playwright — chạy trên cloud server, không cần GUI, render JavaScript đầy đủ."""
     from playwright.sync_api import sync_playwright, TimeoutError as PwTimeout
 
+    _chrome_exe2 = _find_chrome_executable()
     with sync_playwright() as p:
-        browser = p.chromium.launch(
+        _launch_kwargs = dict(
             headless=True,
             args=[
                 '--no-sandbox', '--disable-setuid-sandbox',
@@ -395,6 +416,9 @@ def _fetch_with_playwright_headless(url):
                 '--disable-extensions', '--disable-background-networking',
             ],
         )
+        if _chrome_exe2:
+            _launch_kwargs['executable_path'] = _chrome_exe2
+        browser = p.chromium.launch(**_launch_kwargs)
         ctx = browser.new_context(
             user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             locale='vi-VN',
@@ -1272,4 +1296,4 @@ if __name__ == '__main__':
             resizable=True,
         )
         icon_path = os.path.join(EXE_DIR, 'bella_icon.ico') if getattr(sys, 'frozen', False) else os.path.join(BASE_DIR, 'bella_icon.ico')
-        webview.start(icon=icon_path if os.path.exists(icon_path) else None)
+        webview.start(gui='edgechromium', icon=icon_path if os.path.exists(icon_path) else None)
