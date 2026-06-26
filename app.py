@@ -581,13 +581,38 @@ def _fetch_tiktok_cloud(url):
         'Referer': 'https://www.google.com/',
     }
 
-    try:
-        req = _req.Request(url, headers=headers)
-        with _req.urlopen(req, timeout=20) as resp:
-            final_url = resp.url  # URL sau khi follow redirect
-            html = resp.read().decode('utf-8', errors='ignore')
-    except Exception as e:
-        return None, f'Không thể tải trang: {str(e)}'
+    UA_MOBILE = 'Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.82 Mobile Safari/537.36'
+
+    # shop.tiktok.com/vn/pdp/ — thử mobile UA trước (bypass security check tốt hơn desktop)
+    _is_shop_pdp = 'shop.tiktok.com' in url and '/pdp/' in url
+    if _is_shop_pdp:
+        try:
+            _mreq = _req.Request(url, headers={**headers, 'User-Agent': UA_MOBILE})
+            with _req.urlopen(_mreq, timeout=20) as _mr:
+                _mhtml = _mr.read().decode('utf-8', errors='ignore')
+            if len(_mhtml) > 2000 and 'security check' not in _mhtml.lower()[:3000]:
+                html = _mhtml
+                final_url = url
+            else:
+                raise Exception('blocked')
+        except Exception:
+            try:
+                req = _req.Request(url, headers=headers)
+                with _req.urlopen(req, timeout=20) as resp:
+                    final_url = resp.url
+                    html = resp.read().decode('utf-8', errors='ignore')
+            except Exception as e:
+                return None, f'Không thể tải trang: {str(e)}'
+    else:
+        try:
+            req = _req.Request(url, headers=headers)
+            with _req.urlopen(req, timeout=20) as resp:
+                final_url = resp.url  # URL sau khi follow redirect
+                html = resp.read().decode('utf-8', errors='ignore')
+        except Exception as e:
+            return None, f'Không thể tải trang: {str(e)}'
+
+    html_shop_original = html  # giữ lại để fallback nếu re-fetch kém hơn
 
     # ── Re-fetch clean canonical URL khi cần ────────────────────────────────────────
     # vt.tiktok.com → redirect → view/product/{ID}?og_info=...  (TikTok trả về share-optimized page,
@@ -607,7 +632,8 @@ def _fetch_tiktok_cloud(url):
                 _req2 = _req.Request(_canonical, headers=headers)
                 with _req.urlopen(_req2, timeout=20) as _r2:
                     _html2 = _r2.read().decode('utf-8', errors='ignore')
-                if len(_html2) > 1000:  # đảm bảo lấy được page thật (không phải 403/redirect nhỏ)
+                # Chỉ dùng html2 nếu thật sự có nội dung sản phẩm (không phải security check)
+                if len(_html2) > 1000 and 'security check' not in _html2.lower()[:3000]:
                     html = _html2
                     final_url = _canonical
             except Exception:
@@ -823,6 +849,24 @@ def _fetch_tiktok_cloud(url):
             images += _cdn_scan(html, len(images))
         note = '' if desc else '[Copy nội dung từ tab "Mô tả" trên TikTok Shop và dán vào đây]'
         return {'productName': name, 'productDescription': desc + note, 'images': images}, None
+
+    # ── Fallback: nếu html hiện tại là kết quả re-fetch www.tiktok.com mà không có data,
+    # thử lại với html gốc của shop.tiktok.com (có thể có meta tags khác)
+    if _is_shop_pdp and html != html_shop_original and len(html_shop_original) > 2000:
+        html = html_shop_original
+        p2 = _MetaParser(); p2.feed(html[:200000])
+        d2 = p2.d
+        name2 = (d2.get('og:title') or d2.get('twitter:title') or d2.get('title') or '').strip()
+        raw_desc2 = (d2.get('og:description') or d2.get('twitter:description') or d2.get('description') or '').strip()
+        desc2 = '' if _is_generic_tiktok_desc(raw_desc2) else raw_desc2
+        INVALID_TITLES2 = ('tiktok', 'shop', 'trang chủ', 'home', 'make your day', 'security check', 'just a moment')
+        name_ok2 = name2 and not any(t in name2.lower() for t in INVALID_TITLES2) and len(name2) > 3
+        if name_ok2:
+            images2 = _download_img_list(p2.og_images, 'tt-sh')
+            if len(images2) < 3:
+                images2 += _cdn_scan(html, len(images2))
+            note2 = '' if desc2 else '[Copy nội dung từ tab "Mô tả" trên TikTok Shop và dán vào đây]'
+            return {'productName': name2, 'productDescription': desc2 + note2, 'images': images2}, None
 
     return None, None
 
