@@ -36,7 +36,7 @@ def build_system_prompt(prompt_settings: dict) -> str:
 
 
 SHOOTING_LABELS = {
-    'one-shot': 'One Shot', 'review': 'Review mặc sản phẩm',
+    'one-shot': 'One Shot', 'review': 'Review sản phẩm',
     'koc-review': 'KOC Review', 'tiktok-shop': 'TikTok Shop',
     'ugc': 'UGC', 'talking-head': 'Talking Head', 'pov': 'POV',
     'livestream-teaser': 'Livestream teaser',
@@ -209,28 +209,28 @@ CAPTION_STYLES = [
 KOC_DISCOVERY_FLOWS = [
     {
         'name': 'Flow A — Em tưởng → Ai ngờ',
-        'pattern': 'Đặt kỳ vọng nghi ngờ → Mặc thử / xoay người → Bất ngờ vì kết quả tốt hơn tưởng',
-        'example': '"Em tưởng mẫu này mặc lên sẽ hơi rộng quá..." → xoay người → "ai ngờ lên người lại gọn hơn em nghĩ."',
+        'pattern': 'Đặt kỳ vọng nghi ngờ về một điểm → Thử thật / trải nghiệm trực tiếp → Bất ngờ vì kết quả tốt hơn tưởng',
+        'example': 'TT: "Em tưởng mặc lên sẽ hơi rộng..." → thử → "ai ngờ lại gọn hơn nghĩ." / MP: "Em tưởng bôi lên sẽ nhờn..." → bôi → "ai ngờ thấm nhanh, không bóng."',
     },
     {
         'name': 'Flow B — Lúc đầu để ý một điểm → Phát hiện điểm khác',
-        'pattern': 'Chú ý một điểm → Quan sát → Vô tình phát hiện điểm hay hơn',
-        'example': '"Lúc đầu em chỉ để ý phần bụng thôi..." → chỉ bụng / quay nghiêng → "xong mới thấy tay áo cũng che bắp tay khá ổn."',
+        'pattern': 'Chú ý điểm A bình thường → Trải nghiệm thực tế → Vô tình phát hiện điểm B hay hơn',
+        'example': 'TT: "Lúc đầu chỉ để ý màu..." → thử → "mới thấy cái phần eo này mới là điểm chính." / ĐT: "Lúc đầu chỉ chú ý thiết kế..." → dùng → "mới thấy tiếng máy cực nhỏ."',
     },
     {
         'name': 'Flow C — Vừa thử vừa nhận xét',
-        'pattern': 'Mời người xem → Thực hiện hành động → Nhận xét ngay khi làm',
-        'example': '"Để em xoay nhẹ cho mọi người xem nha..." → xoay người → "form này rủ xuống tự nhiên, không bị dính vào bụng."',
+        'pattern': 'Mời người xem → Thực hiện demo trực tiếp → Nhận xét ngay khi làm',
+        'example': 'TT: "Để em xoay cho mọi người xem nha..." → xoay → "form rủ tự nhiên, không dính." / ĐT: "Để em bật thử nha..." → bật → "khởi động nhanh, không lag gì hết."',
     },
     {
         'name': 'Flow D — Một điểm nghi ngờ → Được giải quyết',
-        'pattern': 'Nêu nỗi lo / nghi ngờ về một điểm → Thử → Lo ngại được giải quyết',
-        'example': '"Em hơi sợ kiểu tay bồng này làm người to hơn..." → chỉ tay áo → "nhưng mặc lên lại mềm, không bị cứng."',
+        'pattern': 'Nêu nỗi lo / nghi ngờ cụ thể về sản phẩm → Thử thật → Lo ngại được giải quyết',
+        'example': 'TT: "Em sợ kiểu tay bồng này làm người to hơn..." → mặc → "nhưng lên người lại ổn, không bị phồng." / MP: "Em sợ bôi xong bị bít lỗ chân lông..." → thoa → "nhưng thấm nhanh, không nhờn."',
     },
     {
-        'name': 'Flow E — Cảm nhận thật sau khi mặc',
-        'pattern': 'Nói nỗi sợ / kỳ vọng thật → Trải nghiệm trực tiếp → Đánh giá thật',
-        'example': '"Nói thật, mặc đồ bầu em sợ nhất là bị bí..." → vuốt chất vải → "mẫu này lên người khá nhẹ, đi lại không thấy vướng."',
+        'name': 'Flow E — Cảm nhận thật sau khi dùng',
+        'pattern': 'Nói kỳ vọng / nỗi sợ ban đầu thật → Trải nghiệm trực tiếp → Đánh giá thật lòng',
+        'example': 'TT: "Nói thật em sợ nhất là mặc không thoải mái..." → mặc đi lại → "nhưng cái này nhẹ, không vướng." / TP: "Em tưởng cà phê này sẽ đắng gắt..." → nếm → "nhưng uống được, không đắng kiểu thô."',
     },
 ]
 
@@ -275,6 +275,85 @@ GOAL_LABELS = {
     'click-to-cart': 'Kéo click vào giỏ hàng',
 }
 
+INDUSTRY_LABELS = {
+    'auto': 'Tự động nhận diện',
+    'fashion': 'Thời trang',
+    'beauty': 'Mỹ phẩm & Skincare',
+    'electronics': 'Điện tử & Công nghệ',
+    'home': 'Gia dụng',
+    'food': 'Thực phẩm & Đồ uống',
+    'pet': 'Thú cưng',
+    'baby': 'Mẹ & Bé',
+    'other': 'Ngành hàng khác',
+}
+
+INDUSTRY_GUIDE = {
+    'fashion': {
+        'hero_examples': "'Che bụng cực khéo' / 'Co giãn cực thoải mái' / 'Gọn dáng rõ' / 'Mặc mát cả ngày'",
+        'demo': 'mặc thử, xoay người, zoom chi tiết chất vải, quay nghiêng, tạo dáng',
+        'camera': 'quay nghiêng, zoom chất vải/chi tiết, pan full body, close-up điểm nổi bật',
+        'koc_hook': 'câu nói thật khi vừa mặc: "Em tưởng mặc lên sẽ..." / "Lên người mới thấy..." / "Nhìn form này nè..."',
+        'koc_action': 'chỉ/vuốt phần nổi bật, xoay người, kéo vải cho thấy form/chất, quay nghiêng 45°',
+        'cta': '"ai thích [lợi ích Hero Benefit] thì thử mẫu này nha" / "link ở bio" / "ai cần thì vào xem thử"',
+    },
+    'beauty': {
+        'hero_examples': "'Dưỡng ẩm 24h' / 'Không bóng nhờn' / 'Tone up rõ' / 'Da căng mịn sau 2 tuần'",
+        'demo': 'mở nắp, lấy texture, bôi thử lên da, zoom chất kem/serum, cảm nhận ngay sau bôi',
+        'camera': 'close-up texture sản phẩm, zoom da/màu trước-sau, cận mặt khi bôi, reveal màu sắc',
+        'koc_hook': 'câu nói thật khi thử: "Em tưởng bôi lên sẽ nhờn..." / "Da mình hay nhạy cảm nhưng..." / "Thấm nhanh hơn nghĩ..."',
+        'koc_action': 'bôi lên da tay/mặt, zoom texture khi lấy ra, vuốt nhẹ, biểu cảm khi cảm nhận kết quả',
+        'cta': '"ai da [loại da] như em thì thử" / "mình để link bên dưới"',
+    },
+    'electronics': {
+        'hero_examples': "'Pin trâu cả ngày' / 'Kết nối ổn định' / 'Màn hình siêu sắc nét' / 'Âm thanh sống động'",
+        'demo': 'mở hộp (unbox), cắm điện/bật máy, test chức năng chính, zoom màn hình/âm thanh, demo thực tế',
+        'camera': 'zoom màn hình/nút bấm, góc rộng khi demo toàn sản phẩm, close-up chi tiết thiết kế, unbox reveal',
+        'koc_hook': 'câu nói thật khi dùng lần đầu: "Em tưởng pin sẽ yếu..." / "Bật lên thấy màn hình đẹp hơn ảnh nhiều..." / "Tưởng setup phức tạp..."',
+        'koc_action': 'bật/tắt, test feature chính, zoom kết quả thực tế, so sánh với kỳ vọng ban đầu',
+        'cta': '"ai đang cần [chức năng chính] thì xem thử" / "link ở bio"',
+    },
+    'home': {
+        'hero_examples': "'Sạch nhanh không tốn sức' / 'Tiết kiệm điện đáng kể' / 'Kết quả thấy ngay' / 'Dùng cực dễ'",
+        'demo': 'lắp ráp/chuẩn bị, sử dụng thực tế, demo kết quả, so sánh trước/sau',
+        'camera': 'góc rộng demo toàn cảnh, zoom kết quả sau khi dùng, before/after cạnh nhau, close-up chi tiết hoạt động',
+        'koc_hook': 'câu nói thật khi dùng: "Hồi trước làm cách này mất bao lâu..." / "Dùng thử mới thấy tiện thật..." / "Tưởng phức tạp hơn..."',
+        'koc_action': 'demo sử dụng thực tế bước bước, zoom kết quả, reaction khi thấy kết quả tốt',
+        'cta': '"ai hay gặp [vấn đề] như mình thì thử cái này" / "link ở bio"',
+    },
+    'food': {
+        'hero_examples': "'Vị đậm đà tự nhiên' / 'Không chất bảo quản' / 'Pha nhanh 2 phút' / 'Cả nhà đều thích'",
+        'demo': 'mở bao bì, pha/nấu/chuẩn bị, taste test, biểu cảm khi ăn/uống, cận cảnh thành phẩm',
+        'camera': 'close-up màu sắc/texture sản phẩm, hơi steam, reveal thành phẩm hoàn chỉnh, zoom biểu cảm taste test',
+        'koc_hook': 'câu nói thật khi nếm: "Em tưởng sẽ ngọt/đắng quá..." / "Mùi thơm hơn nghĩ nhiều..." / "Nhìn thì bình thường nhưng thử thì..."',
+        'koc_action': 'mở nắp/bao bì, pha thử, nếm, biểu cảm tự nhiên, zoom sản phẩm cận cảnh',
+        'cta': '"ai thích [hương vị/loại] thì thử" / "mình để link bên dưới"',
+    },
+    'pet': {
+        'hero_examples': "'Thú kén ăn cũng thích' / 'Không phụ gia độc hại' / 'An toàn 100%' / 'Lông bóng rõ sau 1 tháng'",
+        'demo': 'mở sản phẩm, cho thú cưng dùng/ăn/chơi, ghi lại phản ứng thú cưng, zoom sản phẩm',
+        'camera': 'zoom thú cưng phản ứng, sản phẩm cận cảnh, góc rộng cảnh thú cưng đang dùng',
+        'koc_hook': 'câu nói thật: "Con nhà mình khó ăn lắm, thử đủ loại rồi..." / "Tưởng nó không thích loại này đâu..."',
+        'koc_action': 'đặt sản phẩm trước mặt thú cưng, quay phản ứng, zoom cận mặt thú khi dùng',
+        'cta': '"bé nhà ai cũng [vấn đề] như mình thì thử" / "link ở bio"',
+    },
+    'baby': {
+        'hero_examples': "'Chất liệu an toàn cho da bé' / 'Không kích ứng' / 'Dùng từ sơ sinh được' / 'Mẹ an tâm tuyệt đối'",
+        'demo': 'mở sản phẩm, demo trên bé/búp bê, test độ an toàn, zoom chất liệu/chi tiết',
+        'camera': 'zoom chi tiết an toàn (khóa/nút/chất liệu), close-up chất liệu mềm, demo trên bé (nếu có), cận cảnh sản phẩm',
+        'koc_hook': 'câu nói thật của mẹ: "Hồi tìm sản phẩm cho con mình lo nhất là..." / "Dùng thử mới an tâm thật..." / "Tưởng khó dùng..."',
+        'koc_action': 'demo trên bé/búp bê, kiểm tra chi tiết an toàn từng bước, vuốt chất liệu',
+        'cta': '"mẹ nào đang tìm [loại sản phẩm] cho bé thì xem thử" / "link ở bio"',
+    },
+    'other': {
+        'hero_examples': "lợi ích bán hàng mạnh nhất, phù hợp nhất với khách hàng mục tiêu của sản phẩm này",
+        'demo': 'demo tính năng/lợi ích chính một cách trực quan, so sánh trước/sau, trải nghiệm thực tế',
+        'camera': 'focus camera vào điểm thể hiện Hero Benefit tốt nhất, demo từng bước rõ ràng',
+        'koc_hook': 'câu nói thật về trải nghiệm ban đầu: "Em tưởng [điểm nghi ngờ]..." / "Dùng thử mới thấy [kết quả tốt hơn]..."',
+        'koc_action': 'demo trực tiếp lợi ích chính, zoom điểm nổi bật, reaction tự nhiên khi phát hiện điều thú vị',
+        'cta': '"ai đang cần [giải pháp Hero Benefit] thì xem thử" / "link ở bio"',
+    },
+}
+
 
 def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: str = '') -> str:
     """Prompt V3 cho Voice Over (ElevenLabs V3 Enhance) — pure voice script, không emotion tag."""
@@ -284,6 +363,10 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
     tone = input_data.get('tone', 'natural-koc')
     tone_label = input_data.get('toneCustom', '') if tone == 'custom' else TONE_LABELS.get(tone, tone)
     audience = input_data.get('targetAudience', '').strip()
+    industry = input_data.get('industry', 'auto')
+    industry_label = INDUSTRY_LABELS.get(industry, 'Tự động nhận diện')
+    industry_data = INDUSTRY_GUIDE.get(industry, {})
+    _is_auto_industry = industry == 'auto'
 
     img_line = ("Phân tích ảnh sản phẩm:\n" + image_analysis if image_analysis
                 else ("Đã đính kèm ảnh sản phẩm." if has_images else "Không có ảnh."))
@@ -420,17 +503,21 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         "Mỗi caption ≤ 100 ký tự, có 1-2 emoji, đề cập tên hoặc loại sản phẩm.",
         "",
         "## PRE-WRITE PROTOCOL — làm TRƯỚC khi viết kịch bản",
+        *(["0. Xác định NGÀNH HÀNG từ tên + mô tả sản phẩm (Thời trang / Mỹ phẩm / Điện tử / Gia dụng / Thực phẩm / Thú cưng / Mẹ&Bé / Khác) → dùng để chọn camera action ở bước 3."]
+          if _is_auto_industry else [f"0. Ngành hàng: {industry_label} — áp dụng camera action phù hợp ngành này ở bước 3."]),
         "1. Xác định HERO BENEFIT — 1 lợi ích bán hàng mạnh nhất cho khách mục tiêu. Ghi vào section2.heroBenefit.",
-        "   Ví dụ: 'Che bụng cực khéo' / 'Co giãn cực thoải mái' / 'Mặc mát cả ngày' / 'Gọn dáng rõ' / 'Màu đẹp tôn da'",
+        "   Ví dụ: " + industry_data.get('hero_examples', "'Lợi ích mạnh nhất' (TT) / 'Thấm nhanh không nhờn' (MP) / 'Pin trâu 2 ngày' (ĐT)"),
         "2. voScript: 70% xoay quanh Hero Benefit. 30% mới nói lợi ích phụ.",
         "3. Camera action trong lines[] phục vụ Hero Benefit (người quay im lặng — chỉ di chuyển camera):",
-        "   Che bụng / gọn dáng → quay nghiêng, zoom chậm từ eo xuống, pan full body",
-        "   Co giãn / thoải mái → góc rộng khi người mẫu bước đi, zoom vào vải khi kéo căng",
-        "   Chất liệu / mặc mát → zoom sát vải, tilt dọc áo, close-up chi tiết đường may",
-        "   Form / dáng tôn → góc xa 45°, pan chậm từ đầu xuống, zoom eo hoặc đùi",
-        "   Màu sắc / thiết kế → spread áo cho thấy full màu, zoom chi tiết cổ/tay/gấu áo",
-        "   Mặc bầu / đặc thù → chính diện + nghiêng để thấy form bụng, zoom vùng bụng",
-        "   Khác → chọn camera move tự nhiên nhất phù hợp với Hero Benefit đó",
+        *([ f"   {industry_data.get('camera', '')}" ] if not _is_auto_industry and industry_data.get('camera') else [
+            "   Thời trang → quay nghiêng, zoom chất vải/chi tiết, pan full body",
+            "   Mỹ phẩm → close-up texture, zoom da trước-sau, cận mặt khi bôi",
+            "   Điện tử → zoom màn hình/nút bấm, demo chức năng, unbox reveal",
+            "   Gia dụng → góc rộng demo, zoom kết quả, before/after",
+            "   Thực phẩm → close-up màu/texture, steam, reveal thành phẩm",
+            "   Thú cưng / Mẹ&Bé → zoom phản ứng/chi tiết an toàn, sản phẩm cận cảnh",
+            "   Khác → focus camera vào điểm thể hiện Hero Benefit tốt nhất",
+        ]),
         *([
             "4. Thân voScript: tự nhiên thêm 1-2 Mini Hook ngắt nhịp giữ người nghe (khớp giọng điệu):",
             f"   {_mini_hooks}",
@@ -503,6 +590,10 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
     tone = input_data.get('tone', 'natural-koc')
     tone_label = input_data.get('toneCustom', '') if tone == 'custom' else TONE_LABELS.get(tone, tone)
     goal_label = GOAL_LABELS.get(input_data.get('videoGoal', ''), input_data.get('videoGoal', ''))
+    industry = input_data.get('industry', 'auto')
+    industry_label = INDUSTRY_LABELS.get(industry, 'Tự động nhận diện')
+    industry_data = INDUSTRY_GUIDE.get(industry, {})
+    _is_auto_industry = industry == 'auto'
 
     # V3: Random diversity for non-voiceover scripts
     _pattern = random.choice(STRUCTURE_PATTERNS)
@@ -519,42 +610,39 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
             f"Flow: {_koc_flow['pattern']}",
             f"Ví dụ: {_koc_flow['example']}",
         ]
+        _ind_hook = industry_data.get('koc_hook', 'câu nói thật khi vừa trải nghiệm sản phẩm lần đầu, không quảng cáo')
+        _ind_action = industry_data.get('koc_action', 'demo trực tiếp điểm nổi bật, zoom phần thể hiện Hero Benefit, reaction khi phát hiện điều thú vị')
+        _ind_cta = industry_data.get('cta', '"ai đang cần [giải pháp] thì xem thử nha" / "link ở bio"')
         _engine4_lines = [
-            "**HOOK KOC:** Câu nói thật khi vừa mặc sản phẩm. Không quảng cáo. Không trau chuốt.",
-            "Ví dụ tốt: 'Em tưởng kiểu này mặc lên sẽ bị thùng người á...' / 'Cái này lên người khác hơn em nghĩ nha.'",
-            "           'Lúc đầu nhìn mẫu này em hơi sợ bị rộng quá.' / 'Mặc thử mới thấy form này không hề bị dìm dáng.'",
-            "TRÁNH: 'Sản phẩm này...' / 'Hôm nay em giới thiệu...' / 'Đây là mẫu áo...' / 'Áo có thiết kế...'",
+            "**HOOK KOC:** Câu nói thật khi vừa trải nghiệm sản phẩm. Không quảng cáo. Không trau chuốt.",
+            f"Ví dụ ({industry_label}): {_ind_hook}",
+            "TRÁNH: 'Sản phẩm này...' / 'Hôm nay em giới thiệu...' / 'Đây là...' / Liệt kê thông số.",
         ]
         _koc_extra = [
             "**KOC DIALOGUE ENGINE — CÁCH VIẾT LỜI THOẠI**",
             "Không review như liệt kê. Không trơn tru. Ưu tiên ngôn ngữ nói, được phép bỏ dở câu, sửa ý giữa chừng.",
             "Dùng (chọn phù hợp, không lặp, không nhồi):",
-            "  'Em tưởng...' / 'Ai ngờ...' / 'Mặc lên mới thấy...' / 'Lúc đầu em nghĩ...' / 'Em mới để ý...'",
+            "  'Em tưởng...' / 'Ai ngờ...' / 'Thử rồi mới thấy...' / 'Lúc đầu em nghĩ...' / 'Em mới để ý...'",
             "  'Ủa...' / 'À...' / 'Công nhận...' / 'Nói thật...' / 'Em bất ngờ luôn.' / 'Cái này hay nè.'",
             "  'Mọi người nhìn nè.' / 'Phần này nè...' / 'Nhìn chỗ này nè...' / 'Đúng kiểu...' / 'Kiểu như...'",
             f"Một video {duration_label}: {_koc_reaction_count} phản ứng nhỏ tự nhiên.",
             "",
             "**HÀNH ĐỘNG PHẢI KHỚP LỜI THOẠI**",
-            "Nếu nói 'nhìn phần eo này nè' → hành động phải là (chỉ nhẹ hoặc vuốt phần eo).",
-            "Nếu nói 'quay nghiêng mới thấy' → hành động phải là (quay nghiêng 45 độ).",
-            "Nếu nói 'chất vải này' → hành động phải là (vò nhẹ hoặc vuốt chất vải).",
-            "Không tạo hành động chung chung không khớp lời thoại.",
-            "Hành động bổ sung phù hợp: (chỉnh nhẹ gấu áo) / (xoay nhẹ rồi tự nhìn form) / (cười nhẹ vì bất ngờ)",
-            "  (đưa tay chỉ phần eo) / (kéo nhẹ tà áo để thấy độ rủ) / (sờ thử chất vải) / (vuốt nhẹ bắp tay áo)",
-            "  (chỉnh nhẹ tóc ra sau vai) / (nhìn xuống thân áo) / (bước lùi rồi bước lên) / (chống hông nhẹ)",
+            "Rule: Nói gì → làm cái đó. Không tạo hành động chung chung không liên quan lời.",
+            "  Nói về 1 điểm cụ thể → chỉ / zoom / focus vào đúng điểm đó.",
+            "  Nói 'thử xem' / 'để em thử' → thực hiện demo tương ứng ngay lúc đó.",
+            "  Phát hiện điều bất ngờ → cười nhẹ / reaction ngắn phù hợp.",
+            f"Action phù hợp ngành {industry_label}: {_ind_action}",
             "",
-            "**CTA KOC:** Nhẹ nhàng, không ép mua. Như khuyến nghị thật của người đã mặc.",
-            "Ví dụ: 'Ai thích mặc thoải mái mà vẫn gọn người thì thử mẫu này nha.'",
-            "        'Nếu chị em cũng ngại bụng như em thì mẫu này đáng xem đó.'",
-            "        'Em nghĩ ai thích style nhẹ nhàng, dễ mặc thì nên xem thử màu này.'",
+            f"**CTA KOC:** Nhẹ nhàng, không ép mua. Ví dụ: {_ind_cta}",
             "",
             "**TỰ KIỂM TRA KOC TRƯỚC KHI OUTPUT**",
-            "- Lời thoại có giống người thật đang mặc thử không? → Nếu không, viết lại.",
+            "- Lời thoại có giống người thật đang trải nghiệm sản phẩm không? → Nếu không, viết lại.",
             "- Có bị liệt kê tính năng như bài review không? → Nếu có, phá cấu trúc đó.",
             f"- Có ít nhất {_koc_reaction_count} phản ứng nhỏ tự nhiên không? → Nếu thiếu, thêm vào.",
             "- Hành động có khớp từng câu thoại không? → Nếu không, sửa cho khớp.",
             "- Có câu nào giống MC / quảng cáo / ChatGPT không? → Viết lại câu đó.",
-            "- Có cảm giác 'vừa mặc vừa phát hiện' không? → Áp dụng đúng flow đã chọn.",
+            "- Có cảm giác 'vừa dùng vừa phát hiện' không? → Áp dụng đúng flow đã chọn.",
             "Nếu chưa đạt → tự viết lại trước khi output JSON.",
         ]
     else:
@@ -612,21 +700,29 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         "---",
         "",
         "## PRE-WRITE PROTOCOL — làm TRƯỚC khi viết kịch bản",
+        *(["0. Xác định NGÀNH HÀNG từ tên + mô tả sản phẩm (Thời trang / Mỹ phẩm / Điện tử / Gia dụng / Thực phẩm / Thú cưng / Mẹ&Bé / Khác) → dùng để chọn action phù hợp ở bước 3."]
+          if _is_auto_industry else [f"0. Ngành hàng: {industry_label} — áp dụng action phù hợp ngành này ở bước 3."]),
         "1. Xác định HERO BENEFIT — 1 lợi ích bán hàng mạnh nhất cho khách mục tiêu. Ghi vào section2.heroBenefit.",
-        "   Ví dụ: 'Che bụng cực khéo' / 'Co giãn cực thoải mái' / 'Mặc mát cả ngày' / 'Gọn dáng rõ' / 'Màu đẹp tôn da'",
+        f"   Ví dụ ({industry_label}): " + industry_data.get('hero_examples', "'Lợi ích mạnh nhất' / 'Giải pháp chính' / 'Kết quả thấy rõ'"),
         "2. Kịch bản: 70% lời thoại xoay quanh Hero Benefit. 30% mới nói lợi ích phụ.",
         *([
             "3. Hành động phục vụ Hero Benefit — xem chi tiết trong HÀNH ĐỘNG PHẢI KHỚP bên dưới.",
-        ] if _is_koc else [
-            "3. Hành động (Action) phục vụ Hero Benefit (không random):",
-            "   Che bụng / gọn dáng → quay nghiêng, vuốt/chỉ bụng, xoay người 360",
-            "   Co giãn / thoải mái → kéo vải căng, squat nhẹ, bước chân rộng",
-            "   Chất liệu / mặc mát → vò vải, zoom chất liệu, vuốt tay lên vải",
-            "   Form / dáng tôn → quay nghiêng 45°, chỉ eo/đùi, tiến sát camera",
-            "   Màu sắc / thiết kế → spread áo ra cho thấy full màu, zoom chi tiết cổ/tay/gấu",
-            "   Mặc bầu / đặc thù → xoay người 360, vuốt bụng nhẹ, bước đi tự nhiên",
-            "   Khác → chọn action tự nhiên nhất phù hợp Hero Benefit đó",
-        ]),
+        ] if _is_koc else (
+            [
+                "3. Hành động (Action) phục vụ Hero Benefit (không random):",
+                f"   {industry_data.get('demo', '')}",
+                "   Action phải khớp với Hero Benefit đang nói. Không dùng action chung chung.",
+            ] if not _is_auto_industry and industry_data.get('demo') else [
+                "3. Hành động (Action) phục vụ Hero Benefit (không random):",
+                "   Thời trang → mặc thử, xoay người, zoom chất vải/chi tiết, tạo dáng, quay nghiêng",
+                "   Mỹ phẩm → bôi thử lên da, zoom texture, cảm nhận ngay sau bôi, reveal kết quả",
+                "   Điện tử → mở hộp, bật máy, test chức năng, demo thực tế, zoom màn hình",
+                "   Gia dụng → lắp ráp, sử dụng thực tế, zoom kết quả, before/after cạnh nhau",
+                "   Thực phẩm → mở bao bì, pha/nấu, taste test, biểu cảm khi thử",
+                "   Thú cưng / Mẹ&Bé → zoom phản ứng/chi tiết an toàn, sản phẩm cận cảnh",
+                "   Khác → chọn action tự nhiên nhất thể hiện Hero Benefit tốt nhất",
+            ]
+        )),
         *([
             "4. Thân video: tự nhiên thêm 1-2 Mini Hook giữ người xem (khớp giọng điệu):",
             f"   {_mini_hooks}",
@@ -748,6 +844,9 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
     tone_label = input_data.get('toneCustom', '') if tone == 'custom' else TONE_LABELS.get(tone, tone)
     goal_label = GOAL_LABELS.get(input_data.get('videoGoal', ''), input_data.get('videoGoal', ''))
     audience = input_data.get('targetAudience', '').strip()
+    industry = input_data.get('industry', 'auto')
+    industry_label = INDUSTRY_LABELS.get(industry, 'Tự động nhận diện')
+    industry_data = INDUSTRY_GUIDE.get(industry, {})
 
     base = f"Sản phẩm: {product_name}\nMô tả: {product_desc}"
     if audience:
@@ -827,27 +926,27 @@ Quy tắc viết voScript:
             _is_koc_sec = shooting in ('one-shot', 'review', 'koc-review') and tone == 'natural-koc'
             _koc_flow_sec = random.choice(KOC_DISCOVERY_FLOWS) if _is_koc_sec else None
             _koc_reaction_sec = '2-3' if duration in ('15s', '20s') else '3-5' if duration == '30s' else '4-7'
+            _ind_hook_sec = industry_data.get('koc_hook', 'câu nói thật khi vừa trải nghiệm sản phẩm lần đầu')
+            _ind_action_sec = industry_data.get('koc_action', 'demo trực tiếp điểm nổi bật, zoom phần thể hiện Hero Benefit, reaction khi phát hiện điều thú vị')
             if _is_koc_sec:
                 _koc_block = f"""
 KOC DISCOVERY ENGINE — {_koc_flow_sec['name']}
 Flow: {_koc_flow_sec['pattern']}
 Ví dụ: {_koc_flow_sec['example']}
 
-HOOK KOC: Câu nói thật khi vừa mặc. Không quảng cáo. Không trau chuốt.
-Ví dụ: 'Em tưởng kiểu này mặc lên sẽ bị thùng người á...' / 'Cái này lên người khác hơn em nghĩ.'
-TRÁNH: 'Sản phẩm này...' / 'Hôm nay em giới thiệu...' / 'Đây là mẫu áo...'
+HOOK KOC ({industry_label}): {_ind_hook_sec}
+TRÁNH: 'Sản phẩm này...' / 'Hôm nay em giới thiệu...' / 'Đây là...' / Liệt kê thông số.
 
 KOC DIALOGUE: Ưu tiên ngôn ngữ nói. Không liệt kê tính năng.
-Dùng: 'Em tưởng...' / 'Mặc lên mới thấy...' / 'Mọi người nhìn nè.' / 'Công nhận...' / 'Cái này hay nè.'
+Dùng: 'Em tưởng...' / 'Thử rồi mới thấy...' / 'Mọi người nhìn nè.' / 'Công nhận...' / 'Cái này hay nè.'
 Một video {duration_label}: {_koc_reaction_sec} phản ứng nhỏ tự nhiên.
 
 HÀNH ĐỘNG PHẢI KHỚP LỜI THOẠI:
-Nói 'nhìn phần eo này nè' → (chỉ nhẹ hoặc vuốt phần eo).
-Nói 'quay nghiêng mới thấy' → (quay nghiêng 45 độ).
-Nói 'chất vải này' → (vò nhẹ hoặc vuốt chất vải).
-Bổ sung: (xoay nhẹ rồi tự nhìn form) / (cười nhẹ vì bất ngờ) / (kéo nhẹ tà áo) / (sờ thử chất vải)
+Rule: Nói gì → làm cái đó. Nói về 1 điểm cụ thể → zoom/chỉ/focus đúng điểm đó.
+Action phù hợp ngành {industry_label}: {_ind_action_sec}
+Bổ sung: (cười nhẹ vì bất ngờ) / (reaction ngắn khi phát hiện điều hay)
 
-TỰ KIỂM TRA KOC: Lời thoại có giống người thật đang mặc thử không? Có bị liệt kê không? Hành động có khớp không?"""
+TỰ KIỂM TRA KOC: Lời thoại có giống người thật đang trải nghiệm sản phẩm không? Có bị liệt kê không? Hành động có khớp không? Có cảm giác 'vừa dùng vừa phát hiện' không?"""
             else:
                 _koc_block = ""
             user = f"""{base}{analysis_block}
