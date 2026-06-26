@@ -1166,9 +1166,9 @@ function bellaApp() {
       provider: 'openai',
       apiKeys: { openai: '', deepseek: '', gemini: '', custom: '' },
       baseUrl: 'https://api.openai.com/v1',
-      modelName: 'gpt-4o', temperature: 0.8, maxTokens: 0,
+      modelName: 'gpt-5.4-mini', temperature: 2.0, maxTokens: 0,
       allowWithoutImage: true, autoSave: true,
-      visionProvider: 'gemini',
+      visionProvider: 'same',
       visionGeminiKeys: '',
       visionOpenaiKey: '',
       visionOpenaiBaseUrl: 'https://api.openai.com/v1',
@@ -1246,7 +1246,7 @@ function bellaApp() {
         if (!s.visionGeminiKeys && s.apiKeys.gemini && s.provider !== 'gemini') {
           s.visionGeminiKeys = s.apiKeys.gemini;
         }
-        if (!s.visionProvider) s.visionProvider = 'gemini';
+        if (!s.visionProvider) s.visionProvider = 'same';
         if (!s.visionOpenaiBaseUrl) s.visionOpenaiBaseUrl = 'https://api.openai.com/v1';
         if (!s.visionOpenaiModel) s.visionOpenaiModel = 'gpt-4o-mini';
         if (!s.maxAnalysisImages) s.maxAnalysisImages = 1;
