@@ -635,6 +635,20 @@
               <p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed" x-text="lastImageAnalysis"></p>
             </div>
           </template>
+          <template x-if="imageAnalysisStatus === 'same_ai' && lastSentImages.length > 0">
+            <div class="sm:col-span-2 border border-blue-200 rounded-lg p-3 bg-blue-50/40">
+              <p class="text-xs font-semibold text-blue-700 uppercase mb-2 flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Ảnh đã gửi trực tiếp cho AI — AI tự phân tích khi viết kịch bản
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <template x-for="(img, idx) in lastSentImages" :key="idx">
+                  <img :src="img.dataUrl" @click="lightboxImage = img.dataUrl" class="w-16 h-16 object-cover rounded-lg border border-blue-200 cursor-pointer hover:opacity-80 transition-opacity" :alt="'Ảnh ' + (idx+1)">
+                </template>
+              </div>
+              <p class="text-xs text-blue-600 mt-2" x-text="lastSentImages.length + ' ảnh đã được đính kèm vào prompt — AI nhìn thấy và dùng ảnh để viết kịch bản'"></p>
+            </div>
+          </template>
           <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Khách hàng mục tiêu</p><p class="text-sm text-gray-700" x-text="currentScript.section2.targetCustomer"></p></div>
           <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Pain point</p><p class="text-sm text-gray-700" x-text="currentScript.section2.painPoints"></p></div>
           <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Insight</p><p class="text-sm text-gray-700" x-text="currentScript.section2.insight"></p></div>
@@ -1134,6 +1148,7 @@ function bellaApp() {
     sectionError: null,
     selectedHookIndex: null,
     lastImageAnalysis: '',
+    lastSentImages: [],
     imageAnalysisStatus: null,
     lightboxImage: null,
 
@@ -1478,6 +1493,7 @@ function bellaApp() {
       this.isGenerating = true;
       this.generateError = null;
       this.lastImageAnalysis = '';
+      this.lastSentImages = [];
       this.imageAnalysisStatus = null;
       try {
         const res = await fetch('/api/generate', {
@@ -1497,6 +1513,7 @@ function bellaApp() {
         this.currentScript = data.script;
         this.lastImageAnalysis = data.imageAnalysis || '';
         this.imageAnalysisStatus = data.imageAnalysisStatus || null;
+        this.lastSentImages = (data.imageAnalysisStatus === 'same_ai') ? [...this.form.images] : [];
         // Auto-chọn hook khuyên dùng
         const _hooks = data.script?.section3?.hooks || [];
         const _recIdx = _hooks.findIndex(h => h.isRecommended);
@@ -1776,6 +1793,7 @@ function bellaApp() {
       // Reset image analysis state (không liên quan đến kịch bản lịch sử)
       this.imageAnalysisStatus = null;
       this.lastImageAnalysis = '';
+      this.lastSentImages = [];
       // Reset hook selection về hook khuyên dùng của kịch bản này
       const _hs = item.script?.section3?.hooks || [];
       const _ri = _hs.findIndex(h => h.isRecommended);
