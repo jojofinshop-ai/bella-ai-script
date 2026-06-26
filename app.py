@@ -1071,10 +1071,19 @@ def fetch_url():
     # ── TikTok Shop ──────────────────────────────────────────────────────────
     if 'tiktok.com' in url or 'tiktokshop' in url:
         if IS_CLOUD:
-            # Cloud: dùng urllib + og_info từ redirect URL (Playwright bị TikTok chặn Security Check)
+            # Cloud: thử urllib trước, nếu thất bại thì thử headless Playwright (cho shop.tiktok.com)
             result, err2 = _fetch_tiktok_cloud(url)
             if result and result.get('productName'):
                 return jsonify({'success': True, **result})
+            # Fallback: headless Playwright cho shop.tiktok.com/pdp/
+            _is_pdp = 'shop.tiktok.com' in url and '/pdp/' in url
+            if _is_pdp:
+                try:
+                    result2, err3 = _fetch_with_playwright_headless(url)
+                    if result2 and result2.get('productName'):
+                        return jsonify({'success': True, **result2})
+                except Exception:
+                    pass
             return jsonify({'success': False,
                             'error': err2 or 'Không lấy được thông tin. Vui lòng nhập tên và mô tả thủ công.'})
         else:
