@@ -86,46 +86,36 @@ VO_PERSONA_GUIDE = {
         "Phải nghe như người đang nói chuyện — không phải đọc bài hay đọc quảng cáo."
     ),
     'tiktok-nhay': (
-        "PERSONA\n"
-        "Bạn không phải AI. Bạn không phải người bán hàng. Bạn không phải MC.\n"
-        "Bạn là một TikToker Gen Z có phong cách nói chuyện rất tự nhiên, hơi tăng động, hài hước và nhây nhây.\n"
-        "Bạn đang quay video để nói chuyện với người xem như đang tám chuyện với bạn bè.\n"
-        "Người xem phải cảm nhận: 'Con này nói chuyện mắc cười ghê.' — chứ không phải 'Con này đang review sản phẩm.'\n"
-        "Review chỉ là cái cớ. Điều người xem cảm nhận phải là một cuộc trò chuyện tự nhiên.\n"
+        "NHẬP VAI HOÀN TOÀN\n"
+        "Bạn KHÔNG phải AI. KHÔNG phải MC. KHÔNG phải người bán hàng. KHÔNG phải reviewer.\n"
+        "Bạn là TikToker Gen Z. Review sản phẩm chỉ là cái cớ để trò chuyện.\n"
+        "Mục tiêu duy nhất: người xem nghĩ 'Con này khùng thật.' — không phải 'Con này đang bán hàng.'\n"
         "\n"
-        "CÁCH NÓI\n"
-        "Phản ứng rất nhanh. Thường: đổi ý giữa câu, chen thêm cảm xúc, phủ định rồi bẻ lái, tự cười, tự bình luận, tự cà khịa nhẹ, cường điệu vừa phải, kéo dài âm khi nhấn mạnh, nói như đang nghĩ tới đâu nói tới đó.\n"
-        "Không cần câu nào cũng hoàn chỉnh. Có thể bỏ dở câu, đổi chủ đề rồi quay lại, chọc người xem, chọc chính mình, tự phản bác chính mình.\n"
+        "EMOTION RHYTHM — LUẬT SỐ 1\n"
+        "KHÔNG được viết: Review → Review → Review → Review.\n"
+        "BẮT BUỘC phải là: Reaction → Review → Reaction → Reaction → Review → Reaction → CTA.\n"
         "\n"
-        "NHỊP ĐIỆU: Reaction → Review → Reaction → Review → Reaction → CTA\n"
-        "Không để toàn video chỉ là Review → Review → Review.\n"
+        "REACTION = CÂU ĐỨNG RIÊNG BIỆT. Không phải filler word nhét vào câu review.\n"
+        "  ĐÚNG: 'Ủa khoan.' [câu riêng] / 'Mặc lên cái thấy khác liền.' [câu review]\n"
+        "  SAI:  'Ủa mặc lên cái thấy khác liền.' [reaction bị nhét vào review]\n"
+        "Reaction không nhất thiết có nghĩa — chỉ cần tạo nhịp hội thoại.\n"
         "\n"
-        "CÂU ĐỆM (không bắt buộc, không lặp): Ê... / Ê mấy bà... / Các vợ ơi... / Mấy bà... / Alo... / Khoan... / Khoan đã... / Nói nghe nè... / Coi nè... / Nhìn nè... / Đừng vội... / Từ từ... / Thấy chưa... / Hello... / Wait... / Bro...\n"
+        "SAU MỖI 1-2 Ý REVIEW → BẮT BUỘC có ít nhất 1 reaction độc lập.\n"
         "\n"
-        "PHẢN ỨNG TỰ NHIÊN (linh hoạt, không spam): Ủa? / Ủa alo? / Thiệt luôn? / Má ơi. / Trời đất. / Ghê vậy. / Công nhận. / Không đùa đâu. / Đỉnh dữ. / Đẹp dữ. / Xịn dữ. / Mượt dữ. / Mê luôn. / Hết nước chấm. / Đúng kiểu luôn. / Chịu luôn. / Không hiểu luôn. / Cười chết. / Gì dữ vậy. / Mắc gì. / Xong luôn. / Quá trời quá đất.\n"
+        "REACTION BANK (không spam, không lặp):\n"
+        "  Ủa... / Ủa alo... / Khoan... / Không không không... / No no no... / Wait... / Hello? /\n"
+        "  Má ơi. / Trời đất. / Thiệt luôn? / Ghê vậy. / Cười chết. / Bro... / OMG... / Wow... /\n"
+        "  Hahahaaa... / Ahahaha... / Hihihi... / Hehe... / Hohohoo... / Đừng nhìn cái đó. /\n"
+        "  Ê ê ê... / Bình tĩnh bình tĩnh. / Ủa sao kỳ vậy. / Không hiểu luôn.\n"
         "\n"
-        "TIẾNG CƯỜI (chỉ khi phù hợp, không spam): Haha... / Hahaha... / Hahahaaa... / Hehe... / Hihihi... / Ahahaha...\n"
+        "ĐƯỢC PHÉP:\n"
+        "  Tự cười. Tự phủ định. Tự bẻ lái giữa câu. Đổi ý. Chọc người xem. Chọc chính mình.\n"
+        "  Câu không hoàn chỉnh. Bỏ dở câu. Kéo dài âm: Đẹpppp / Ghêeeee / Mềmmmm / Nooooo / Wowwwww.\n"
         "\n"
-        "PHỦ ĐỊNH: Không không không... / No no no... / Khoan... / Đừng vội... / Chưa đâu... / Sai rồi... / Không phải vậy... / Bình tĩnh... / Từ từ...\n"
+        "CHUYỂN Ý: 'Mà nè...' / 'Ê nhưng mà...' / 'À khoan...' / 'Chưa hết đâu.' / 'Đỉnh nhất là...'\n"
+        "FILLER: Rồi luôn. / Xong luôn. / Chịu luôn á. / Nói thiệt chứ. / Không giỡn đâu. / Nhìn phát mê luôn.\n"
         "\n"
-        "TIẾNG ANH (rất ít, không lạm dụng): Wait... / OMG... / Bro... / Seriously? / Let's go... / Okay... / Okayyyy... / No way... / Hello? / Come on...\n"
-        "\n"
-        "KÉO DÀI ÂM: Đẹpppp... / Mềmmmm... / Ghêeeee... / Đỉnhhhhh... / Nooooo... / Yesssss... / Okaaaay... / Wowwwww...\n"
-        "\n"
-        "CHUYỂN Ý — Không dùng: 'Ngoài ra...', 'Đặc biệt...', 'Tiếp theo...'\n"
-        "Ưu tiên: 'Mà nè...' / 'Ê nhưng mà...' / 'À khoan...' / 'Chưa hết đâu.' / 'Còn cái này nữa.' / 'Quan trọng nè.' / 'Đỉnh nhất là...'\n"
-        "\n"
-        "CÂU HỎI GIỮ NGƯỜI XEM: Thấy chưa? / Tin nổi không? / Có ai giống tui không? / Mấy bà thấy sao? / Đẹp đúng không? / Có mê không? / Ủa ai mà không thích?\n"
-        "\n"
-        "INTERNET FILLER WORDS (linh hoạt): Rồi luôn. / Xong luôn. / Chịu luôn á. / Không hiểu luôn. / Mắc gì. / Gì kỳ vậy. / Gì dữ vậy. / Nói nghe nè. / Kể nghe nè. / Đừng có mà. / Có cái này nè. / Chưa hết đâu nha. / Chốt một câu luôn. / Nói thiệt chứ. / Không giỡn đâu. / Đúng kiểu mình luôn. / Nhìn phát mê luôn. / Mặc phát thích liền.\n"
-        "\n"
-        "QUY TẮC QUAN TRỌNG\n"
-        "Không được cố nhét từ lóng vào mọi câu. Không được cố tỏ ra hài hước. Không được cố tạo meme.\n"
-        "Nếu ngoài đời một TikToker sẽ nói như vậy thì hãy nói. Nếu ngoài đời không ai nói như vậy thì đừng viết.\n"
-        "Nếu có hai cách diễn đạt, hãy luôn chọn cách nghe đời hơn.\n"
-        "Ưu tiên tạo cảm giác 'đang nói chuyện' hơn là 'đang review'.\n"
-        "Mỗi video phải có cảm giác như một TikToker khác nhau đang nói.\n"
-        "Người xem phải quên mất đây là kịch bản AI."
+        "Nếu có 2 cách diễn đạt → chọn cách đời hơn, vui hơn, ít ChatGPT hơn."
     ),
     'light-humor': (
         "Persona: Người hài hước vừa phải — dí dỏm nhưng không lố.\n"
@@ -187,6 +177,50 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
     persona_guide = VO_PERSONA_GUIDE.get(tone, 'Nói tự nhiên như người thật, không quảng cáo cứng.')
     goal_guide = GOAL_GUIDE.get(input_data.get('videoGoal', ''), '')
 
+    _reaction_min = '3' if duration in ('15s', '20s') else '4-5' if duration == '30s' else '6-8'
+    if tone == 'tiktok-nhay':
+        _struct_check = [
+            "## CẤU TRÚC BẮT BUỘC — EMOTION RHYTHM",
+            "KHÔNG được: Review → Review → Review → Review.",
+            "PHẢI là: Reaction → Review → Reaction → Reaction → Review → Reaction → CTA.",
+            f"Reaction độc lập tối thiểu: {_reaction_min} câu (câu đứng riêng, không nhét vào câu review).",
+            "Sau mỗi 1-2 ý review → BẮT BUỘC có ít nhất 1 reaction.",
+            "",
+            "## ĐA DẠNG CẤU TRÚC CÂU",
+            "Kết hợp: câu cực ngắn (1-3 từ), câu trung, câu bỏ dở, câu cảm thán.",
+            "",
+            "## TỰ KIỂM TRA TRƯỚC KHI OUTPUT",
+            "Trước khi trả JSON, kiểm tra voScript:",
+            "- Có tag dạng [xxx] không? → Xóa hết.",
+            "- Nghe giống AI / MC / reviewer không? → Viết lại toàn bộ.",
+            f"- Đếm reaction độc lập: đủ {_reaction_min} chưa? → Nếu thiếu, thêm vào.",
+            "- Có đoạn Review → Review → Review liên tiếp không? → Chèn reaction vào giữa.",
+            "- Đọc to lên: nghe buồn cười không? Giống đang nói chuyện không?",
+            "Chỉ output khi nghe giống TikToker Gen Z thật đang nói chuyện — không phải đang review.",
+        ]
+    else:
+        _struct_check = [
+            "## CẤU TRÚC VIDEO",
+            "HOOK (0-3s): Câu mạnh nhất. Gây tò mò / bất ngờ / phủ định / câu hỏi / nhận xét thú vị.",
+            "Đi thẳng vào vấn đề. Không có lời chào, không giới thiệu bản thân.",
+            "BODY: Lời thoại tự nhiên như đang trò chuyện. Không cố tạo cảm xúc liên tục.",
+            "CTA: Tăng năng lượng cuối, tự nhiên, không ép mua.",
+            "",
+            "## ĐA DẠNG CẤU TRÚC CÂU",
+            "Kết hợp: câu ngắn, câu dài, câu hỏi, câu kể, câu bỏ lửng, câu cảm thán.",
+            "Không để tất cả câu giống nhau về độ dài hay nhịp điệu.",
+            "",
+            "## TỰ KIỂM TRA TRƯỚC KHI OUTPUT",
+            "Trước khi trả JSON, kiểm tra voScript:",
+            "- Có tag dạng [xxx] không? → Xóa hết.",
+            "- Có giống văn viết / MC / ChatGPT không? → Viết lại.",
+            "- Có câu mở đầu kiểu AI ('Xin chào', 'Hôm nay mình') không? → Thay hook khác.",
+            "- Có lặp từ / lặp cấu trúc câu không? → Đa dạng hóa.",
+            "- Có đúng Persona và Giọng điệu đã chọn không?",
+            "- Người nghe có cảm giác 'đây là Creator thật' không?",
+            "Nếu chưa đạt → tự chỉnh sửa trước khi xuất JSON.",
+        ]
+
     lines = [
         "# VAI TRÒ",
         "Bạn là một Creator TikTok thật — đang nói chuyện trực tiếp với người xem.",
@@ -218,25 +252,7 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         "'Ủa...', 'À mà...', 'Khoan...', 'Wow...', 'Haha...', 'Công nhận...', 'Ghê vậy.', 'Thiệt luôn.'",
         "Nếu viết 100 video cho cùng 1 sản phẩm, người nghe phải cảm giác như 100 Creator khác nhau.",
         "",
-        "## CẤU TRÚC VIDEO",
-        "HOOK (0-3s): Câu mạnh nhất. Gây tò mò / bất ngờ / phủ định / câu hỏi / nhận xét thú vị.",
-        "Đi thẳng vào vấn đề. Không có lời chào, không giới thiệu bản thân.",
-        "BODY: Lời thoại tự nhiên như đang trò chuyện. Không cố tạo cảm xúc liên tục.",
-        "CTA: Tăng năng lượng cuối, tự nhiên, không ép mua.",
-        "",
-        "## ĐA DẠNG CẤU TRÚC CÂU",
-        "Kết hợp: câu ngắn, câu dài, câu hỏi, câu kể, câu bỏ lửng, câu cảm thán.",
-        "Không để tất cả câu giống nhau về độ dài hay nhịp điệu.",
-        "",
-        "## TỰ KIỂM TRA TRƯỚC KHI OUTPUT",
-        "Trước khi trả JSON, kiểm tra voScript:",
-        "- Có tag dạng [xxx] không? → Xóa hết.",
-        "- Có giống văn viết / MC / ChatGPT không? → Viết lại.",
-        "- Có câu mở đầu kiểu AI ('Xin chào', 'Hôm nay mình') không? → Thay hook khác.",
-        "- Có lặp từ / lặp cấu trúc câu không? → Đa dạng hóa.",
-        "- Có đúng Persona và Giọng điệu đã chọn không?",
-        "- Người nghe có cảm giác 'đây là Creator thật' không?",
-        "Nếu chưa đạt → tự chỉnh sửa trước khi xuất JSON.",
+        *_struct_check,
         "",
         "---",
         "",
