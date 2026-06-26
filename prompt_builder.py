@@ -234,10 +234,19 @@ KOC_DISCOVERY_FLOWS = [
     },
 ]
 
-MINI_HOOK_BANK = (
-    "'Khoan...' / 'Ê nhưng mà...' / 'Ủa chưa hết nha.' / 'Cái này mới hay nè.' / "
-    "'Quan trọng là...' / 'Chưa kể...' / 'Đỉnh nhất là...' / 'Nhìn nè.' / 'Ủa thấy chưa?'"
-)
+def _get_mini_hooks(tone: str) -> str:
+    """Trả về mini hook phù hợp giọng điệu. Trả '' cho tiktok-nhay (REACTION BANK đã cover)."""
+    if tone == 'tiktok-nhay':
+        return ''
+    return {
+        'natural-koc': "'Khoan đã...' / 'Cái này mới hay nè.' / 'Ủa chưa hết nha.' / 'Mọi người nhìn nè.' / 'Phần này nè...'",
+        'cute': "'Ủa mà nè!' / 'Nhìn chỗ này nè~' / 'Còn cái này nữa nha!' / 'Thích ghê á.'",
+        'light-elegant': "'Thật ra...' / 'Điều mình thấy hay là...' / 'Phải nói thêm...' / 'Và điểm này nữa...'",
+        'friendly': "'Ê mà này nha.' / 'Quan trọng là...' / 'Chưa hết nha.' / 'À khoan.' / 'Cái này nè.'",
+        'light-humor': "'Nhưng mà đợi đã.' / 'Cái này mới hay nè.' / 'Chưa kể...' / 'À mà buồn cười là...'",
+        'soft-close': "'Quan trọng hơn là...' / 'Và điều này nữa...' / 'Cái này mới là điểm chính...'",
+        'real-review': "'Nói thật thêm...' / 'Và điểm mình lưu ý...' / 'Thật ra còn...' / 'Chưa kể...'",
+    }.get(tone, "'Quan trọng là...' / 'Chưa kể...' / 'Nhìn nè.' / 'Cái này nữa nha.'")
 
 GOAL_GUIDE = {
     'increase-conversion': 'CTA mạnh cuối video. Nhấn mạnh giá trị, deal, hoặc lý do mua ngay hôm nay.',
@@ -289,6 +298,7 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
     _reaction_min = '3' if duration in ('15s', '20s') else '4-5' if duration == '30s' else '6-8'
     _hook_short = _hook_type.split(' —')[0]
     _pattern_short = _pattern['name'].split(' —')[0].strip()
+    _mini_hooks = _get_mini_hooks(tone)
 
     if tone == 'tiktok-nhay':
         _struct_check = [
@@ -411,16 +421,23 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         "",
         "## PRE-WRITE PROTOCOL — làm TRƯỚC khi viết kịch bản",
         "1. Xác định HERO BENEFIT — 1 lợi ích bán hàng mạnh nhất cho khách mục tiêu. Ghi vào section2.heroBenefit.",
-        "   Ví dụ: 'Che bụng cực khéo' / 'Co giãn cực thoải mái' / 'Mặc mát cả ngày' / 'Gọn dáng rõ'",
+        "   Ví dụ: 'Che bụng cực khéo' / 'Co giãn cực thoải mái' / 'Mặc mát cả ngày' / 'Gọn dáng rõ' / 'Màu đẹp tôn da'",
         "2. voScript: 70% xoay quanh Hero Benefit. 30% mới nói lợi ích phụ.",
-        "3. Hành động phục vụ Hero Benefit (không random):",
-        "   Che bụng/gọn dáng → quay nghiêng, vuốt/chỉ bụng, xoay người 360",
-        "   Co giãn → kéo vải căng, squat nhẹ, bước chân rộng",
-        "   Chất liệu/mặc mát → vò vải, zoom chất liệu, vuốt tay lên vải",
-        "   Form/dáng → quay nghiêng 45°, chỉ eo/đùi, tiến sát camera",
-        "4. Thân video: tự nhiên thêm 1-2 Mini Hook giữ người xem:",
-        f"   {MINI_HOOK_BANK}",
-        "   Mini Hook tự nhiên — không cố định, mỗi video khác nhau.",
+        "3. Camera action trong lines[] phục vụ Hero Benefit (người quay im lặng — chỉ di chuyển camera):",
+        "   Che bụng / gọn dáng → quay nghiêng, zoom chậm từ eo xuống, pan full body",
+        "   Co giãn / thoải mái → góc rộng khi người mẫu bước đi, zoom vào vải khi kéo căng",
+        "   Chất liệu / mặc mát → zoom sát vải, tilt dọc áo, close-up chi tiết đường may",
+        "   Form / dáng tôn → góc xa 45°, pan chậm từ đầu xuống, zoom eo hoặc đùi",
+        "   Màu sắc / thiết kế → spread áo cho thấy full màu, zoom chi tiết cổ/tay/gấu áo",
+        "   Mặc bầu / đặc thù → chính diện + nghiêng để thấy form bụng, zoom vùng bụng",
+        "   Khác → chọn camera move tự nhiên nhất phù hợp với Hero Benefit đó",
+        *([
+            "4. Thân voScript: tự nhiên thêm 1-2 Mini Hook ngắt nhịp giữ người nghe (khớp giọng điệu):",
+            f"   {_mini_hooks}",
+            "   Mỗi video khác nhau — không cố định câu nào.",
+        ] if _mini_hooks else [
+            "4. Nhịp điệu voScript: xen kẽ câu ngắn/dài, reaction/review — không đều đơn điệu.",
+        ]),
         "",
         *_struct_check,
         "",
@@ -552,6 +569,21 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         ]
         _koc_extra = []
 
+    _mini_hooks = _get_mini_hooks(tone)
+    _pattern_short = _pattern['name'].split(' —')[0].strip()
+    _hook_short_check = _hook_type.split(' —')[0].strip()
+    _selfcheck_lines = [] if _is_koc else [
+        "**TỰ KIỂM TRA TRƯỚC KHI OUTPUT**",
+        f"- Hook có đúng kiểu '{_hook_short_check}' không? → Nếu không, viết lại.",
+        f"- Cấu trúc có đúng '{_pattern_short}' không? → Điều chỉnh nếu lệch.",
+        "- Có câu nào giống AI/MC/văn quảng cáo không? → Viết lại.",
+        "- Có đoạn liệt kê tính năng không? → Chuyển sang lợi ích cụ thể.",
+        "- Hero Benefit có xuất hiện ở đa số lời thoại không? → Nếu không, tăng tỷ lệ.",
+        "- Lời thoại đọc to lên nghe tự nhiên không? → Nếu không, viết lại.",
+        "Nếu chưa đạt → tự chỉnh sửa trước khi xuất JSON.",
+        "",
+    ]
+
     lines = [
         "# THÔNG TIN SẢN PHẨM CẦN TẠO KỊCH BẢN",
         "",
@@ -581,16 +613,27 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         "",
         "## PRE-WRITE PROTOCOL — làm TRƯỚC khi viết kịch bản",
         "1. Xác định HERO BENEFIT — 1 lợi ích bán hàng mạnh nhất cho khách mục tiêu. Ghi vào section2.heroBenefit.",
-        "   Ví dụ: 'Che bụng cực khéo' / 'Co giãn cực thoải mái' / 'Mặc mát cả ngày' / 'Gọn dáng rõ'",
+        "   Ví dụ: 'Che bụng cực khéo' / 'Co giãn cực thoải mái' / 'Mặc mát cả ngày' / 'Gọn dáng rõ' / 'Màu đẹp tôn da'",
         "2. Kịch bản: 70% lời thoại xoay quanh Hero Benefit. 30% mới nói lợi ích phụ.",
-        "3. Hành động (Action) phục vụ Hero Benefit (không random):",
-        "   Che bụng/gọn dáng → quay nghiêng, vuốt/chỉ bụng, xoay người 360",
-        "   Co giãn → kéo vải căng, squat nhẹ, bước chân rộng",
-        "   Chất liệu/mặc mát → vò vải, zoom chất liệu, vuốt tay lên vải",
-        "   Form/dáng → quay nghiêng 45°, chỉ eo/đùi, tiến sát camera",
-        "4. Thân video: tự nhiên thêm 1-2 Mini Hook giữ người xem:",
-        f"   {MINI_HOOK_BANK}",
-        "   Mini Hook tự nhiên — không cố định, mỗi video khác nhau.",
+        *([
+            "3. Hành động phục vụ Hero Benefit — xem chi tiết trong HÀNH ĐỘNG PHẢI KHỚP bên dưới.",
+        ] if _is_koc else [
+            "3. Hành động (Action) phục vụ Hero Benefit (không random):",
+            "   Che bụng / gọn dáng → quay nghiêng, vuốt/chỉ bụng, xoay người 360",
+            "   Co giãn / thoải mái → kéo vải căng, squat nhẹ, bước chân rộng",
+            "   Chất liệu / mặc mát → vò vải, zoom chất liệu, vuốt tay lên vải",
+            "   Form / dáng tôn → quay nghiêng 45°, chỉ eo/đùi, tiến sát camera",
+            "   Màu sắc / thiết kế → spread áo ra cho thấy full màu, zoom chi tiết cổ/tay/gấu",
+            "   Mặc bầu / đặc thù → xoay người 360, vuốt bụng nhẹ, bước đi tự nhiên",
+            "   Khác → chọn action tự nhiên nhất phù hợp Hero Benefit đó",
+        ]),
+        *([
+            "4. Thân video: tự nhiên thêm 1-2 Mini Hook giữ người xem (khớp giọng điệu):",
+            f"   {_mini_hooks}",
+            "   Mỗi video khác nhau — không cố định câu nào.",
+        ] if _mini_hooks else [
+            "4. Nhịp điệu video: xen kẽ reaction/review, câu ngắn/dài — không đều đơn điệu.",
+        ]),
         "",
         *_engine1_lines,
         "",
@@ -605,6 +648,7 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         "",
         *_koc_extra,
         *( [""] if _koc_extra else [] ),
+        *_selfcheck_lines,
         "---",
         "",
         "# YÊU CẦU ĐẦU RA",
@@ -898,6 +942,8 @@ Quy tắc bắt buộc:
 - Đề cập tên hoặc loại sản phẩm
 - 1-2 emoji phù hợp
 
+TỰ KIỂM TRA: Đếm ký tự từng caption trước khi output. Nếu > 100 ký tự → rút ngắn ngay.
+
 ```json
 {{"section7":{{"captions":["caption 1","caption 2","caption 3"]}}}}
 ```"""
@@ -947,9 +993,10 @@ Nếu chưa đạt → tự tạo lại.
 {context_line}
 
 Phân tích nhanh sản phẩm để tạo kịch bản TikTok Shop.
+Xác định luôn Hero Benefit — 1 lợi ích bán hàng mạnh nhất cho khách mục tiêu cụ thể này.
 
 ```json
-{{"section2":{{"targetCustomer":"","painPoints":"","insight":"","highlights":"","mainBenefits":"","usageSituations":""}}}}
+{{"section2":{{"targetCustomer":"","painPoints":"","insight":"","highlights":"","mainBenefits":"","usageSituations":"","heroBenefit":""}}}}
 ```"""
 
     elif section == 'tips':
