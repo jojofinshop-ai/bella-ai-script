@@ -1,5 +1,6 @@
 import json
 import re
+import random
 
 
 def build_system_prompt(prompt_settings: dict) -> str:
@@ -66,24 +67,29 @@ TONE_GUIDE = {
 
 VO_PERSONA_GUIDE = {
     'natural-koc': (
-        "Persona: Người vừa trải nghiệm sản phẩm — đang kể lại cho bạn bè nghe.\n"
-        "Chân thật, không cường điệu. Dùng: 'mọi người', 'các mẹ', 'các chị', 'theo mình', 'công nhận', 'nói thật'.\n"
-        "Không hype, không quảng cáo cứng. Như đang nhận xét thật sau khi dùng."
+        "Persona: Người vừa trải nghiệm sản phẩm — đang kể lại cho bạn bè nghe như đang nhắn voice message.\n"
+        "Chân thật, không cường điệu. Dùng: 'mọi người', 'các mẹ', 'công nhận', 'nói thật', 'mà thật ra...'.\n"
+        "Được phép: ngập ngừng nhẹ ('ừ thì...'), tự sửa ý ('à không, ý mình là...'), reaction ngắn ('ừa ghê', 'thiệt á').\n"
+        "Không hype, không quảng cáo cứng. Không phải đang review — đang kể chuyện với bạn."
     ),
     'friendly': (
-        "Persona: Người bạn thân đang gợi ý món đồ hay.\n"
-        "Ấm áp, gần gũi. Dùng: 'nè', 'nha', 'á', 'đó', 'chị em', 'mọi người'.\n"
-        "Không formal, không cứng nhắc. Nghe như đang nhắn tin cho bạn, không phải đọc quảng cáo."
+        "Persona: Người bạn thân đang nhắn voice gợi ý món đồ hay — ấm áp và chân thật.\n"
+        "Gần gũi. Dùng: 'nè', 'nha', 'á', 'chị em', 'mọi người'. Có thể tự cười nhẹ ('haha thật ra là...').\n"
+        "Được phép: câu bỏ lửng, chuyển ý tự nhiên, reaction nhỏ ('ừ mà...', 'thật ra...', 'à khoan đã...').\n"
+        "Nghe như đang nhắn tin cho bạn — không phải đọc quảng cáo."
     ),
     'cute': (
-        "Persona: Cô gái dễ thương đang chia sẻ món đồ yêu thích của mình.\n"
-        "Nhẹ nhàng, tươi vui. Có thể dùng: 'hihi', 'hehe', 'ui', 'cưng ghê', 'trời ơi'.\n"
-        "Dịu dàng nhưng vẫn tự nhiên. Không gượng ép, không quá lố."
+        "Persona: Cô gái dễ thương đang chia sẻ món đồ yêu thích — hào hứng nhưng thật thà.\n"
+        "Nhẹ nhàng, tươi vui. Dùng: 'hihi', 'hehe', 'ui', 'trời ơi', 'cưng ghê', 'thích thật sự'.\n"
+        "Được phép: kêu lên vì ngạc nhiên ('ui trời!'), tự cười ('hehe'), câu bỏ dở ('mà nó còn...').\n"
+        "Dịu dàng nhưng vẫn tự nhiên — không gượng ép, không quá lố."
     ),
     'light-elegant': (
-        "Persona: Người thanh lịch, tinh tế đang chia sẻ quan điểm cá nhân.\n"
-        "Không dùng từ lóng, không slang thô. Câu chữ chỉn chu nhưng không cứng nhắc.\n"
-        "Phải nghe như người đang nói chuyện — không phải đọc bài hay đọc quảng cáo."
+        "Persona: Người thanh lịch đang chia sẻ quan điểm cá nhân — như kể cho người thân nghe.\n"
+        "Không slang thô. Câu chữ chỉn chu nhưng vẫn có sự tự nhiên.\n"
+        "Dùng: 'thật ra thì...', 'mình thấy...', 'phải nói là...', 'điểm này mình thích thật'.\n"
+        "Được phép: tự nhận xét chân thật, tự điều chỉnh nhẹ ('à không, ý mình là...').\n"
+        "Phải nghe như đang nói chuyện — không đọc bài, không quảng cáo."
     ),
     'tiktok-nhay': (
         "NHẬP VAI HOÀN TOÀN\n"
@@ -118,21 +124,86 @@ VO_PERSONA_GUIDE = {
         "Nếu có 2 cách diễn đạt → chọn cách đời hơn, vui hơn, ít ChatGPT hơn."
     ),
     'light-humor': (
-        "Persona: Người hài hước vừa phải — dí dỏm nhưng không lố.\n"
-        "Hài có chừng mực, có thể pha châm biếm nhẹ nhàng hoặc nhận xét buồn cười.\n"
-        "Vẫn tự nhiên, không ép hài, không cố quá."
+        "Persona: Người hài hước vừa phải — dí dỏm, có thể tự trêu chọc nhẹ.\n"
+        "Hài có chừng mực. Có thể pha nhận xét buồn cười hoặc châm biếm nhẹ về bản thân.\n"
+        "Dùng: 'kiểu như là...', 'nói thật nhá...', 'ừa kiểu vậy đó', 'mình cũng thấy buồn cười là...'.\n"
+        "Được phép: tự trêu ('mình nghĩ ban đầu là... thì sai rồi'), nhận xét bất ngờ, reaction hài nhẹ.\n"
+        "Không ép hài, không cố quá — hài phải đến tự nhiên."
     ),
     'soft-close': (
-        "Persona: Người bạn chân thành đang giới thiệu món đồ thật sự tốt.\n"
-        "Tập trung vào giá trị thật. Không dùng: 'mua ngay kẻo hết', 'sale cuối', 'không mua là tiếc'.\n"
-        "Ưu tiên: 'nếu bạn đang cần...', 'mình thấy đáng...', 'thật ra cái này...'. Chốt nhẹ, không áp lực."
+        "Persona: Người bạn chân thành đang giới thiệu món đồ thật sự tốt — không ép, không hype.\n"
+        "Tập trung giá trị thật. Dùng: 'nếu bạn đang cần...', 'mình thấy đáng...', 'thật ra cái này...'.\n"
+        "Được phép: thừa nhận điểm chưa hoàn hảo nếu có, nói thật về giá trị, reaction chân thành.\n"
+        "Chốt nhẹ, không áp lực — người nghe tự muốn tìm hiểu thêm."
     ),
     'real-review': (
-        "Persona: Người vừa dùng sản phẩm xong — đang nói thật, không PR.\n"
+        "Persona: Người vừa dùng sản phẩm thật — đang nói thật, không PR.\n"
         "Có cả ưu và điểm cần lưu ý. Nghe đáng tin vì không hoàn hảo 100%.\n"
-        "Có thể dùng: 'thật ra', 'nói thật', 'mình dùng rồi nên biết', 'điểm này mình thích / chưa thích lắm'."
+        "Được phép: ngập ngừng ('ừ thì... thật ra...'), tự điều chỉnh ('không phải tất cả, nhưng...'), reaction thật ('ghê thật').\n"
+        "Dùng: 'thật ra', 'nói thật', 'mình dùng rồi nên biết', 'điểm này mình thích / chưa thích lắm'."
     ),
 }
+
+# V3: Random structure patterns — AI picks one each request
+STRUCTURE_PATTERNS = [
+    {
+        'name': 'Pattern A — Pain First',
+        'flow': 'Nỗi đau/vấn đề → Reaction → Review giải pháp → Reaction → CTA',
+        'note': 'Hook vào vấn đề thật của khách hàng. Reaction đồng cảm. Review sản phẩm là giải pháp. Reaction xác nhận. CTA.',
+    },
+    {
+        'name': 'Pattern B — Story Opening',
+        'flow': 'Reaction mở đầu → Story ngắn → Review → Reaction bất ngờ → CTA',
+        'note': 'Mở bằng reaction gây chú ý. Kể câu chuyện ngắn liên quan sản phẩm. Review. Reaction bất ngờ. CTA.',
+    },
+    {
+        'name': 'Pattern C — Question Hook',
+        'flow': 'Câu hỏi → Reaction tự trả lời → Lợi ích → Reaction → CTA',
+        'note': 'Hook là câu hỏi kéo tò mò. Reaction tự hỏi tự trả lời. Trình bày lợi ích. Reaction. CTA.',
+    },
+    {
+        'name': 'Pattern D — Plot Twist',
+        'flow': 'Kỳ vọng sai / Hiểu nhầm → Bẻ lái bất ngờ → Review → Reaction → CTA',
+        'note': 'Tạo kỳ vọng hoặc hiểu nhầm ngay đầu. Bẻ lái bất ngờ. Review thật. Reaction. CTA.',
+    },
+    {
+        'name': 'Pattern E — Funny Confession',
+        'flow': 'Thú nhận hài hước → Review → Reaction → Lợi ích cốt lõi → CTA',
+        'note': 'Mở bằng thú nhận buồn cười liên quan tình huống / sản phẩm. Review. Reaction. Lợi ích. CTA.',
+    },
+    {
+        'name': 'Pattern F — Trend / Sarcasm',
+        'flow': 'Trend / Sarcasm nhẹ → Reaction → Review → Nhận xét bất ngờ → CTA',
+        'note': 'Hook theo trend đang hot hoặc sarcasm nhẹ. Reaction. Review thật. Nhận xét vui/bất ngờ. CTA.',
+    },
+]
+
+# V3: Hook type randomizer
+HOOK_TYPES = [
+    'Pain — mở bằng nỗi đau / vấn đề cụ thể của khách hàng',
+    'Question — câu hỏi khơi gợi tò mò, người xem muốn biết đáp án',
+    'Plot twist — tạo kỳ vọng rồi đảo ngược bất ngờ',
+    'Confession — thú nhận hài hước hoặc thật thà về sản phẩm / tình huống',
+    'Reaction — bắt đầu bằng reaction mạnh (Ủa / Khoan / OMG / Má ơi)',
+    'Sarcasm — châm biếm nhẹ hoặc phủ định để gây chú ý',
+    'Unexpected opinion — nhận xét bất ngờ, trái với suy nghĩ thông thường',
+    'Comparison — "ai cũng nghĩ X nhưng thật ra Y" hoặc so sánh trước/sau',
+    'Funny opening — câu mở buồn cười, kéo người xem dừng lại',
+    'Trend opening — bắt đầu bằng format / trend TikTok đang hot',
+    'Misunderstanding — tạo hiểu nhầm cố tình rồi giải thích ngay',
+]
+
+# V3: Caption style randomizer
+CAPTION_STYLES = [
+    'Pain — nói trúng nỗi đau của khách hàng',
+    'Confession — thú nhận hài hước liên quan sản phẩm',
+    'Relatable — câu mà nhiều người đồng cảm ngay lập tức',
+    'Funny — caption vui, không review thẳng',
+    'Before-After — gợi ý sự thay đổi trước/sau khi dùng sản phẩm',
+    'Question — câu hỏi kéo comment',
+    'Strong opinion — nhận xét cá nhân mạnh, không neutral',
+    'Benefit — lợi ích cốt lõi ngắn gọn, súc tích',
+]
 
 GOAL_GUIDE = {
     'increase-conversion': 'CTA mạnh cuối video. Nhấn mạnh giá trị, deal, hoặc lý do mua ngay hôm nay.',
@@ -163,7 +234,7 @@ GOAL_LABELS = {
 
 
 def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: str = '') -> str:
-    """Prompt cho Voice Over (ElevenLabs V3 Enhance) — pure voice script, không emotion tag."""
+    """Prompt V3 cho Voice Over (ElevenLabs V3 Enhance) — pure voice script, không emotion tag."""
     duration = input_data.get('duration', '30s')
     duration_label = input_data.get('durationCustom', '') if duration == 'custom' else DURATION_LABELS.get(duration, duration)
     goal_label = GOAL_LABELS.get(input_data.get('videoGoal', ''), input_data.get('videoGoal', ''))
@@ -177,14 +248,34 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
     persona_guide = VO_PERSONA_GUIDE.get(tone, 'Nói tự nhiên như người thật, không quảng cáo cứng.')
     goal_guide = GOAL_GUIDE.get(input_data.get('videoGoal', ''), '')
 
+    # V3: Random engines — varied each request
+    _pattern = random.choice(STRUCTURE_PATTERNS)
+    _hook_type = random.choice(HOOK_TYPES)
+    _caption_styles = random.sample(CAPTION_STYLES, 3)
     _reaction_min = '3' if duration in ('15s', '20s') else '4-5' if duration == '30s' else '6-8'
+    _hook_short = _hook_type.split(' —')[0]
+    _pattern_short = _pattern['name'].split(' —')[0].strip()
+
     if tone == 'tiktok-nhay':
         _struct_check = [
-            "## CẤU TRÚC BẮT BUỘC — EMOTION RHYTHM",
+            "## ENGINE 1 — CẤU TRÚC VIDEO LẦN NÀY",
+            f"Dùng: {_pattern['name']}",
+            f"Flow: {_pattern['flow']}",
+            f"Ghi chú: {_pattern['note']}",
+            "",
+            "## ENGINE 4 — HOOK LẦN NÀY",
+            f"Hook phải thuộc kiểu: {_hook_type}",
+            "",
+            "## EMOTION RHYTHM — LUẬT BẮT BUỘC",
             "KHÔNG được: Review → Review → Review → Review.",
             "PHẢI là: Reaction → Review → Reaction → Reaction → Review → Reaction → CTA.",
             f"Reaction độc lập tối thiểu: {_reaction_min} câu (câu đứng riêng, không nhét vào câu review).",
             "Sau mỗi 1-2 ý review → BẮT BUỘC có ít nhất 1 reaction.",
+            "",
+            "## ENGINE 3 — EMOTION CURVE",
+            "Năng lượng KHÔNG được đều từ đầu đến cuối.",
+            "Hook mạnh → body xen kẽ cao/thấp → CTA bật lên.",
+            "Câu reaction ngắn = giảm tốc, tạo nhịp. Câu bất ngờ = tăng đột ngột.",
             "",
             "## ĐA DẠNG CẤU TRÚC CÂU",
             "Kết hợp: câu cực ngắn (1-3 từ), câu trung, câu bỏ dở, câu cảm thán.",
@@ -195,16 +286,26 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
             "- Nghe giống AI / MC / reviewer không? → Viết lại toàn bộ.",
             f"- Đếm reaction độc lập: đủ {_reaction_min} chưa? → Nếu thiếu, thêm vào.",
             "- Có đoạn Review → Review → Review liên tiếp không? → Chèn reaction vào giữa.",
+            f"- Hook có đúng kiểu '{_hook_short}' không? → Nếu không, viết lại hook.",
+            f"- Cấu trúc có đúng '{_pattern_short}' không? → Nếu lệch, điều chỉnh.",
             "- Đọc to lên: nghe buồn cười không? Giống đang nói chuyện không?",
             "Chỉ output khi nghe giống TikToker Gen Z thật đang nói chuyện — không phải đang review.",
         ]
     else:
         _struct_check = [
-            "## CẤU TRÚC VIDEO",
-            "HOOK (0-3s): Câu mạnh nhất. Gây tò mò / bất ngờ / phủ định / câu hỏi / nhận xét thú vị.",
-            "Đi thẳng vào vấn đề. Không có lời chào, không giới thiệu bản thân.",
-            "BODY: Lời thoại tự nhiên như đang trò chuyện. Không cố tạo cảm xúc liên tục.",
-            "CTA: Tăng năng lượng cuối, tự nhiên, không ép mua.",
+            "## ENGINE 1 — CẤU TRÚC VIDEO LẦN NÀY",
+            f"Dùng: {_pattern['name']}",
+            f"Flow: {_pattern['flow']}",
+            f"Ghi chú: {_pattern['note']}",
+            "",
+            "## ENGINE 4 — HOOK LẦN NÀY",
+            f"Hook phải thuộc kiểu: {_hook_type}",
+            "Đi thẳng vào nội dung. Không lời chào, không giới thiệu bản thân.",
+            "",
+            "## ENGINE 3 — EMOTION CURVE",
+            "Năng lượng KHÔNG được đều từ đầu đến cuối.",
+            "Hook mạnh → body xen kẽ cao/thấp → CTA bật lên.",
+            "Không để cùng một mức năng lượng / cùng một nhịp câu suốt video.",
             "",
             "## ĐA DẠNG CẤU TRÚC CÂU",
             "Kết hợp: câu ngắn, câu dài, câu hỏi, câu kể, câu bỏ lửng, câu cảm thán.",
@@ -215,6 +316,9 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
             "- Có tag dạng [xxx] không? → Xóa hết.",
             "- Có giống văn viết / MC / ChatGPT không? → Viết lại.",
             "- Có câu mở đầu kiểu AI ('Xin chào', 'Hôm nay mình') không? → Thay hook khác.",
+            f"- Hook có đúng kiểu '{_hook_short}' không? → Nếu không, viết lại hook.",
+            f"- Cấu trúc có đúng '{_pattern_short}' không? → Nếu lệch, điều chỉnh.",
+            "- Có ít nhất 2-3 câu reaction / ngắt nhịp độc lập chưa? → Nếu thiếu, thêm vào.",
             "- Có lặp từ / lặp cấu trúc câu không? → Đa dạng hóa.",
             "- Có đúng Persona và Giọng điệu đã chọn không?",
             "- Người nghe có cảm giác 'đây là Creator thật' không?",
@@ -246,11 +350,30 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         "'Trong video này', 'Đây là sản phẩm', 'Sản phẩm này được thiết kế để'.",
         "Không dùng cấu trúc AI: 'Ngoài ra...', 'Đặc biệt...', 'Sản phẩm có...', 'Sản phẩm được...'.",
         "",
+        "## ENGINE 2 — HUMAN CONVERSATION",
+        "Voice Over phải nghe như người thật đang nói — không phải AI đang đọc script.",
+        "Được phép dùng (chọn phù hợp với persona, không spam tất cả):",
+        "  Ủa... / Khoan... / À thôi. / Ý mình là... / Haha. / Hahahaa. / Hohohoo. / Hihi.",
+        "  Ê ê ê. / Không không không. / Wait... / No no no. / Bro... / OMG... / Má.",
+        "Không phải câu nào cũng cần — chỉ xuất hiện khi tự nhiên, phù hợp persona.",
+        "",
+        "## ENGINE 5 — IMPERFECTION ENGINE",
+        "Được phép (AI tự chọn phù hợp, không dùng tất cả trong một video):",
+        "  Kéo dài âm khi nhấn mạnh: Đẹpppp / Ghêeeee / Mềmmmm / Nooooo / Wowwwww",
+        "  Câu không hoàn chỉnh. Bỏ dở câu giữa chừng. Tự sửa lại ý vừa nói.",
+        "  Tự cười. Tự troll nhẹ. Tự phủ định rồi bẻ lái.",
+        "Mỗi video tự chọn khác nhau — không được dùng công thức cố định.",
+        "",
         "## Viết như người đang NÓI, không phải VIẾT",
-        "Được dùng câu đệm, phản ứng tự nhiên, ngắt nghỉ, câu bỏ lửng.",
-        "Ví dụ (chỉ là ví dụ, AI phải sáng tạo thêm, không lặp lại những cái này):",
-        "'Ủa...', 'À mà...', 'Khoan...', 'Wow...', 'Haha...', 'Công nhận...', 'Ghê vậy.', 'Thiệt luôn.'",
         "Nếu viết 100 video cho cùng 1 sản phẩm, người nghe phải cảm giác như 100 Creator khác nhau.",
+        "",
+        "## ENGINE 6 — CAPTION ENGINE",
+        "Caption trong section7 phải đa dạng, không phải 3 caption đều review thẳng.",
+        f"Lần này viết 3 caption theo 3 kiểu sau:",
+        f"  Caption 1: {_caption_styles[0]}",
+        f"  Caption 2: {_caption_styles[1]}",
+        f"  Caption 3: {_caption_styles[2]}",
+        "Mỗi caption ≤ 100 ký tự, có 1-2 emoji, đề cập tên hoặc loại sản phẩm.",
         "",
         *_struct_check,
         "",
@@ -278,7 +401,7 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         '  "section1": {"productName":"","targetAudience":"","shootingStyle":"Voice Over (ElevenLabs)","duration":"","tone":"","videoGoal":""},',
         '  "section2": {"targetCustomer":"","painPoints":"","insight":"","highlights":"","mainBenefits":"","usageSituations":""},',
         '  "section3": {"hooks":[{"text":"câu hook tự nhiên mạnh 0-3s, không tag, không chào hỏi","isRecommended":true},{"text":"hook 2 kiểu khác — phủ định hoặc câu hỏi","isRecommended":false},{"text":"hook 3 kiểu khác — nhận xét bất ngờ","isRecommended":false}]},',
-        '  "section7": {"captions":["caption ≤100 ký tự + 1-2 emoji","caption 2","caption 3"]},',
+        '  "section7": {"captions":["caption 1 ≤100 ký tự + 1-2 emoji","caption 2 ≤100 ký tự + 1-2 emoji","caption 3 ≤100 ký tự + 1-2 emoji"]},',
         '  "section8": {"hashtags":["#tag1","#tag2","#tiktokshop"]},',
         '  "section4": {',
         '    "duration":"30s",',
@@ -293,10 +416,11 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         '```',
         "",
         "Lưu ý cuối:",
-        f"- voScript: KHÔNG được chứa bất kỳ [tag] nào. Chỉ lời thoại thuần túy.",
+        "- voScript: KHÔNG được chứa bất kỳ [tag] nào. Chỉ lời thoại thuần túy.",
         f"- Viết đủ nội dung cho {duration_label}.",
         "- section5 timeline: 'voice' là lời thoại thuần (không tag), 'action' là hành động camera riêng biệt.",
         "- lines[]: số entry bằng số câu/đoạn trong voScript. Mô tả hành động cụ thể: cầm gì, góc máy, di chuyển.",
+        f"- section7 captions: 3 kiểu {_caption_styles[0].split(' —')[0]} / {_caption_styles[1].split(' —')[0]} / {_caption_styles[2].split(' —')[0]}. Tối đa 100 ký tự mỗi caption.",
     ]
     return "\n".join(lines)
 
@@ -314,6 +438,11 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
     tone = input_data.get('tone', 'natural-koc')
     tone_label = input_data.get('toneCustom', '') if tone == 'custom' else TONE_LABELS.get(tone, tone)
     goal_label = GOAL_LABELS.get(input_data.get('videoGoal', ''), input_data.get('videoGoal', ''))
+
+    # V3: Random diversity for non-voiceover scripts
+    _pattern = random.choice(STRUCTURE_PATTERNS)
+    _hook_type = random.choice(HOOK_TYPES)
+    _caption_styles = random.sample(CAPTION_STYLES, 3)
 
     lines = [
         "# THÔNG TIN SẢN PHẨM CẦN TẠO KỊCH BẢN",
@@ -342,6 +471,22 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         "",
         "---",
         "",
+        f"**ENGINE 1 — CẤU TRÚC LẦN NÀY:** {_pattern['name']}",
+        f"Flow: {_pattern['flow']}",
+        f"Ghi chú: {_pattern['note']}",
+        "",
+        f"**ENGINE 4 — HOOK LẦN NÀY:** {_hook_type}",
+        "Hook đi thẳng vào nội dung. Không lời chào, không giới thiệu bản thân.",
+        "",
+        "**ENGINE 2 — HUMAN CONVERSATION:** Lời thoại phải nghe như người thật đang nói.",
+        "Được phép: ngập ngừng, tự sửa, reaction ngắn, câu bỏ lửng, tự cười.",
+        "",
+        "**ENGINE 3 — EMOTION CURVE:** Năng lượng không đều — hook mạnh, body xen kẽ, CTA bật lên.",
+        "",
+        f"**ENGINE 6 — CAPTION:** 3 kiểu {_caption_styles[0].split(' —')[0]} / {_caption_styles[1].split(' —')[0]} / {_caption_styles[2].split(' —')[0]}.",
+        "",
+        "---",
+        "",
         "# YÊU CẦU ĐẦU RA",
         "",
         "Chỉ trả về JSON hợp lệ, không có text nào bên ngoài JSON:",
@@ -361,7 +506,7 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         "",
         "Lưu ý quan trọng:",
         "- Kịch bản: hoàn toàn mới mỗi lần, lời thoại tự nhiên như đang nói thật, hành động đan xen sau mỗi 1-2 câu.",
-        "- Caption TikTok: Tối đa 100 ký tự (TikTok cắt sau ~100 ký tự). Phải đề cập tên/loại sản phẩm, có 1-2 emoji. Chỉ 1 câu duy nhất — đừng giải thích dài.",
+        "- Caption TikTok: Tối đa 100 ký tự. Phải đề cập tên/loại sản phẩm, có 1-2 emoji. Chỉ 1 câu duy nhất.",
         "- Hashtag: mix đa dạng — 2-3 tag đặc trưng sản phẩm (niche/cụ thể), 3-4 tag danh mục rộng, 2 tag TikTok Shop chuẩn. Tổng 8-12 tag.",
     ]
     return "\n".join(lines)
@@ -369,21 +514,17 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
 
 def _try_parse_json(text: str):
     """Thử parse JSON, nếu lỗi thì tự clean rồi thử lại."""
-    # Lần 1: parse thẳng
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
 
-    # Lần 2: xóa trailing commas (AI hay thêm) rồi parse
     cleaned = re.sub(r',\s*([\]}])', r'\1', text)
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
         pass
 
-    # Lần 3: JSON bị cắt giữa chừng (AI hết token) — thử tại mỗi vị trí có '}'
-    # chỉ scan những vị trí có ý nghĩa, không scan từng ký tự
     brace_positions = [i for i, c in enumerate(cleaned) if c == '}']
     for pos in reversed(brace_positions):
         chunk = cleaned[:pos + 1]
@@ -400,12 +541,10 @@ def _try_parse_json(text: str):
 
 def parse_ai_response(raw: str) -> dict:
     text = raw.strip()
-    # Ưu tiên lấy JSON trong code block
     match = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
     if match:
         text = match.group(1).strip()
     else:
-        # Tìm từ { đầu tiên đến } cuối cùng
         start = text.find('{')
         end = text.rfind('}')
         if start != -1 and end != -1 and end > start:
@@ -413,7 +552,6 @@ def parse_ai_response(raw: str) -> dict:
 
     parsed = _try_parse_json(text)
 
-    # Ensure all sections exist
     defaults = {
         'section1': {'productName': '', 'targetAudience': '', 'shootingStyle': '', 'duration': '', 'tone': '', 'videoGoal': ''},
         'section2': {'targetCustomer': '', 'painPoints': '', 'insight': '', 'highlights': '', 'mainBenefits': '', 'usageSituations': ''},
@@ -476,29 +614,51 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
 
         if shooting == 'voiceover':
             persona_guide = VO_PERSONA_GUIDE.get(tone, 'Nói tự nhiên như người thật.')
+            _pattern = random.choice(STRUCTURE_PATTERNS)
+            _hook_type = random.choice(HOOK_TYPES) if not selected_hook else 'theo hook đã chọn'
+            _reaction_min = '3' if duration in ('15s', '20s') else '4-5' if duration == '30s' else '6-8'
             hook_instruction = f' Câu đầu tiên PHẢI là hook đã cho, không được thay đổi: "{selected_hook}"' if selected_hook else ''
             user = f"""{base}{analysis_block}
 {context_line}{hook_line}
 
 Persona: {persona_guide}
 
+ENGINE 1 — CẤU TRÚC LẦN NÀY: {_pattern['name']}
+Flow: {_pattern['flow']}
+Ghi chú: {_pattern['note']}
+
+ENGINE 4 — HOOK LẦN NÀY: {_hook_type}
+
+ENGINE 2 — HUMAN CONVERSATION: Được phép dùng reaction ngắn, ngập ngừng, câu bỏ dở, tự cười.
+
+ENGINE 3 — EMOTION CURVE: Năng lượng không đều — hook mạnh, body xen kẽ cao/thấp, CTA bật lên.
+
+Reaction độc lập tối thiểu: {_reaction_min} câu (đứng riêng, không nhét vào câu review).
+
 Tạo voScript lời thoại thuần túy (ElevenLabs V3 Enhance tự thêm emotion — KHÔNG được viết tag [xxx] nào).{hook_instruction}
 
 Quy tắc viết voScript:
 - Viết như người đang NÓI, không phải viết văn
-- Không mở đầu kiểu AI/MC: 'Xin chào', 'Hôm nay mình', 'Đây là sản phẩm', 'Sản phẩm này được...'
+- Không mở đầu kiểu AI/MC: 'Xin chào', 'Hôm nay mình', 'Đây là sản phẩm'
 - Không dùng cấu trúc AI: 'Ngoài ra...', 'Đặc biệt...', 'Sản phẩm có...'
-- Được dùng câu đệm, phản ứng, ngắt nghỉ, câu bỏ lửng
-- Kết hợp câu ngắn, câu dài, câu hỏi, câu cảm thán
-- HOOK 0-3s: câu mạnh nhất, đi thẳng vào vấn đề
+- Được dùng reaction độc lập, ngắt nhịp, câu bỏ lửng
 - CTA cuối: tự nhiên, không ép mua
 
 ```json
 {{"section4":{{"duration":"{duration_label}","hook":"{selected_hook or 'câu hook tự nhiên mạnh, không tag'}","voScript":"HOOK:\\nCâu hook mạnh tự nhiên không có tag...\\n\\nVOICE OVER:\\nCâu 1 như đang nói chuyện thật...\\nCâu 2 tự nhiên...\\n\\nCTA:\\nCâu kêu gọi cuối tự nhiên...","lines":[{{"type":"action","text":"hành động camera cụ thể câu 1"}},{{"type":"action","text":"hành động camera câu 2"}}],"rawScript":""}},"section5":{{"timeline":[{{"timeRange":"0-3s","voice":"câu hook thuần (không tag)","action":"hành động camera tương ứng"}}]}}}}
 ```"""
         else:
+            _pattern = random.choice(STRUCTURE_PATTERNS)
+            _hook_type = random.choice(HOOK_TYPES) if not selected_hook else 'theo hook đã chọn'
             user = f"""{base}{analysis_block}
 {context_line}{hook_line}
+
+ENGINE 1 — CẤU TRÚC LẦN NÀY: {_pattern['name']}
+Flow: {_pattern['flow']}
+
+ENGINE 4 — HOOK LẦN NÀY: {_hook_type}
+
+ENGINE 2 — HUMAN CONVERSATION: Lời thoại tự nhiên như đang nói thật — được phép reaction, câu bỏ lửng, tự sửa.
 
 Tạo kịch bản mới và timeline quay tương ứng. Lời thoại tự nhiên, hành động đan xen sau mỗi 1-2 câu.{"" if not selected_hook else " Câu đầu tiên của kịch bản PHẢI là hook đã cho, không được thay đổi."}
 
@@ -513,6 +673,8 @@ Tạo kịch bản mới và timeline quay tương ứng. Lời thoại tự nhi
             f"Insight: {s2.get('insight','')}" if s2.get('insight') else '',
             f"Điểm nổi bật: {s2.get('highlights','')}" if s2.get('highlights') else '',
         ]))
+        # V3: Pick 3 different hook types
+        _hook_types_3 = random.sample(HOOK_TYPES, 3)
         if shooting == 'voiceover':
             persona_guide = VO_PERSONA_GUIDE.get(tone, 'Nói tự nhiên như người thật.')
             user = f"""{base}
@@ -523,12 +685,16 @@ Persona: {persona_guide}
 
 Tạo 3 hook Voice Over khác nhau (0-3 giây đầu). Hook đầu tiên là hook khuyên dùng.
 
+Yêu cầu 3 kiểu hook khác nhau hoàn toàn:
+  Hook 1 (khuyên dùng): {_hook_types_3[0]}
+  Hook 2: {_hook_types_3[1]}
+  Hook 3: {_hook_types_3[2]}
+
 Quy tắc hook Voice Over:
 - KHÔNG được có tag [xxx] nào — ElevenLabs V3 Enhance tự xử lý cảm xúc
 - Không mở đầu kiểu AI/MC: 'Xin chào', 'Hôm nay mình', 'Đây là sản phẩm'
-- Đi thẳng vào nội dung: gây tò mò / phủ định / câu hỏi / nhận xét bất ngờ
-- Viết như người đang nói chuyện thật, không phải viết văn
-- 3 hook phải 3 kiểu khác nhau hoàn toàn (tò mò / twist / pain point)
+- Đi thẳng vào nội dung
+- Viết như người đang nói chuyện thật
 
 ```json
 {{"section3":{{"hooks":[{{"text":"hook 1 tự nhiên mạnh, không tag","isRecommended":true}},{{"text":"hook 2 kiểu khác, không tag","isRecommended":false}},{{"text":"hook 3 kiểu khác, không tag","isRecommended":false}}]}}}}
@@ -538,7 +704,14 @@ Quy tắc hook Voice Over:
 {analysis}
 {context_line}
 
-Tạo 3 hook mở đầu khác nhau, hook đầu tiên là hook khuyên dùng. Hook phải ngắn gọn, gây tò mò hoặc đánh vào nỗi đau.
+Tạo 3 hook mở đầu khác nhau, hook đầu tiên là hook khuyên dùng.
+
+Yêu cầu 3 kiểu hook khác nhau hoàn toàn:
+  Hook 1 (khuyên dùng): {_hook_types_3[0]}
+  Hook 2: {_hook_types_3[1]}
+  Hook 3: {_hook_types_3[2]}
+
+Hook phải ngắn gọn, đi thẳng vào vấn đề, không lời chào hỏi.
 
 ```json
 {{"section3":{{"hooks":[{{"text":"hook 1","isRecommended":true}},{{"text":"hook 2","isRecommended":false}},{{"text":"hook 3","isRecommended":false}}]}}}}
@@ -550,16 +723,22 @@ Tạo 3 hook mở đầu khác nhau, hook đầu tiên là hook khuyên dùng. H
         dialogue = ' '.join(l.get('text', '') for l in lines_data if l.get('type') == 'dialogue')
         vo_script = s4.get('voScript', '')
         script_text = (s4.get('rawScript', '') or vo_script or dialogue)[:600]
+        # V3: Random caption styles
+        _caption_styles_3 = random.sample(CAPTION_STYLES, 3)
         user = f"""{base}
 Kịch bản video: {script_text}
 {context_line}
 
-Tạo 3 caption TikTok Shop khác nhau. Quy tắc bắt buộc:
+Tạo 3 caption TikTok Shop, mỗi caption 1 kiểu khác nhau:
+  Caption 1: {_caption_styles_3[0]}
+  Caption 2: {_caption_styles_3[1]}
+  Caption 3: {_caption_styles_3[2]}
+
+Quy tắc bắt buộc:
 - Tối đa 100 ký tự mỗi caption (TikTok cắt sau ~100 ký tự)
 - Chỉ 1 câu duy nhất — không giải thích dài, không liệt kê tính năng
-- Đề cập tên hoặc loại sản phẩm cụ thể ngay đầu câu
+- Đề cập tên hoặc loại sản phẩm
 - 1-2 emoji phù hợp
-- Mỗi caption 1 góc khác nhau: pain point / lợi ích chính / social proof
 
 ```json
 {{"section7":{{"captions":["caption 1","caption 2","caption 3"]}}}}
