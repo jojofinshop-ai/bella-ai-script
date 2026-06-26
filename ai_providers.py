@@ -57,7 +57,9 @@ def call_gemini(settings: dict, system_prompt: str, user_prompt: str, images: li
     import urllib.request
     import json as _json
 
-    api_key = settings.get('apiKey', '')
+    # Lấy key đầu tiên nếu user nhập nhiều key trên nhiều dòng
+    raw_key = settings.get('apiKey', '')
+    api_key = raw_key.replace(',', '\n').split('\n')[0].strip()
     model_name = settings.get('modelName', 'gemini-1.5-flash-latest')
     temperature = float(settings.get('temperature', 0.8))
     max_tokens = int(settings.get('maxTokens', 0))
@@ -94,10 +96,32 @@ def call_gemini(settings: dict, system_prompt: str, user_prompt: str, images: li
     return text
 
 
+def analyze_images_with_openai(openai_settings: dict, images: list) -> str:
+    """Dùng OpenAI-compatible (GPT-4o, GPT-4o-mini...) để phân tích ảnh sản phẩm, trả về text mô tả."""
+    if not images or not openai_settings.get('apiKey', ''):
+        return ''
+    n = len(images)
+    system_prompt = 'Bạn là chuyên gia phân tích sản phẩm thời trang. Mô tả chính xác, chi tiết những gì thấy trong ảnh.'
+    user_prompt = (
+        f'Tôi gửi {n} ảnh sản phẩm. Hãy phân tích TẤT CẢ {n} ảnh và tổng hợp thành 1 mô tả đầy đủ:\n'
+        '- Màu sắc: tên màu cụ thể (đen tuyền, be sữa, xanh navy...), có bao nhiêu màu/biến thể\n'
+        '- Chất liệu: nhận dạng nếu nhìn thấy (cotton, vải lụa, denim...)\n'
+        '- Kiểu dáng & form: rộng/ôm/suông, dáng quần/áo/váy cụ thể\n'
+        '- Chi tiết thiết kế nổi bật: cổ áo, tay áo, đường may, họa tiết, logo, phụ kiện đính kèm\n'
+        '- Cách mặc & phối đồ thấy trong ảnh (nếu có model mặc)\n'
+        'Chỉ mô tả những gì thực sự nhìn thấy. Không bịa đặt.'
+    )
+    settings = {**openai_settings, 'temperature': 0.2, 'maxTokens': 0}
+    try:
+        return call_openai_compatible(settings, system_prompt, user_prompt, images)
+    except Exception:
+        return ''
+
+
 def analyze_images_with_gemini(gemini_api_keys, images: list) -> str:
     """Dùng Gemini Flash (rẻ) để phân tích toàn bộ ảnh sản phẩm, trả về text mô tả.
     Hỗ trợ nhiều API key — tự động chuyển key khi gặp 429."""
-    keys = _parse_gemini_keys(gemini_api_keys)
+    keys = [k for k in _parse_gemini_keys(gemini_api_keys) if k.startswith('AIza')]
     if not keys or not images:
         return ''
     n = len(images)
@@ -140,7 +164,7 @@ def _parse_gemini_keys(keys_input) -> list:
 
 
 def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list, main_settings: dict = None) -> dict:
-    """Scan ảnh màn hình sản phẩm → {productName, productDescription}.
+    """Scan ảnh màn hình sản phẩm → {productDescription}.
     Thứ tự ưu tiên: Gemini (rẻ) → ChatGPT/provider chính (nếu Gemini fail)."""
     import json as _json, re
     n = len(image_data_urls)
@@ -149,11 +173,11 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list, main_se
     system_prompt = 'Bạn là công cụ đọc thông tin sản phẩm từ ảnh chụp màn hình. Trả về JSON chính xác.'
     user_prompt = (
         f'Đây là {n} ảnh chụp màn hình trang sản phẩm (TikTok Shop, Shopee, hoặc website bán hàng).\n'
-        'Hãy đọc TẤT CẢ ảnh và trích xuất:\n'
-        '1. Tên sản phẩm (tiêu đề/heading chính)\n'
-        '2. Toàn bộ nội dung mô tả sản phẩm từ tất cả ảnh (chất liệu, kích thước, tính năng, ưu điểm...)\n\n'
+        'Hãy đọc TẤT CẢ ảnh và trích xuất toàn bộ nội dung mô tả sản phẩm:\n'
+        '- Chất liệu, kích thước, màu sắc, tính năng, ưu điểm\n'
+        '- Mọi thông tin hữu ích cho người bán hàng\n\n'
         'Trả về JSON (chỉ JSON, không giải thích thêm):\n'
-        '{"productName": "...", "productDescription": "..."}'
+        '{"productDescription": "..."}'
     )
     images = [{'dataUrl': u} for u in image_data_urls]
 
@@ -225,24 +249,13 @@ def call_ai(settings: dict, system_prompt: str, user_prompt: str, images: list) 
         return call_openai_compatible(settings, system_prompt, user_prompt, images)
 
 
-def model_supports_vision(provider: str, model_name: str) -> bool:
-    if provider == 'deepseek':
-        return False
-    if provider == 'gemini':
-        return True
-    if provider == 'openai':
-        name = model_name.lower()
-        return any(x in name for x in ['gpt-4', 'gpt-4o', 'vision', '4.1', '4-turbo'])
-    return True  # assume custom supports vision
-
-
 def test_ai_connection(settings: dict) -> dict:
     start = time.time()
     provider = settings.get('provider', 'openai')
     try:
         if provider == 'gemini':
             import urllib.request, json as _json
-            api_key = settings.get('apiKey', '')
+            api_key = settings.get('apiKey', '').replace(',', '\n').split('\n')[0].strip()
             model_name = settings.get('modelName', 'gemini-1.5-flash-latest')
             url = f'https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}'
             payload = _json.dumps({'contents':[{'role':'user','parts':[{'text':'Hi'}]}]}).encode()

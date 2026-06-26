@@ -101,7 +101,7 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
     tone_label = input_data.get('toneCustom', '') if tone == 'custom' else TONE_LABELS.get(tone, tone)
     audience = input_data.get('targetAudience', '').strip()
 
-    img_line = ("Phân tích ảnh (Gemini):\n" + image_analysis if image_analysis
+    img_line = ("Phân tích ảnh sản phẩm:\n" + image_analysis if image_analysis
                 else ("Đã đính kèm ảnh sản phẩm." if has_images else "Không có ảnh."))
 
     tone_guide = TONE_GUIDE.get(tone, 'Tự nhiên, không quảng cáo cứng.')
@@ -209,7 +209,7 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         f"**Giọng điệu:** {tone_label}" + (f" — {tone_guide}" if tone_guide else ''),
         f"**Mục tiêu video:** {goal_label}" + (f" — {goal_guide}" if goal_guide else ''),
         "",
-        "**Ảnh sản phẩm:** " + ("Phân tích ảnh (Gemini):\n" + image_analysis if image_analysis else ("Đã đính kèm - hãy phân tích màu sắc, form dáng, chất liệu, chi tiết từ ảnh." if has_images else "Không có ảnh - tạo kịch bản dựa trên tên và mô tả.")),
+        "**Ảnh sản phẩm:** " + ("Phân tích ảnh sản phẩm:\n" + image_analysis if image_analysis else ("Đã đính kèm - hãy phân tích màu sắc, form dáng, chất liệu, chi tiết từ ảnh." if has_images else "Không có ảnh - tạo kịch bản dựa trên tên và mô tả.")),
         "",
         "---",
         "",
@@ -344,7 +344,20 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
         ]))
         analysis_block = ('\n' + '\n'.join(analysis_parts)) if analysis_parts else ''
         hook_line = f'\nHook mở đầu bắt buộc dùng: "{selected_hook}"' if selected_hook else ''
-        user = f"""{base}{analysis_block}
+
+        if shooting == 'voiceover':
+            user = f"""{base}{analysis_block}
+{context_line}{hook_line}
+
+Tạo voScript (giọng Adam ElevenLabs có audio tags) và hành động camera tương ứng.{"" if not selected_hook else " Câu đầu tiên PHẢI là hook đã cho, không được thay đổi."}
+
+Audio Tags hợp lệ (chỉ dùng những tag này): [giggles] [playful] [sarcastic] [whispering] [laughs] [sighs] [clears throat] [excited] [sad]
+
+```json
+{{"section4":{{"duration":"{duration_label}","hook":"{selected_hook or 'câu hook mở đầu'}","voScript":"HOOK:\\n[playful] câu hook có audio tag...\\n\\nVOICE OVER:\\n[sarcastic] câu 1...\\n[whispering] câu 2...\\n\\nCTA:\\n[playful] kêu gọi...","lines":[{{"type":"action","text":"hành động camera khi Adam đọc câu 1"}},{{"type":"action","text":"hành động camera câu 2"}}],"rawScript":""}},"section5":{{"timeline":[{{"timeRange":"0-3s","voice":"[playful] câu hook...","action":"hành động camera tương ứng"}}]}}}}
+```"""
+        else:
+            user = f"""{base}{analysis_block}
 {context_line}{hook_line}
 
 Tạo kịch bản mới và timeline quay tương ứng. Lời thoại tự nhiên, hành động đan xen sau mỗi 1-2 câu.{"" if not selected_hook else " Câu đầu tiên của kịch bản PHẢI là hook đã cho, không được thay đổi."}

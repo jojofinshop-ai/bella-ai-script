@@ -235,7 +235,28 @@
                 </div>
               </template>
             </div>
-            <p x-show="form.images.length > 0" class="text-xs text-gray-400 mt-1" x-text="`${form.images.length}/5 ảnh`"></p>
+            <div x-show="form.images.length > 0" class="flex items-center gap-3 mt-1">
+              <p class="text-xs text-gray-400" x-text="`${form.images.length}/5 ảnh`"></p>
+              <!-- Badge trạng thái phân tích ảnh (chỉ hiện sau khi generate) -->
+              <template x-if="(imageAnalysisStatus === 'gemini' || imageAnalysisStatus === 'openai') && lastImageAnalysis">
+                <button @click="document.getElementById('image-analysis-card')?.scrollIntoView({behavior:'smooth', block:'center'})" class="text-xs flex items-center gap-1 text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full hover:bg-green-100 transition-colors">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  Đã phân tích ảnh (<span x-text="imageAnalysisStatus === 'gemini' ? 'Gemini' : 'Vision AI'"></span>)
+                </button>
+              </template>
+              <template x-if="imageAnalysisStatus === 'same_ai'">
+                <span class="text-xs flex items-center gap-1 text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                  Ảnh gửi trực tiếp cho AI
+                </span>
+              </template>
+              <template x-if="imageAnalysisStatus === 'skipped'">
+                <span class="text-xs flex items-center gap-1 text-gray-400 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                  Bỏ qua phân tích ảnh
+                </span>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -251,14 +272,14 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Đối tượng khách hàng</label>
-            <input x-model="form.targetAudience" type="text" placeholder="VD: Mẹ bầu 5-8 tháng, mẹ sau sinh... (để trống AI tự suy luận)"
+            <input x-model="form.targetAudience" @change="saveFormOptions()" type="text" placeholder="VD: Mẹ bầu 5-8 tháng, mẹ sau sinh... (để trống AI tự suy luận)"
               class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Kiểu quay</label>
-              <select x-model="form.shootingStyle" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              <select x-model="form.shootingStyle" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
                 <option value="one-shot">🎬 One Shot</option>
                 <option value="review">👗 Review mặc sản phẩm</option>
                 <option value="koc-review">⭐ KOC Review</option>
@@ -270,11 +291,11 @@
                 <option value="voiceover">🎙️ Voice Over (ElevenLabs)</option>
                 <option value="custom">✏️ Tùy chỉnh...</option>
               </select>
-              <input x-show="form.shootingStyle==='custom'" x-model="form.shootingStyleCustom" type="text" placeholder="Nhập kiểu quay..." class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              <input x-show="form.shootingStyle==='custom'" x-model="form.shootingStyleCustom" @change="saveFormOptions()" type="text" placeholder="Nhập kiểu quay..." class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Thời lượng</label>
-              <select x-model="form.duration" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              <select x-model="form.duration" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
                 <option value="15s">15 giây</option>
                 <option value="30s">30 giây</option>
                 <option value="45s">45 giây</option>
@@ -282,11 +303,11 @@
                 <option value="90s">90 giây</option>
                 <option value="custom">Tùy chỉnh...</option>
               </select>
-              <input x-show="form.duration==='custom'" x-model="form.durationCustom" type="text" placeholder="VD: 35 giây" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              <input x-show="form.duration==='custom'" x-model="form.durationCustom" @change="saveFormOptions()" type="text" placeholder="VD: 35 giây" class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Giọng điệu</label>
-              <select x-model="form.tone" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              <select x-model="form.tone" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
                 <option value="natural-koc">🌿 Tự nhiên như KOC</option>
                 <option value="friendly">💬 Gần gũi</option>
                 <option value="cute">🌸 Dễ thương</option>
@@ -297,11 +318,11 @@
                 <option value="real-review">🔍 Review trải nghiệm thật</option>
                 <option value="custom">✏️ Tùy chỉnh...</option>
               </select>
-              <input x-show="form.tone==='custom'" x-model="form.toneCustom" type="text" placeholder="Nhập giọng điệu..." class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              <input x-show="form.tone==='custom'" x-model="form.toneCustom" @change="saveFormOptions()" type="text" placeholder="Nhập giọng điệu..." class="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Mục tiêu video</label>
-              <select x-model="form.videoGoal" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              <select x-model="form.videoGoal" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
                 <option value="increase-conversion">📈 Tăng chuyển đổi</option>
                 <option value="build-trust">🤝 Tạo niềm tin</option>
                 <option value="introduce-new">🆕 Giới thiệu sản phẩm mới</option>
@@ -341,6 +362,27 @@
         <button @click="saveToHistory()" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 flex items-center gap-1.5" x-show="!settings.autoSave">
           Lưu lịch sử
         </button>
+        <!-- Image analysis status badge -->
+        <template x-if="(imageAnalysisStatus === 'gemini' || imageAnalysisStatus === 'openai') && lastImageAnalysis">
+          <button @click="document.getElementById('image-analysis-card')?.scrollIntoView({behavior:'smooth', block:'center'})"
+            class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-green-50 border border-green-200 text-green-700 hover:bg-green-100">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+            Đã phân tích ảnh (<span x-text="imageAnalysisStatus === 'gemini' ? 'Gemini' : 'Vision AI'"></span>)
+          </button>
+        </template>
+        <template x-if="imageAnalysisStatus === 'same_ai'">
+          <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+            Ảnh gửi trực tiếp cho AI
+          </span>
+        </template>
+        <template x-if="imageAnalysisStatus === 'skipped'">
+          <span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 text-gray-500">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+            Bỏ qua phân tích ảnh
+          </span>
+        </template>
+
         <div class="ml-auto flex gap-1.5">
           <button @click="downloadScript('txt')" class="border text-xs px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">TXT</button>
           <button @click="downloadScript('md')" class="border text-xs px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">MD</button>
@@ -584,6 +626,15 @@
           </button>
         </div>
         <div class="p-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <template x-if="(imageAnalysisStatus === 'gemini' || imageAnalysisStatus === 'openai') && lastImageAnalysis">
+            <div id="image-analysis-card" class="sm:col-span-2 border border-green-200 rounded-lg p-3 bg-green-50/40">
+              <p class="text-xs font-semibold text-green-700 uppercase mb-2 flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Phân tích ảnh sản phẩm (<span x-text="imageAnalysisStatus === 'gemini' ? 'Gemini' : 'Vision AI'"></span>)
+              </p>
+              <p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed" x-text="lastImageAnalysis"></p>
+            </div>
+          </template>
           <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Khách hàng mục tiêu</p><p class="text-sm text-gray-700" x-text="currentScript.section2.targetCustomer"></p></div>
           <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Pain point</p><p class="text-sm text-gray-700" x-text="currentScript.section2.painPoints"></p></div>
           <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Insight</p><p class="text-sm text-gray-700" x-text="currentScript.section2.insight"></p></div>
@@ -647,12 +698,19 @@
 
     <!-- History list -->
     <div class="space-y-2">
-      <template x-for="item in filteredHistory()" :key="item.id">
+      <template x-for="(item, index) in filteredHistory()" :key="item.id">
         <div class="bg-white border rounded-xl shadow-sm p-4 hover:border-purple-200 transition-colors cursor-pointer" @click="viewHistoryItem(item)">
           <div class="flex items-start justify-between gap-3">
-            <img x-show="item.thumbnail" :src="item.thumbnail" class="w-12 h-12 rounded-lg object-cover shrink-0 border border-gray-100">
-            <div x-show="!item.thumbnail" class="w-12 h-12 rounded-lg bg-gray-100 shrink-0 flex items-center justify-center">
-              <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <!-- Số thứ tự -->
+            <span class="text-xs font-bold text-gray-300 w-5 text-center shrink-0 mt-1 select-none" x-text="index + 1"></span>
+            <!-- Thumbnail -->
+            <div class="relative shrink-0 group">
+              <img x-show="item.thumbnail" :src="item.thumbnail"
+                class="w-12 h-12 rounded-lg object-cover border border-gray-100 cursor-zoom-in group-hover:ring-2 group-hover:ring-purple-400 transition-all"
+                @click.stop="lightboxImage = item.thumbnail">
+              <div x-show="!item.thumbnail" class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              </div>
             </div>
             <div class="flex-1 min-w-0">
               <p class="font-semibold text-sm text-gray-800 truncate" x-text="item.productName"></p>
@@ -671,6 +729,16 @@
           </div>
         </div>
       </template>
+    </div>
+
+    <!-- Lightbox -->
+    <div x-show="lightboxImage" x-transition
+      class="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4"
+      @click="lightboxImage = null" @keydown.escape.window="lightboxImage = null">
+      <button @click="lightboxImage = null" class="absolute top-4 right-4 text-white/70 hover:text-white bg-black/40 rounded-full p-2">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+      <img :src="lightboxImage" class="max-w-full max-h-full object-contain rounded-xl shadow-2xl" @click.stop>
     </div>
 
     <!-- History detail modal -->
@@ -725,12 +793,18 @@
   <div x-show="activeTab==='settings'">
     <div class="mb-6">
       <h2 class="text-xl font-bold">Cài đặt</h2>
-      <p class="text-sm text-gray-500 mt-1">Cài đặt AI provider, model và tùy chỉnh ứng dụng</p>
+      <p class="text-sm text-gray-500 mt-1">Cấu hình AI viết kịch bản và AI phân tích ảnh</p>
     </div>
 
-    <!-- AI Provider -->
+    <!-- 1. AI Viết kịch bản -->
     <div class="bg-white border rounded-xl shadow-sm mb-4">
-      <div class="p-4 border-b font-semibold text-sm">AI Provider</div>
+      <div class="p-4 border-b">
+        <div class="font-semibold text-sm flex items-center gap-2">
+          <span class="w-5 h-5 bg-purple-600 text-white text-xs rounded-full flex items-center justify-center font-bold shrink-0">1</span>
+          AI Viết kịch bản
+        </div>
+        <p class="text-xs text-gray-400 mt-1 pl-7">AI tạo nội dung kịch bản TikTok Shop</p>
+      </div>
       <div class="p-4 space-y-4">
 
         <div>
@@ -745,7 +819,6 @@
 
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-          <!-- Gemini provider: textarea nhiều key -->
           <template x-if="settings.provider === 'gemini'">
             <div>
               <textarea
@@ -757,7 +830,6 @@
               <p class="text-xs text-gray-400 mt-1">Nhập nhiều key (mỗi dòng 1 key) để tránh lỗi 429 rate limit. Lấy key miễn phí tại <span class="text-purple-600">aistudio.google.com</span></p>
             </div>
           </template>
-          <!-- Các provider khác: input thường -->
           <template x-if="settings.provider !== 'gemini'">
             <div class="relative">
               <input :type="showApiKey ? 'text' : 'password'"
@@ -772,21 +844,6 @@
             </div>
           </template>
           <p x-show="settings.provider !== 'gemini'" class="text-xs text-gray-400 mt-1">Mỗi provider có API key riêng, tự động lưu khi đổi provider.</p>
-        </div>
-
-        <!-- Gemini key dùng để phân tích ảnh khi provider là OpenAI/DeepSeek -->
-        <div x-show="settings.provider !== 'gemini'" class="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
-          <div class="flex items-center gap-2">
-            <svg class="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            <span class="text-sm font-medium text-blue-800">Gemini key để phân tích ảnh &amp; scan <span class="text-xs font-normal text-blue-500">(tuỳ chọn)</span></span>
-          </div>
-          <textarea
-            :value="settings.apiKeys.gemini ?? ''"
-            @input="settings.apiKeys.gemini = $event.target.value"
-            placeholder="AIzaSy...&#10;AIzaSy... (mỗi key một dòng)"
-            rows="3"
-            class="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white font-mono resize-none"></textarea>
-          <p class="text-xs text-blue-600">Nhập nhiều key (mỗi dòng 1 key) để tránh lỗi 429 rate limit. Khi key này bị giới hạn, tự động chuyển sang key tiếp theo.</p>
         </div>
 
         <div x-show="settings.provider !== 'gemini'">
@@ -847,6 +904,102 @@
         </div>
 
         <button @click="saveSettings()" class="w-full gradient-btn text-white font-medium py-2.5 rounded-lg">
+          Lưu cài đặt
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. AI Phân tích ảnh & Scan màn hình -->
+    <div class="bg-white border rounded-xl shadow-sm mb-4">
+      <div class="p-4 border-b">
+        <div class="font-semibold text-sm flex items-center gap-2">
+          <span class="w-5 h-5 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center font-bold shrink-0">2</span>
+          AI Phân tích ảnh &amp; Scan màn hình
+          <span class="ml-auto text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Tuỳ chọn</span>
+        </div>
+        <p class="text-xs text-gray-400 mt-1 pl-7">Phân tích màu sắc, chất liệu từ ảnh sản phẩm • Đọc thông tin từ ảnh chụp màn hình</p>
+      </div>
+      <div class="p-4 space-y-4">
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Dùng AI nào để phân tích ảnh?</label>
+          <div class="space-y-2">
+            <label class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors" :class="settings.visionProvider==='gemini' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'">
+              <input type="radio" x-model="settings.visionProvider" value="gemini" class="mt-0.5 accent-blue-500">
+              <div>
+                <div class="text-sm font-medium text-gray-800">Google Gemini <span class="text-xs text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full ml-1">Khuyên dùng • Miễn phí</span></div>
+                <div class="text-xs text-gray-500 mt-0.5">Hỗ trợ ảnh xuất sắc, có 15 request/phút miễn phí. Nhập API key Gemini riêng bên dưới.</div>
+              </div>
+            </label>
+            <label class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors" :class="settings.visionProvider==='same' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'">
+              <input type="radio" x-model="settings.visionProvider" value="same" class="mt-0.5 accent-blue-500">
+              <div>
+                <div class="text-sm font-medium text-gray-800">Dùng chung AI viết kịch bản</div>
+                <div class="text-xs text-gray-500 mt-0.5">Dùng cùng key &amp; model với mục 1. Cần model hỗ trợ vision như gpt-4o, gpt-4.1.</div>
+              </div>
+            </label>
+            <label class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors" :class="settings.visionProvider==='openai' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'">
+              <input type="radio" x-model="settings.visionProvider" value="openai" class="mt-0.5 accent-blue-500">
+              <div>
+                <div class="text-sm font-medium text-gray-800">ChatGPT / OpenAI-compatible <span class="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-full ml-1">Key riêng</span></div>
+                <div class="text-xs text-gray-500 mt-0.5">Dùng GPT-4o-mini để đọc ảnh trong khi dùng DeepSeek hay AI khác để viết kịch bản.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div x-show="settings.visionProvider === 'gemini'" x-transition>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Gemini API Key <span class="text-xs font-normal text-gray-400">(dành riêng cho phân tích ảnh)</span></label>
+          <textarea
+            x-model="settings.visionGeminiKeys"
+            placeholder="AIzaSy...&#10;AIzaSy... (mỗi key một dòng)"
+            rows="3"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono resize-none"></textarea>
+          <p class="text-xs text-gray-400 mt-1">Nhập nhiều key để tự động chuyển khi bị rate limit 429 • Lấy key miễn phí tại <span class="text-blue-600">aistudio.google.com</span></p>
+        </div>
+
+        <div x-show="settings.visionProvider === 'same'" x-transition class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <p class="text-xs text-amber-800">⚠️ Cần chọn model hỗ trợ ảnh ở mục <strong>AI viết kịch bản</strong> (ví dụ: gpt-4o, gpt-4.1). DeepSeek không hỗ trợ ảnh.</p>
+        </div>
+
+        <div x-show="settings.visionProvider === 'openai'" x-transition class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">OpenAI API Key <span class="text-xs font-normal text-gray-400">(chỉ dùng để đọc ảnh)</span></label>
+            <input type="password" x-model="settings.visionOpenaiKey" placeholder="sk-..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Base URL <span class="text-xs font-normal text-gray-400">(để mặc định nếu dùng OpenAI)</span></label>
+            <input type="text" x-model="settings.visionOpenaiBaseUrl" placeholder="https://api.openai.com/v1" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Model vision</label>
+            <input type="text" x-model="settings.visionOpenaiModel" placeholder="gpt-4o-mini" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono">
+            <p class="text-xs text-gray-400 mt-1">Gợi ý: <span class="font-mono">gpt-4o-mini</span> (rẻ nhất) · <span class="font-mono">gpt-4o</span> · <span class="font-mono">gpt-4.1-mini</span></p>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Tối đa ảnh phân tích mỗi lần</label>
+          <div class="flex items-center gap-3">
+            <input type="number" x-model.number="settings.maxAnalysisImages" min="1" max="10"
+              class="w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <div class="flex gap-2">
+              <template x-for="n in [1, 2, 3, 5]" :key="n">
+                <button @click="settings.maxAnalysisImages = n"
+                  :class="settings.maxAnalysisImages === n ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
+                  class="border text-xs px-3 py-1.5 rounded-lg transition-colors" x-text="n + ' ảnh'"></button>
+              </template>
+            </div>
+          </div>
+          <p class="text-xs text-gray-400 mt-1.5">Giới hạn số ảnh gửi cho AI phân tích. Nhiều ảnh hơn = chi tiết hơn nhưng chậm hơn và tốn token hơn.</p>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-3 text-xs text-gray-500 flex items-start gap-2">
+          <svg class="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>Nếu không cấu hình hoặc AI lỗi → <strong>tự động bỏ qua</strong>, vẫn tạo kịch bản bình thường từ tên và mô tả sản phẩm.</span>
+        </div>
+
+        <button @click="saveSettings()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2.5 rounded-lg text-sm transition-colors">
           Lưu cài đặt
         </button>
       </div>
@@ -941,7 +1094,7 @@ const DEFAULT_PROMPTS = {
 const PROVIDER_MODELS = {
   openai: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-4o', 'gpt-4o-mini', 'gpt-4.1'],
   deepseek: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-chat', 'deepseek-reasoner'],
-  gemini: ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'],
+  gemini: ['gemini-2.5-flash', 'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.0-flash'],
   custom: []
 };
 
@@ -980,6 +1133,9 @@ function bellaApp() {
     regeneratingSection: null,
     sectionError: null,
     selectedHookIndex: null,
+    lastImageAnalysis: '',
+    imageAnalysisStatus: null,
+    lightboxImage: null,
 
     // URL fetch
     productUrl: '',
@@ -996,7 +1152,13 @@ function bellaApp() {
       apiKeys: { openai: '', deepseek: '', gemini: '', custom: '' },
       baseUrl: 'https://api.openai.com/v1',
       modelName: 'gpt-4o', temperature: 0.8, maxTokens: 0,
-      allowWithoutImage: true, autoSave: true
+      allowWithoutImage: true, autoSave: true,
+      visionProvider: 'gemini',
+      visionGeminiKeys: '',
+      visionOpenaiKey: '',
+      visionOpenaiBaseUrl: 'https://api.openai.com/v1',
+      visionOpenaiModel: 'gpt-4o-mini',
+      maxAnalysisImages: 1,
     },
     showApiKey: false,
     testingConnection: false,
@@ -1031,6 +1193,7 @@ function bellaApp() {
       this.loadSettings();
       this.loadPrompts();
       this.loadHistory();
+      this.loadFormOptions();
 
       // Hiện banner nếu là iOS Safari và chưa cài PWA và chưa dismiss
       const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -1038,6 +1201,19 @@ function bellaApp() {
       const isStandalone = window.navigator.standalone === true;
       const dismissed = localStorage.getItem('bella_pwa_dismissed');
       this.showInstallBanner = isIOS && isSafari && !isStandalone && !dismissed;
+    },
+
+    // ---- FORM OPTIONS (persistent across sessions) ----
+    loadFormOptions() {
+      try {
+        const fo = JSON.parse(localStorage.getItem('bella_form_options') || '{}');
+        const fields = ['targetAudience', 'shootingStyle', 'shootingStyleCustom', 'duration', 'durationCustom', 'tone', 'toneCustom', 'videoGoal'];
+        fields.forEach(k => { if (fo[k] !== undefined) this.form[k] = fo[k]; });
+      } catch {}
+    },
+    saveFormOptions() {
+      const { targetAudience, shootingStyle, shootingStyleCustom, duration, durationCustom, tone, toneCustom, videoGoal } = this.form;
+      localStorage.setItem('bella_form_options', JSON.stringify({ targetAudience, shootingStyle, shootingStyleCustom, duration, durationCustom, tone, toneCustom, videoGoal }));
     },
 
     // ---- SETTINGS ----
@@ -1051,6 +1227,14 @@ function bellaApp() {
           delete s.apiKey;
         }
         if (!s.apiKeys) s.apiKeys = { openai: '', deepseek: '', gemini: '', custom: '' };
+        // Migration: nếu chưa có visionGeminiKeys, copy từ apiKeys.gemini (khi provider không phải gemini)
+        if (!s.visionGeminiKeys && s.apiKeys.gemini && s.provider !== 'gemini') {
+          s.visionGeminiKeys = s.apiKeys.gemini;
+        }
+        if (!s.visionProvider) s.visionProvider = 'gemini';
+        if (!s.visionOpenaiBaseUrl) s.visionOpenaiBaseUrl = 'https://api.openai.com/v1';
+        if (!s.visionOpenaiModel) s.visionOpenaiModel = 'gpt-4o-mini';
+        if (!s.maxAnalysisImages) s.maxAnalysisImages = 1;
         s.maxTokens = 0; // Không giới hạn output token
         this.settings = {...this.settings, ...s};
       } catch {}
@@ -1072,9 +1256,10 @@ function bellaApp() {
     async scanProductImage(event) {
       const files = Array.from(event.target.files || []);
       if (!files.length) return;
-      const rawGeminiKey = (this.settings.apiKeys || {}).gemini || '';
-      const geminiKeys = rawGeminiKey.split(/[\n,]/).map(k => k.trim()).filter(Boolean);
-      // Kiểm tra có ít nhất 1 AI key nào đó (Gemini hoặc provider chính)
+      // Lấy Gemini keys từ mục Vision AI
+      const rawVisionKeys = this.settings.visionProvider === 'gemini' ? (this.settings.visionGeminiKeys || '') : '';
+      const geminiKeys = rawVisionKeys.split(/[\n,]/).map(k => k.trim()).filter(Boolean);
+      // Kiểm tra có ít nhất 1 AI key nào đó
       const mainKey = (this.settings.apiKeys || {})[this.settings.provider] || '';
       if (!geminiKeys.length && !mainKey) {
         this.showToast('Cần nhập API key trong tab Cài đặt để dùng tính năng Scan ảnh', 'error');
@@ -1114,7 +1299,6 @@ function bellaApp() {
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
-        if (data.productName) this.form.productName = data.productName;
         if (data.productDescription) this.form.productDescription = data.productDescription;
         this.showToast(`Đã đọc thông tin từ ${files.length} ảnh!`, 'success');
       } catch(e) {
@@ -1293,6 +1477,8 @@ function bellaApp() {
       if (!this.validate()) return;
       this.isGenerating = true;
       this.generateError = null;
+      this.lastImageAnalysis = '';
+      this.imageAnalysisStatus = null;
       try {
         const res = await fetch('/api/generate', {
           method: 'POST',
@@ -1309,6 +1495,8 @@ function bellaApp() {
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'Lỗi không xác định');
         this.currentScript = data.script;
+        this.lastImageAnalysis = data.imageAnalysis || '';
+        this.imageAnalysisStatus = data.imageAnalysisStatus || null;
         // Auto-chọn hook khuyên dùng
         const _hooks = data.script?.section3?.hooks || [];
         const _recIdx = _hooks.findIndex(h => h.isRecommended);
@@ -1585,6 +1773,13 @@ function bellaApp() {
       this.generateError = null;
       this.selectedHistoryItem = null;
       this.activeTab = 'generate';
+      // Reset image analysis state (không liên quan đến kịch bản lịch sử)
+      this.imageAnalysisStatus = null;
+      this.lastImageAnalysis = '';
+      // Reset hook selection về hook khuyên dùng của kịch bản này
+      const _hs = item.script?.section3?.hooks || [];
+      const _ri = _hs.findIndex(h => h.isRecommended);
+      this.selectedHookIndex = _ri >= 0 ? _ri : (_hs.length > 0 ? 0 : null);
     },
     deleteHistoryItem(id) {
       this.history = this.history.filter(h => h.id !== id);

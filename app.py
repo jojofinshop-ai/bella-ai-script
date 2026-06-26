@@ -52,32 +52,52 @@ def generate():
         settings['maxTokens'] = 0  # 0 = không giới hạn (bỏ tham số max_tokens)
 
         from prompt_builder import build_system_prompt, build_user_prompt, parse_ai_response
-        from ai_providers import call_ai, analyze_images_with_gemini
+        from ai_providers import call_ai, analyze_images_with_gemini, analyze_images_with_openai
 
         system_prompt = build_system_prompt(prompt_settings)
         has_images = len(images) > 0
 
-        # Phân tích ảnh: luôn dùng Gemini (rẻ), không bao giờ gửi ảnh thô cho OpenAI/DeepSeek
+        # Phân tích ảnh theo cấu hình Vision AI
         image_analysis = ''
         images_to_send = []
+        analysis_status = 'no_image'  # no_image | skipped | gemini | openai | same_ai
         if has_images:
-            if provider == 'gemini':
-                # Provider chính là Gemini → gửi ảnh trực tiếp, không cần phân tích trước
-                images_to_send = images
-            else:
-                # Dùng Gemini key riêng để phân tích ảnh, kết quả nhúng vào prompt text
-                raw_gemini = (settings.get('apiKeys') or {}).get('gemini', '')
-                gemini_keys = [k.strip() for k in raw_gemini.replace(',', '\n').split('\n') if k.strip()]
+            vision_provider = settings.get('visionProvider', 'gemini')
+            max_imgs = max(1, int(settings.get('maxAnalysisImages', 1)))
+            images_for_analysis = images[:max_imgs]
+            if vision_provider == 'gemini':
+                raw_vision = settings.get('visionGeminiKeys', '') or (settings.get('apiKeys') or {}).get('gemini', '')
+                gemini_keys = [k.strip() for k in raw_vision.replace(',', '\n').split('\n') if k.strip()]
                 if gemini_keys:
-                    image_analysis = analyze_images_with_gemini(gemini_keys, images)
-                # Không gửi ảnh cho OpenAI/DeepSeek dù có hay không có phân tích
+                    image_analysis = analyze_images_with_gemini(gemini_keys, images_for_analysis)
+                    analysis_status = 'gemini' if image_analysis else 'skipped'
+                else:
+                    analysis_status = 'skipped'
+            elif vision_provider == 'openai':
+                vision_key = settings.get('visionOpenaiKey', '').strip()
+                vision_base_url = (settings.get('visionOpenaiBaseUrl', '') or 'https://api.openai.com/v1').strip()
+                vision_model = (settings.get('visionOpenaiModel', '') or 'gpt-4o-mini').strip()
+                if vision_key:
+                    openai_vision_settings = {'apiKey': vision_key, 'baseUrl': vision_base_url, 'modelName': vision_model}
+                    image_analysis = analyze_images_with_openai(openai_vision_settings, images_for_analysis)
+                    analysis_status = 'openai' if image_analysis else 'skipped'
+                else:
+                    analysis_status = 'skipped'
+            elif vision_provider == 'same':
+                if provider != 'deepseek':
+                    images_to_send = images_for_analysis
+                    analysis_status = 'same_ai'
+                else:
+                    analysis_status = 'skipped'
 
-        user_prompt = build_user_prompt(input_data, has_images, image_analysis)
+        # has_images_effective: True chỉ khi AI thực sự nhận được ảnh (qua analysis text hoặc trực tiếp)
+        has_images_effective = bool(image_analysis) or bool(images_to_send)
+        user_prompt = build_user_prompt(input_data, has_images_effective, image_analysis)
         raw_response = call_ai(settings, system_prompt, user_prompt, images_to_send)
 
         try:
             script = parse_ai_response(raw_response)
-            return jsonify({'success': True, 'script': script, 'rawResponse': raw_response})
+            return jsonify({'success': True, 'script': script, 'imageAnalysis': image_analysis, 'imageAnalysisStatus': analysis_status})
         except Exception as parse_err:
             return jsonify({
                 'success': False,
@@ -260,6 +280,22 @@ def _fetch_with_playwright(url, injected_cookies=None, cookie_domain=None):
             except PwTimeout:
                 pass
             time.sleep(2)
+
+            # Nếu short link redirect sang shop.tiktok.com/pdp/ → điều hướng sang view/product/ (DOM tốt hơn)
+            import re as _re_pw
+            _cur_url = page.url
+            _m_pdp = _re_pw.search(r'shop\.tiktok\.com/[a-z]+/pdp/(\d{10,})', _cur_url)
+            if _m_pdp:
+                _target = f'https://www.tiktok.com/view/product/{_m_pdp.group(1)}'
+                try:
+                    page.goto(_target, timeout=20000, wait_until='domcontentloaded')
+                    try:
+                        page.wait_for_load_state('networkidle', timeout=12000)
+                    except PwTimeout:
+                        pass
+                    time.sleep(2)
+                except Exception:
+                    pass  # Giữ nguyên trang hiện tại nếu không chuyển được
 
             # Scroll để trigger lazy-load
             page.evaluate("window.scrollTo(0, document.body.scrollHeight * 0.4)")
@@ -480,12 +516,37 @@ def _fetch_tiktok_cloud(url):
     except Exception as e:
         return None, f'Không thể tải trang: {str(e)}'
 
+    # ── Re-fetch clean canonical URL khi cần ────────────────────────────────────────
+    # vt.tiktok.com → redirect → view/product/{ID}?og_info=...  (TikTok trả về share-optimized page,
+    #   thiếu full __NEXT_DATA__ chứa mô tả sản phẩm)
+    # shop.tiktok.com/pdp/{ID}?...  (domain khác, HTML structure khác)
+    # Giải pháp: luôn re-fetch URL sạch khi final_url có params hoặc sai domain
+    import re as _re_prod
+    _orig_final_url = final_url  # Lưu URL gốc (có og_info params) để dùng ở bước parse og_info
+    _prod_id_m = _re_prod.search(r'/(?:pdp|view/product)/(\d{10,})', final_url)
+    if _prod_id_m:
+        _canonical = f'https://www.tiktok.com/view/product/{_prod_id_m.group(1)}'
+        _needs_refetch = ('?' in final_url          # có query params → share-optimized page
+                          or 'shop.tiktok.com' in final_url    # sai domain
+                          or 'view/product' not in final_url)  # /pdp/ path
+        if _needs_refetch:
+            try:
+                _req2 = _req.Request(_canonical, headers=headers)
+                with _req.urlopen(_req2, timeout=20) as _r2:
+                    _html2 = _r2.read().decode('utf-8', errors='ignore')
+                if len(_html2) > 1000:  # đảm bảo lấy được page thật (không phải 403/redirect nhỏ)
+                    html = _html2
+                    final_url = _canonical
+            except Exception:
+                pass  # Giữ nguyên html gốc nếu re-fetch thất bại
+
     # ── KEY FIX: TikTok nhúng og_info (title=mô tả thật, image=ảnh) vào redirect URL ──
     # vt.tiktok.com → tiktok.com/view/product/...?og_info={"title":"...","image":"..."}
+    # Dùng _orig_final_url để parse og_info vì final_url có thể đã được cập nhật thành canonical (không có params)
     og_info_desc = ''
     og_info_img  = ''
     try:
-        qs = parse_qs(urlparse(final_url).query)
+        qs = parse_qs(urlparse(_orig_final_url).query)
         og_raw = qs.get('og_info', [''])[0]
         if og_raw:
             og = _json.loads(og_raw)
@@ -972,15 +1033,27 @@ def scan_product():
         images = data.get('images') or ([data['image']] if data.get('image') else [])
         if not images:
             return jsonify({'success': False, 'error': 'Không nhận được ảnh'}), 400
-        # Nhận mảng keys hoặc single key
-        gemini_keys = data.get('geminiKeys') or []
-        if not gemini_keys:
-            raw = (data.get('settings', {}).get('apiKeys') or {}).get('gemini', '')
-            gemini_keys = [k.strip() for k in raw.replace(',', '\n').split('\n') if k.strip()]
-        # Không bắt buộc Gemini key — backend tự fallback sang ChatGPT nếu cần
         from ai_providers import scan_product_from_screenshot
         main_settings = data.get('settings', {})
-        result = scan_product_from_screenshot(gemini_keys, images, main_settings=main_settings)
+        vision_provider = main_settings.get('visionProvider', 'gemini')
+        if vision_provider == 'gemini':
+            raw = main_settings.get('visionGeminiKeys', '') or (main_settings.get('apiKeys') or {}).get('gemini', '')
+            gemini_keys = [k.strip() for k in raw.replace(',', '\n').split('\n') if k.strip()]
+            result = scan_product_from_screenshot(gemini_keys, images, main_settings=main_settings)
+        elif vision_provider == 'openai':
+            vision_key = main_settings.get('visionOpenaiKey', '').strip()
+            vision_base_url = (main_settings.get('visionOpenaiBaseUrl', '') or 'https://api.openai.com/v1').strip()
+            vision_model = (main_settings.get('visionOpenaiModel', '') or 'gpt-4o-mini').strip()
+            openai_vision_ms = {
+                'provider': 'openai',
+                'apiKey': vision_key,
+                'baseUrl': vision_base_url,
+                'modelName': vision_model,
+                'apiKeys': {'openai': vision_key},
+            } if vision_key else None
+            result = scan_product_from_screenshot([], images, main_settings=openai_vision_ms or main_settings)
+        else:
+            result = scan_product_from_screenshot([], images, main_settings=main_settings)
         return jsonify({'success': True, **result})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
