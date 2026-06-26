@@ -205,6 +205,35 @@ CAPTION_STYLES = [
     'Benefit — lợi ích cốt lõi ngắn gọn, súc tích',
 ]
 
+# KOC Discovery Engine flows — áp dụng cho one-shot + natural-koc
+KOC_DISCOVERY_FLOWS = [
+    {
+        'name': 'Flow A — Em tưởng → Ai ngờ',
+        'pattern': 'Đặt kỳ vọng nghi ngờ → Mặc thử / xoay người → Bất ngờ vì kết quả tốt hơn tưởng',
+        'example': '"Em tưởng mẫu này mặc lên sẽ hơi rộng quá..." → xoay người → "ai ngờ lên người lại gọn hơn em nghĩ."',
+    },
+    {
+        'name': 'Flow B — Lúc đầu để ý một điểm → Phát hiện điểm khác',
+        'pattern': 'Chú ý một điểm → Quan sát → Vô tình phát hiện điểm hay hơn',
+        'example': '"Lúc đầu em chỉ để ý phần bụng thôi..." → chỉ bụng / quay nghiêng → "xong mới thấy tay áo cũng che bắp tay khá ổn."',
+    },
+    {
+        'name': 'Flow C — Vừa thử vừa nhận xét',
+        'pattern': 'Mời người xem → Thực hiện hành động → Nhận xét ngay khi làm',
+        'example': '"Để em xoay nhẹ cho mọi người xem nha..." → xoay người → "form này rủ xuống tự nhiên, không bị dính vào bụng."',
+    },
+    {
+        'name': 'Flow D — Một điểm nghi ngờ → Được giải quyết',
+        'pattern': 'Nêu nỗi lo / nghi ngờ về một điểm → Thử → Lo ngại được giải quyết',
+        'example': '"Em hơi sợ kiểu tay bồng này làm người to hơn..." → chỉ tay áo → "nhưng mặc lên lại mềm, không bị cứng."',
+    },
+    {
+        'name': 'Flow E — Cảm nhận thật sau khi mặc',
+        'pattern': 'Nói nỗi sợ / kỳ vọng thật → Trải nghiệm trực tiếp → Đánh giá thật',
+        'example': '"Nói thật, mặc đồ bầu em sợ nhất là bị bí..." → vuốt chất vải → "mẫu này lên người khá nhẹ, đi lại không thấy vướng."',
+    },
+]
+
 GOAL_GUIDE = {
     'increase-conversion': 'CTA mạnh cuối video. Nhấn mạnh giá trị, deal, hoặc lý do mua ngay hôm nay.',
     'build-trust': 'Tập trung chất lượng, độ bền, trải nghiệm thật. Tránh ngôn ngữ quảng cáo.',
@@ -444,6 +473,65 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
     _hook_type = random.choice(HOOK_TYPES)
     _caption_styles = random.sample(CAPTION_STYLES, 3)
 
+    # KOC Discovery Engine — one-shot / review / koc-review + natural-koc
+    _is_koc = shooting in ('one-shot', 'review', 'koc-review') and tone == 'natural-koc'
+    if _is_koc:
+        _koc_flow = random.choice(KOC_DISCOVERY_FLOWS)
+        _engine1_lines = [
+            f"**KOC DISCOVERY ENGINE — {_koc_flow['name']}**",
+            f"Flow: {_koc_flow['pattern']}",
+            f"Ví dụ: {_koc_flow['example']}",
+        ]
+        _engine4_lines = [
+            "**HOOK KOC:** Câu nói thật khi vừa mặc sản phẩm. Không quảng cáo. Không trau chuốt.",
+            "Ví dụ tốt: 'Em tưởng kiểu này mặc lên sẽ bị thùng người á...' / 'Cái này lên người khác hơn em nghĩ nha.'",
+            "           'Lúc đầu nhìn mẫu này em hơi sợ bị rộng quá.' / 'Mặc thử mới thấy form này không hề bị dìm dáng.'",
+            "TRÁNH: 'Sản phẩm này...' / 'Hôm nay em giới thiệu...' / 'Đây là mẫu áo...' / 'Áo có thiết kế...'",
+        ]
+        _koc_extra = [
+            "**KOC DIALOGUE ENGINE — CÁCH VIẾT LỜI THOẠI**",
+            "Không review như liệt kê. Không trơn tru. Ưu tiên ngôn ngữ nói, được phép bỏ dở câu, sửa ý giữa chừng.",
+            "Dùng (chọn phù hợp, không lặp, không nhồi):",
+            "  'Em tưởng...' / 'Ai ngờ...' / 'Mặc lên mới thấy...' / 'Lúc đầu em nghĩ...' / 'Em mới để ý...'",
+            "  'Ủa...' / 'À...' / 'Công nhận...' / 'Nói thật...' / 'Em bất ngờ luôn.' / 'Cái này hay nè.'",
+            "  'Mọi người nhìn nè.' / 'Phần này nè...' / 'Nhìn chỗ này nè...' / 'Đúng kiểu...' / 'Kiểu như...'",
+            "Một video 15-30s: 2-4 phản ứng nhỏ tự nhiên.",
+            "",
+            "**HÀNH ĐỘNG PHẢI KHỚP LỜI THOẠI**",
+            "Nếu nói 'nhìn phần eo này nè' → hành động phải là (chỉ nhẹ hoặc vuốt phần eo).",
+            "Nếu nói 'quay nghiêng mới thấy' → hành động phải là (quay nghiêng 45 độ).",
+            "Nếu nói 'chất vải này' → hành động phải là (vò nhẹ hoặc vuốt chất vải).",
+            "Không tạo hành động chung chung không khớp lời thoại.",
+            "Hành động bổ sung phù hợp: (chỉnh nhẹ gấu áo) / (xoay nhẹ rồi tự nhìn form) / (cười nhẹ vì bất ngờ)",
+            "  (đưa tay chỉ phần eo) / (kéo nhẹ tà áo để thấy độ rủ) / (sờ thử chất vải) / (vuốt nhẹ bắp tay áo)",
+            "  (chỉnh nhẹ tóc ra sau vai) / (nhìn xuống thân áo) / (bước lùi rồi bước lên) / (chống hông nhẹ)",
+            "",
+            "**CTA KOC:** Nhẹ nhàng, không ép mua. Như khuyến nghị thật của người đã mặc.",
+            "Ví dụ: 'Ai thích mặc thoải mái mà vẫn gọn người thì thử mẫu này nha.'",
+            "        'Nếu chị em cũng ngại bụng như em thì mẫu này đáng xem đó.'",
+            "        'Em nghĩ ai thích style nhẹ nhàng, dễ mặc thì nên xem thử màu này.'",
+            "",
+            "**TỰ KIỂM TRA KOC TRƯỚC KHI OUTPUT**",
+            "- Lời thoại có giống người thật đang mặc thử không? → Nếu không, viết lại.",
+            "- Có bị liệt kê tính năng như bài review không? → Nếu có, phá cấu trúc đó.",
+            "- Có ít nhất 2-4 phản ứng nhỏ tự nhiên không? → Nếu thiếu, thêm vào.",
+            "- Hành động có khớp từng câu thoại không? → Nếu không, sửa cho khớp.",
+            "- Có câu nào giống MC / quảng cáo / ChatGPT không? → Viết lại câu đó.",
+            "- Có cảm giác 'vừa mặc vừa phát hiện' không? → Áp dụng đúng flow đã chọn.",
+            "Nếu chưa đạt → tự viết lại trước khi output JSON.",
+        ]
+    else:
+        _engine1_lines = [
+            f"**ENGINE 1 — CẤU TRÚC LẦN NÀY:** {_pattern['name']}",
+            f"Flow: {_pattern['flow']}",
+            f"Ghi chú: {_pattern['note']}",
+        ]
+        _engine4_lines = [
+            f"**ENGINE 4 — HOOK LẦN NÀY:** {_hook_type}",
+            "Hook đi thẳng vào nội dung. Không lời chào, không giới thiệu bản thân.",
+        ]
+        _koc_extra = []
+
     lines = [
         "# THÔNG TIN SẢN PHẨM CẦN TẠO KỊCH BẢN",
         "",
@@ -471,12 +559,9 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         "",
         "---",
         "",
-        f"**ENGINE 1 — CẤU TRÚC LẦN NÀY:** {_pattern['name']}",
-        f"Flow: {_pattern['flow']}",
-        f"Ghi chú: {_pattern['note']}",
+        *_engine1_lines,
         "",
-        f"**ENGINE 4 — HOOK LẦN NÀY:** {_hook_type}",
-        "Hook đi thẳng vào nội dung. Không lời chào, không giới thiệu bản thân.",
+        *_engine4_lines,
         "",
         "**ENGINE 2 — HUMAN CONVERSATION:** Lời thoại phải nghe như người thật đang nói.",
         "Được phép: ngập ngừng, tự sửa, reaction ngắn, câu bỏ lửng, tự cười.",
@@ -485,6 +570,8 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         "",
         f"**ENGINE 6 — CAPTION:** 3 kiểu {_caption_styles[0].split(' —')[0]} / {_caption_styles[1].split(' —')[0]} / {_caption_styles[2].split(' —')[0]}.",
         "",
+        *_koc_extra,
+        *( [""] if _koc_extra else [] ),
         "---",
         "",
         "# YÊU CẦU ĐẦU RA",
@@ -650,6 +737,31 @@ Quy tắc viết voScript:
         else:
             _pattern = random.choice(STRUCTURE_PATTERNS)
             _hook_type = random.choice(HOOK_TYPES) if not selected_hook else 'theo hook đã chọn'
+            _is_koc_sec = shooting in ('one-shot', 'review', 'koc-review') and tone == 'natural-koc'
+            _koc_flow_sec = random.choice(KOC_DISCOVERY_FLOWS) if _is_koc_sec else None
+            if _is_koc_sec:
+                _koc_block = f"""
+KOC DISCOVERY ENGINE — {_koc_flow_sec['name']}
+Flow: {_koc_flow_sec['pattern']}
+Ví dụ: {_koc_flow_sec['example']}
+
+HOOK KOC: Câu nói thật khi vừa mặc. Không quảng cáo. Không trau chuốt.
+Ví dụ: 'Em tưởng kiểu này mặc lên sẽ bị thùng người á...' / 'Cái này lên người khác hơn em nghĩ.'
+TRÁNH: 'Sản phẩm này...' / 'Hôm nay em giới thiệu...' / 'Đây là mẫu áo...'
+
+KOC DIALOGUE: Ưu tiên ngôn ngữ nói. Không liệt kê tính năng.
+Dùng: 'Em tưởng...' / 'Mặc lên mới thấy...' / 'Mọi người nhìn nè.' / 'Công nhận...' / 'Cái này hay nè.'
+Một video 15-30s: 2-4 phản ứng nhỏ tự nhiên.
+
+HÀNH ĐỘNG PHẢI KHỚP LỜI THOẠI:
+Nói 'nhìn phần eo này nè' → (chỉ nhẹ hoặc vuốt phần eo).
+Nói 'quay nghiêng mới thấy' → (quay nghiêng 45 độ).
+Nói 'chất vải này' → (vò nhẹ hoặc vuốt chất vải).
+Bổ sung: (xoay nhẹ rồi tự nhìn form) / (cười nhẹ vì bất ngờ) / (kéo nhẹ tà áo) / (sờ thử chất vải)
+
+TỰ KIỂM TRA KOC: Lời thoại có giống người thật đang mặc thử không? Có bị liệt kê không? Hành động có khớp không?"""
+            else:
+                _koc_block = ""
             user = f"""{base}{analysis_block}
 {context_line}{hook_line}
 
@@ -659,7 +771,7 @@ Flow: {_pattern['flow']}
 ENGINE 4 — HOOK LẦN NÀY: {_hook_type}
 
 ENGINE 2 — HUMAN CONVERSATION: Lời thoại tự nhiên như đang nói thật — được phép reaction, câu bỏ lửng, tự sửa.
-
+{_koc_block}
 Tạo kịch bản mới và timeline quay tương ứng. Lời thoại tự nhiên, hành động đan xen sau mỗi 1-2 câu.{"" if not selected_hook else " Câu đầu tiên của kịch bản PHẢI là hook đã cho, không được thay đổi."}
 
 ```json
