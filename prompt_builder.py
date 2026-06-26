@@ -234,6 +234,11 @@ KOC_DISCOVERY_FLOWS = [
     },
 ]
 
+MINI_HOOK_BANK = (
+    "'Khoan...' / 'Ê nhưng mà...' / 'Ủa chưa hết nha.' / 'Cái này mới hay nè.' / "
+    "'Quan trọng là...' / 'Chưa kể...' / 'Đỉnh nhất là...' / 'Nhìn nè.' / 'Ủa thấy chưa?'"
+)
+
 GOAL_GUIDE = {
     'increase-conversion': 'CTA mạnh cuối video. Nhấn mạnh giá trị, deal, hoặc lý do mua ngay hôm nay.',
     'build-trust': 'Tập trung chất lượng, độ bền, trải nghiệm thật. Tránh ngôn ngữ quảng cáo.',
@@ -404,6 +409,19 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         f"  Caption 3: {_caption_styles[2]}",
         "Mỗi caption ≤ 100 ký tự, có 1-2 emoji, đề cập tên hoặc loại sản phẩm.",
         "",
+        "## PRE-WRITE PROTOCOL — làm TRƯỚC khi viết kịch bản",
+        "1. Xác định HERO BENEFIT — 1 lợi ích bán hàng mạnh nhất cho khách mục tiêu. Ghi vào section2.heroBenefit.",
+        "   Ví dụ: 'Che bụng cực khéo' / 'Co giãn cực thoải mái' / 'Mặc mát cả ngày' / 'Gọn dáng rõ'",
+        "2. voScript: 70% xoay quanh Hero Benefit. 30% mới nói lợi ích phụ.",
+        "3. Hành động phục vụ Hero Benefit (không random):",
+        "   Che bụng/gọn dáng → quay nghiêng, vuốt/chỉ bụng, xoay người 360",
+        "   Co giãn → kéo vải căng, squat nhẹ, bước chân rộng",
+        "   Chất liệu/mặc mát → vò vải, zoom chất liệu, vuốt tay lên vải",
+        "   Form/dáng → quay nghiêng 45°, chỉ eo/đùi, tiến sát camera",
+        "4. Thân video: tự nhiên thêm 1-2 Mini Hook giữ người xem:",
+        f"   {MINI_HOOK_BANK}",
+        "   Mini Hook tự nhiên — không cố định, mỗi video khác nhau.",
+        "",
         *_struct_check,
         "",
         "---",
@@ -428,7 +446,7 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         '```json',
         '{',
         '  "section1": {"productName":"","targetAudience":"","shootingStyle":"Voice Over (ElevenLabs)","duration":"","tone":"","videoGoal":""},',
-        '  "section2": {"targetCustomer":"","painPoints":"","insight":"","highlights":"","mainBenefits":"","usageSituations":""},',
+        '  "section2": {"targetCustomer":"","painPoints":"","insight":"","highlights":"","mainBenefits":"","usageSituations":"","heroBenefit":""},',
         '  "section3": {"hooks":[{"text":"câu hook tự nhiên mạnh 0-3s, không tag, không chào hỏi","isRecommended":true},{"text":"hook 2 kiểu khác — phủ định hoặc câu hỏi","isRecommended":false},{"text":"hook 3 kiểu khác — nhận xét bất ngờ","isRecommended":false}]},',
         '  "section7": {"captions":["caption 1 ≤100 ký tự + 1-2 emoji","caption 2 ≤100 ký tự + 1-2 emoji","caption 3 ≤100 ký tự + 1-2 emoji"]},',
         '  "section8": {"hashtags":["#tag1","#tag2","#tiktokshop"]},',
@@ -561,6 +579,19 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         "",
         "---",
         "",
+        "## PRE-WRITE PROTOCOL — làm TRƯỚC khi viết kịch bản",
+        "1. Xác định HERO BENEFIT — 1 lợi ích bán hàng mạnh nhất cho khách mục tiêu. Ghi vào section2.heroBenefit.",
+        "   Ví dụ: 'Che bụng cực khéo' / 'Co giãn cực thoải mái' / 'Mặc mát cả ngày' / 'Gọn dáng rõ'",
+        "2. Kịch bản: 70% lời thoại xoay quanh Hero Benefit. 30% mới nói lợi ích phụ.",
+        "3. Hành động (Action) phục vụ Hero Benefit (không random):",
+        "   Che bụng/gọn dáng → quay nghiêng, vuốt/chỉ bụng, xoay người 360",
+        "   Co giãn → kéo vải căng, squat nhẹ, bước chân rộng",
+        "   Chất liệu/mặc mát → vò vải, zoom chất liệu, vuốt tay lên vải",
+        "   Form/dáng → quay nghiêng 45°, chỉ eo/đùi, tiến sát camera",
+        "4. Thân video: tự nhiên thêm 1-2 Mini Hook giữ người xem:",
+        f"   {MINI_HOOK_BANK}",
+        "   Mini Hook tự nhiên — không cố định, mỗi video khác nhau.",
+        "",
         *_engine1_lines,
         "",
         *_engine4_lines,
@@ -583,7 +614,7 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         '```json',
         '{',
         '  "section1": {"productName":"","targetAudience":"","shootingStyle":"","duration":"","tone":"","videoGoal":""},',
-        '  "section2": {"targetCustomer":"","painPoints":"","insight":"","highlights":"","mainBenefits":"","usageSituations":""},',
+        '  "section2": {"targetCustomer":"","painPoints":"","insight":"","highlights":"","mainBenefits":"","usageSituations":"","heroBenefit":""},',
         '  "section3": {"hooks":[{"text":"hook 1","isRecommended":true},{"text":"hook 2","isRecommended":false},{"text":"hook 3","isRecommended":false}]},',
         '  "section7": {"captions":["1 câu ngắn ≤100 ký tự: tên SP + lợi ích + 1-2 emoji + CTA","caption 2 góc khác cũng ≤100 ký tự","caption 3 góc khác cũng ≤100 ký tự"]},',
         '  "section8": {"hashtags":["#tag_chinh_xac_san_pham","#tag_niche","#tag_rong","#tiktokshop","#reviewsanpham"]},',
@@ -643,7 +674,7 @@ def parse_ai_response(raw: str) -> dict:
 
     defaults = {
         'section1': {'productName': '', 'targetAudience': '', 'shootingStyle': '', 'duration': '', 'tone': '', 'videoGoal': ''},
-        'section2': {'targetCustomer': '', 'painPoints': '', 'insight': '', 'highlights': '', 'mainBenefits': '', 'usageSituations': ''},
+        'section2': {'targetCustomer': '', 'painPoints': '', 'insight': '', 'highlights': '', 'mainBenefits': '', 'usageSituations': '', 'heroBenefit': ''},
         'section3': {'hooks': []},
         'section4': {'duration': '', 'hook': '', 'lines': [], 'rawScript': '', 'voScript': ''},
         'section5': {'timeline': []},
@@ -691,7 +722,9 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
 
     if section == 'script':
         s2 = current_script.get('section2', {})
+        hero_benefit = s2.get('heroBenefit', '').strip()
         analysis_parts = list(filter(None, [
+            f"Hero Benefit: {hero_benefit}" if hero_benefit else '',
             f"Pain point: {s2.get('painPoints','')}" if s2.get('painPoints') else '',
             f"Insight khách hàng: {s2.get('insight','')}" if s2.get('insight') else '',
             f"Điểm nổi bật sản phẩm: {s2.get('highlights','')}" if s2.get('highlights') else '',
@@ -700,6 +733,7 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
         ]))
         analysis_block = ('\n' + '\n'.join(analysis_parts)) if analysis_parts else ''
         hook_line = f'\nHook mở đầu bắt buộc dùng: "{selected_hook}"' if selected_hook else ''
+        hero_line = f'\nHero Benefit: {hero_benefit} → 70% lời thoại xoay quanh điểm này. Hành động ưu tiên phục vụ Hero Benefit. Thân video thêm 1-2 Mini Hook tự nhiên.' if hero_benefit else ''
 
         if shooting == 'voiceover':
             persona_guide = VO_PERSONA_GUIDE.get(tone, 'Nói tự nhiên như người thật.')
@@ -715,7 +749,7 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
             ) if tone == 'tiktok-nhay' else ''
             hook_instruction = f' Câu đầu tiên PHẢI là hook đã cho, không được thay đổi: "{selected_hook}"' if selected_hook else ''
             user = f"""{base}{analysis_block}
-{context_line}{hook_line}
+{context_line}{hook_line}{hero_line}
 
 Persona: {persona_guide}
 
@@ -773,7 +807,7 @@ TỰ KIỂM TRA KOC: Lời thoại có giống người thật đang mặc thử
             else:
                 _koc_block = ""
             user = f"""{base}{analysis_block}
-{context_line}{hook_line}
+{context_line}{hook_line}{hero_line}
 
 ENGINE 1 — CẤU TRÚC LẦN NÀY: {_pattern['name']}
 Flow: {_pattern['flow']}
