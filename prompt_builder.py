@@ -970,6 +970,7 @@ Tạo kịch bản mới và timeline quay tương ứng. Lời thoại tự nhi
     elif section == 'hooks':
         s2 = current_script.get('section2', {})
         analysis = '\n'.join(filter(None, [
+            f"Hero Benefit: {s2.get('heroBenefit','')}" if s2.get('heroBenefit') else '',
             f"Pain point: {s2.get('painPoints','')}" if s2.get('painPoints') else '',
             f"Insight: {s2.get('insight','')}" if s2.get('insight') else '',
             f"Điểm nổi bật: {s2.get('highlights','')}" if s2.get('highlights') else '',
@@ -1059,14 +1060,16 @@ Bạn là TikTok SEO Specialist có kinh nghiệm tối ưu hàng nghìn video T
 Nhiệm vụ: tạo bộ hashtag giúp TikTok hiểu đúng chủ đề và tiếp cận đúng khách hàng — không phải tạo thật nhiều tag.
 
 # CÔNG THỨC — Luôn đúng 10–12 hashtag, theo thứ tự:
-1. Brand (1-2 tag): thương hiệu cửa hàng. Ví dụ: #dambaubella #bella
-2. Product (3 tag): loại sản phẩm cụ thể, đa dạng, không lặp từ gốc.
-   Ví dụ: #aobau #babydollbau #aovoan  (KHÔNG: #aobau #aobauxinh #aobaudep)
-3. Audience (2 tag): đối tượng khách hàng.
-   Ví dụ: #mebau #thoitrangbau #mesausinh #thoitrangnu
+1. Brand (1-2 tag): thương hiệu cửa hàng. Ví dụ: #shopname #thuonghieu
+2. Product (3 tag): loại sản phẩm cụ thể, đa dạng từ ngữ, không lặp từ gốc.
+   Ví dụ (thời trang): #aobau #babydoll #voansuong  (KHÔNG: #aobau #aobauxinh #aobaudep)
+   Ví dụ (mỹ phẩm): #serum #duongda #kemduongam
+   Ví dụ (thực phẩm): #caphe #caphesuada #nuocuong
+3. Audience (2 tag): đối tượng khách hàng phù hợp sản phẩm.
+   Ví dụ: #mebau #thoitrangbau / #dagot #skincare / #congnghe #gadget
 4. Usage (2 tag): tình huống sử dụng thật.
-   Ví dụ: #macnha #dichoicho #caphe #dibien #phodao #thoitranghangngay
-5. TikTok Shop (2 tag): ví dụ #tiktokshop #reviewthoitrang #reviewthat #reviewsanpham
+   Ví dụ: #macnha #dichoicho / #trangdiem #makeup / #uongsang #caphesang
+5. TikTok Shop (2 tag): ví dụ #tiktokshop #reviewthat #reviewsanpham
 6. Discovery (chỉ 1 tag, không hơn): #xuhuong HOẶC #viral HOẶC #fyp HOẶC #foryou
 
 # QUY TẮC
@@ -1088,21 +1091,28 @@ Nếu chưa đạt → tự tạo lại.
 ```"""
 
     elif section == 'analysis':
+        _ind_hero_ex = industry_data.get('hero_examples', "'Lợi ích mạnh nhất' / 'Giải pháp chính' / 'Kết quả thấy rõ'")
         user = f"""{base}
 {context_line}
 
 Phân tích nhanh sản phẩm để tạo kịch bản TikTok Shop.
 Xác định luôn Hero Benefit — 1 lợi ích bán hàng mạnh nhất cho khách mục tiêu cụ thể này.
+Ví dụ Hero Benefit ({industry_label}): {_ind_hero_ex}
 
 ```json
 {{"section2":{{"targetCustomer":"","painPoints":"","insight":"","highlights":"","mainBenefits":"","usageSituations":"","heroBenefit":""}}}}
 ```"""
 
     elif section == 'tips':
+        _demo_tip = industry_data.get('demo', '')
+        _camera_tip = industry_data.get('camera', '')
+        _tips_industry_hint = f'\nNgành hàng ({industry_label}): demo = {_demo_tip}. Camera = {_camera_tip}.' if _demo_tip else ''
         user = f"""{base}
-{context_line}
+{context_line}{_tips_industry_hint}
 
-Tạo 4-6 lưu ý khi quay video cho sản phẩm này, phù hợp với kiểu quay và mục tiêu video.
+Tạo 4-6 lưu ý thực tế khi quay video cho sản phẩm này.
+Gồm: setup góc máy phù hợp ngành, cách demo rõ Hero Benefit, ánh sáng, âm thanh, lưu ý đặc thù kiểu quay này.
+{"Voiceover: nhấn mạnh tắt micro hoàn toàn, đồng bộ hành động theo script." if shooting == "voiceover" else ""}
 
 ```json
 {{"section9":{{"tips":["lưu ý 1","lưu ý 2"]}}}}

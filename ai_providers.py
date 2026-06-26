@@ -101,14 +101,14 @@ def analyze_images_with_openai(openai_settings: dict, images: list) -> str:
     if not images or not openai_settings.get('apiKey', ''):
         return ''
     n = len(images)
-    system_prompt = 'Bạn là chuyên gia phân tích sản phẩm thời trang. Mô tả chính xác, chi tiết những gì thấy trong ảnh.'
+    system_prompt = 'Bạn là chuyên gia phân tích sản phẩm. Mô tả chính xác, chi tiết những gì thấy trong ảnh.'
     user_prompt = (
         f'Tôi gửi {n} ảnh sản phẩm. Hãy phân tích TẤT CẢ {n} ảnh và tổng hợp thành 1 mô tả đầy đủ:\n'
-        '- Màu sắc: tên màu cụ thể (đen tuyền, be sữa, xanh navy...), có bao nhiêu màu/biến thể\n'
-        '- Chất liệu: nhận dạng nếu nhìn thấy (cotton, vải lụa, denim...)\n'
-        '- Kiểu dáng & form: rộng/ôm/suông, dáng quần/áo/váy cụ thể\n'
-        '- Chi tiết thiết kế nổi bật: cổ áo, tay áo, đường may, họa tiết, logo, phụ kiện đính kèm\n'
-        '- Cách mặc & phối đồ thấy trong ảnh (nếu có model mặc)\n'
+        '- Loại sản phẩm: nhận dạng từ hình ảnh (quần áo, mỹ phẩm, điện tử, thực phẩm, gia dụng...)\n'
+        '- Màu sắc & hình thức: màu sắc cụ thể, kích thước/form dáng, bao bì (nếu có)\n'
+        '- Chi tiết đặc trưng nổi bật: nhãn hiệu, logo, họa tiết, chất liệu, thiết kế đặc biệt\n'
+        '- Thông tin có thể thấy: số lượng, dung tích, model, nhãn sản phẩm, tình trạng\n'
+        '- Cảnh sử dụng (nếu có người/thú cưng/vật dùng trong ảnh): mô tả ngắn gọn\n'
         'Chỉ mô tả những gì thực sự nhìn thấy. Không bịa đặt.'
     )
     settings = {**openai_settings, 'temperature': 0.2, 'maxTokens': 0}
@@ -125,14 +125,14 @@ def analyze_images_with_gemini(gemini_api_keys, images: list) -> str:
     if not keys or not images:
         return ''
     n = len(images)
-    system_prompt = 'Bạn là chuyên gia phân tích sản phẩm thời trang. Mô tả chính xác, chi tiết những gì thấy trong ảnh.'
+    system_prompt = 'Bạn là chuyên gia phân tích sản phẩm. Mô tả chính xác, chi tiết những gì thấy trong ảnh.'
     user_prompt = (
         f'Tôi gửi {n} ảnh sản phẩm. Hãy phân tích TẤT CẢ {n} ảnh và tổng hợp thành 1 mô tả đầy đủ:\n'
-        '- Màu sắc: tên màu cụ thể (đen tuyền, be sữa, xanh navy...), có bao nhiêu màu/biến thể\n'
-        '- Chất liệu: nhận dạng nếu nhìn thấy (cotton, vải lụa, denim...)\n'
-        '- Kiểu dáng & form: rộng/ôm/suông, dáng quần/áo/váy cụ thể\n'
-        '- Chi tiết thiết kế nổi bật: cổ áo, tay áo, đường may, họa tiết, logo, phụ kiện đính kèm\n'
-        '- Cách mặc & phối đồ thấy trong ảnh (nếu có model mặc)\n'
+        '- Loại sản phẩm: nhận dạng từ hình ảnh (quần áo, mỹ phẩm, điện tử, thực phẩm, gia dụng...)\n'
+        '- Màu sắc & hình thức: màu sắc cụ thể, kích thước/form dáng, bao bì (nếu có)\n'
+        '- Chi tiết đặc trưng nổi bật: nhãn hiệu, logo, họa tiết, chất liệu, thiết kế đặc biệt\n'
+        '- Thông tin có thể thấy: số lượng, dung tích, model, nhãn sản phẩm, tình trạng\n'
+        '- Cảnh sử dụng (nếu có người/thú cưng/vật dùng trong ảnh): mô tả ngắn gọn\n'
         'Chỉ mô tả những gì thực sự nhìn thấy. Không bịa đặt.'
     )
     models = [

@@ -1301,7 +1301,7 @@ def manifest():
     return jsonify({
         "name": "BELLA AI Script Generator",
         "short_name": "BELLA AI",
-        "description": "Tạo kịch bản TikTok Shop OneShot cho BELLA",
+        "description": "Tạo kịch bản TikTok Shop AI cho mọi ngành hàng",
         "start_url": "/",
         "display": "standalone",
         "background_color": "#f9fafb",
@@ -1315,6 +1315,8 @@ def manifest():
 
 @app.route('/api/debug-urllib')
 def debug_urllib():
+    if IS_CLOUD:
+        return jsonify({'error': 'Not available in production'}), 404
     import urllib.request as _req, re, json as _json, traceback
     from urllib.parse import urlparse, parse_qs
     test_url = request.args.get('url', 'https://vt.tiktok.com/ZS96rCQF3pPxt-uEtA5/')
@@ -1371,6 +1373,8 @@ def debug_urllib():
 
 @app.route('/api/debug-shopee')
 def debug_shopee():
+    if IS_CLOUD:
+        return jsonify({'error': 'Not available in production'}), 404
     import urllib.request as _req, re, traceback
     test_url = request.args.get('url', 'https://s.shopee.vn/8KnQUMkqDK')
     UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
