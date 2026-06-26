@@ -582,27 +582,43 @@ def _fetch_tiktok_cloud(url):
     }
 
     UA_MOBILE = 'Mozilla/5.0 (Linux; Android 13; SM-S901B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.82 Mobile Safari/537.36'
+    UA_GBOT   = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
 
-    # shop.tiktok.com/vn/pdp/ — thử mobile UA trước (bypass security check tốt hơn desktop)
+    def _is_blocked(h):
+        low = h.lower()[:4000]
+        return (len(h) < 2000
+                or 'security check' in low
+                or 'just a moment' in low
+                or 'enable javascript' in low
+                or 'cf-browser-verification' in low)
+
+    # shop.tiktok.com/vn/pdp/ — thử nhiều UA theo thứ tự ưu tiên
     _is_shop_pdp = 'shop.tiktok.com' in url and '/pdp/' in url
     if _is_shop_pdp:
-        try:
-            _mreq = _req.Request(url, headers={**headers, 'User-Agent': UA_MOBILE})
-            with _req.urlopen(_mreq, timeout=20) as _mr:
-                _mhtml = _mr.read().decode('utf-8', errors='ignore')
-            if len(_mhtml) > 2000 and 'security check' not in _mhtml.lower()[:3000]:
-                html = _mhtml
-                final_url = url
-            else:
-                raise Exception('blocked')
-        except Exception:
+        _shop_headers_base = {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Cache-Control': 'max-age=0',
+        }
+        html = ''; final_url = url
+        for _ua in [UA_MOBILE, UA_GBOT, UA_DESKTOP]:
             try:
-                req = _req.Request(url, headers=headers)
-                with _req.urlopen(req, timeout=20) as resp:
-                    final_url = resp.url
-                    html = resp.read().decode('utf-8', errors='ignore')
-            except Exception as e:
-                return None, f'Không thể tải trang: {str(e)}'
+                _req_shop = _req.Request(url, headers={**_shop_headers_base, 'User-Agent': _ua})
+                with _req.urlopen(_req_shop, timeout=20) as _r:
+                    _h = _r.read().decode('utf-8', errors='ignore')
+                if not _is_blocked(_h):
+                    html = _h; break
+                html = _h  # giữ lại dù bị block để thử parse sau
+            except Exception:
+                pass
+        if not html:
+            return None, 'Không thể tải trang shop.tiktok.com'
     else:
         try:
             req = _req.Request(url, headers=headers)
@@ -700,6 +716,56 @@ def _fetch_tiktok_cloud(url):
                         pass
         return images
 
+    def _parse_shop_tiktok_html(html_text):
+        """Extract product info từ HTML của shop.tiktok.com — dùng class CSS đặc trưng."""
+        # Tên sản phẩm: <span class="H2-Semibold ...">Tên SP</span>
+        name = ''
+        m_h2 = re.search(r'<span[^>]+class="[^"]*H2-Semibold[^"]*"[^>]*>(.*?)</span>', html_text, re.DOTALL)
+        if m_h2:
+            name = re.sub(r'<[^>]+>', '', m_h2.group(1)).strip()
+        # Fallback: lấy từ <h1> tag
+        if not name:
+            m_h1 = re.search(r'<h1[^>]*>(.*?)</h1>', html_text, re.DOTALL)
+            if m_h1:
+                name = re.sub(r'<[^>]+>', '', m_h1.group(1)).strip()
+        # Fallback: lấy từ img alt attribute (nhiều ảnh đều dùng tên SP làm alt)
+        if not name:
+            m_alt = re.search(r'<img[^>]+alt="([^"]{10,})"', html_text)
+            if m_alt and 'tiktok' not in m_alt.group(1).lower():
+                name = m_alt.group(1).strip()
+
+        # Mô tả: các div.font-sans.font-normal.text-color-UIText1.mb-8
+        desc_parts = re.findall(
+            r'<div[^>]+class="[^"]*font-sans font-normal text-color-UIText1 mb-8[^"]*"[^>]*>(.*?)</div>',
+            html_text, re.DOTALL
+        )
+        desc = '\n'.join(re.sub(r'<[^>]+>', '', p).replace('&amp;', '&').replace('&gt;', '>').replace('&lt;', '<').strip()
+                         for p in desc_parts if re.sub(r'<[^>]+>', '', p).strip()).strip()
+
+        # Ảnh: img src từ CDN
+        img_urls = re.findall(
+            r'src="(https://[^"]+?\.(?:ibyteimg|tiktokcdn|ibytedtos)\.com/[^"]+?\.(?:jpeg|jpg|png|webp)[^"]*)"',
+            html_text
+        )
+        SKIP = ('avatar', 'logo', 'icon', '100x100', '50x50', 'header', 'banner')
+        seen_keys = set()
+        images = []
+        for img_url in img_urls:
+            key = img_url.split('?')[0].split('~')[0]
+            if key in seen_keys or any(s in img_url.lower() for s in SKIP):
+                continue
+            seen_keys.add(key)
+            try:
+                images.append({'id': f'sh-{len(images)}', 'dataUrl': _download_image_b64(img_url, UA_MOBILE)})
+                if len(images) >= 4:
+                    break
+            except Exception:
+                pass
+
+        if name and len(name) > 3:
+            return {'productName': name, 'productDescription': desc, 'images': images}
+        return None
+
     def _is_generic_tiktok_desc(text):
         """TikTok luôn dùng og:description = text marketing chung, không phải mô tả sản phẩm thật."""
         markers = ('săn giá siêu hời', 'freeship mặt hàng', 'ưu đãi độc quyền',
@@ -734,6 +800,12 @@ def _fetch_tiktok_cloud(url):
                     r = _deep_find_product(val, depth + 1)
                     if r: return r
         return None
+
+    # ── 0. shop.tiktok.com: parse trực tiếp từ CSS classes đặc trưng ────────────
+    if _is_shop_pdp:
+        _shop_result = _parse_shop_tiktok_html(html)
+        if _shop_result:
+            return _shop_result, None
 
     # ── 1. Tìm trong __NEXT_DATA__ (recursive) ───────────────────────────────
     m = re.search(r'<script[^>]+id=["\']__NEXT_DATA__["\'][^>]*>(.*?)</script>', html, re.DOTALL)
