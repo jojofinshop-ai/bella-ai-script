@@ -176,22 +176,64 @@ _READ_DOM_JS = """() => {
     const title = document.querySelector('h1')?.innerText?.trim()
         || m('meta[property="og:title"]') || m('meta[name="twitter:title"]')
         || document.title || '';
-    let descEl = null;
-    for (const el of document.querySelectorAll('div')) {
-        const cls = el.className || '';
-        if (cls.includes('grid-cols-2') && cls.includes('overflow-visible') && cls.includes('px-20')) {
-            descEl = el; break;
+
+    let desc = '';
+
+    // Strategy 1A: TikTok sectionHeader -> sectionContent (confirmed from DevTools)
+    for (const header of document.querySelectorAll('[class*="sectionHeader"]')) {
+        const ht = (header.innerText || '').trim().toLowerCase();
+        if (ht.includes('product description') || ht.includes('mo ta san pham')
+            || ht.includes('m\\u00f4 t\\u1ea3 s\\u1ea3n ph\\u1ea9m')) {
+            const content = header.nextElementSibling;
+            if (content) { desc = (content.innerText || '').trim(); }
+            break;
         }
     }
-    let desc = descEl?.innerText?.trim() || '';
+
+    // Strategy 1B: Find heading text, walk to sibling content
     if (!desc) {
-        const candidates = Array.from(document.querySelectorAll('p, li, [class*="desc"], [class*="detail"]'))
-            .map(el => el.innerText?.trim() || '')
-            .filter(t => t.length > 80 && t.length < 8000)
-            .filter(t => !t.includes('TikTok Shop') || t.length > 300)
-            .sort((a, b) => b.length - a.length);
-        desc = candidates[0] || m('meta[property="og:description"]') || '';
+        for (const el of document.querySelectorAll('p, span, div, h2, h3, h4, button')) {
+            const t = (el.innerText || '').trim().toLowerCase();
+            if (t === 'product description' || (t.length < 35 && t.startsWith('product description'))) {
+                const sibs = [
+                    el.nextElementSibling,
+                    el.parentElement && el.parentElement.nextElementSibling,
+                    el.parentElement && el.parentElement.parentElement && el.parentElement.parentElement.nextElementSibling,
+                    el.parentElement && el.parentElement.parentElement && el.parentElement.parentElement.parentElement && el.parentElement.parentElement.parentElement.nextElementSibling,
+                ];
+                for (const sib of sibs) {
+                    if (!sib) continue;
+                    const txt = (sib.innerText || sib.textContent || '').trim();
+                    if (txt.length > 50 && txt.toLowerCase() !== t) { desc = txt; break; }
+                }
+                if (desc) break;
+            }
+        }
     }
+
+    // Strategy 2: TikTok SmallText1-Regular spans (confirmed class from DevTools)
+    if (!desc) {
+        const spans = document.querySelectorAll('[class*="SmallText1"]');
+        if (spans.length > 2) {
+            desc = Array.from(spans).map(function(s) { return (s.innerText || '').trim(); }).filter(function(t) { return t.length > 0; }).join('\\n');
+        }
+    }
+
+    // Strategy 3: Broad candidate search
+    if (!desc) {
+        const BLOCKED = ['get the full app', 'security check', 'open tiktok', 'not now',
+                         'make your day', 'sign up', 'log in', 'create account'];
+        const candidates = Array.from(document.querySelectorAll('p, li, div, [class*="desc"], [class*="detail"]'))
+            .map(function(el) { return el.innerText ? el.innerText.trim() : ''; })
+            .filter(function(t) { return t.length > 80 && t.length < 10000; })
+            .filter(function(t) { const tl = t.toLowerCase(); return !BLOCKED.some(function(b) { return tl.startsWith(b) || tl === b; }); })
+            .filter(function(t) { return !t.includes('TikTok Shop') || t.length > 300; })
+            .sort(function(a, b) { return b.length - a.length; });
+        desc = candidates[0] || '';
+    }
+
+    if (!desc) desc = m('meta[property="og:description"]') || '';
+
     const productImgs = Array.from(document.querySelectorAll('img'))
         .map(i => i.src || i.dataset.src || i.dataset.original || '')
         .filter(s => s && (s.includes('ibyteimg.com') || s.includes('seaimg.com')))
@@ -297,8 +339,15 @@ def _fetch_with_playwright(url, injected_cookies=None, cookie_domain=None):
                 except Exception:
                     pass  # Giữ nguyên trang hiện tại nếu không chuyển được
 
-            # Scroll để trigger lazy-load
-            page.evaluate("window.scrollTo(0, document.body.scrollHeight * 0.4)")
+            # Dismiss "Get the full app experience" modal nếu xuất hiện
+            try:
+                page.click('text="Not now"', timeout=1500)
+                time.sleep(0.5)
+            except Exception:
+                pass
+
+            # Scroll để trigger lazy-load + hiện "Product description" content
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight * 0.5)")
             time.sleep(1.5)
 
             dom = page.evaluate(_READ_DOM_JS)
