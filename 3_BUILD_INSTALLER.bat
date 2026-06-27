@@ -28,31 +28,8 @@ if not exist "%ISCC%" (
 
 echo [1/2] Building EXE with PyInstaller...
 echo.
-"%PYTHON%" -m pip install pyinstaller >nul 2>&1
-"%PYTHON%" -m PyInstaller --noconfirm --onefile --windowed --name "BELLA_AI_Script" ^
-  --add-data "templates;templates" ^
-  --add-data "bella_icon.ico;." ^
-  --add-data "bella_icon_512.png;." ^
-  --icon "bella_icon.ico" ^
-  --hidden-import flask ^
-  --hidden-import openai ^
-  --hidden-import werkzeug ^
-  --hidden-import webview ^
-  --hidden-import webview.platforms.edgechromium ^
-  --hidden-import cryptography ^
-  --hidden-import cryptography.hazmat.primitives.ciphers.aead ^
-  --hidden-import playwright ^
-  --hidden-import playwright.sync_api ^
-  --hidden-import PIL ^
-  --hidden-import PIL.Image ^
-  --exclude-module clr ^
-  --exclude-module pythonnet ^
-  --exclude-module webview.platforms.winforms ^
-  --exclude-module grpc ^
-  --exclude-module numpy ^
-  --exclude-module pandas ^
-  --exclude-module matplotlib ^
-  app.py
+"%PYTHON%" -m pip install pyinstaller pythonnet >nul 2>&1
+"%PYTHON%" -m PyInstaller --noconfirm BELLA_AI_Script.spec
 
 if not exist "dist\BELLA_AI_Script.exe" (
     echo.

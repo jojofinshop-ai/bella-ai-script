@@ -500,19 +500,27 @@ SUBJECT_TIPS = {
 # đoạn text đó vào prompt làm ví dụ tham khảo văn phong/cấu trúc, không đụng gì khác.
 
 def _build_reference_examples_block(reference_examples: list) -> list:
-    """Trả về list dòng prompt tham khảo mẫu từ Thư viện (few-shot nhẹ, không bắt buộc copy)."""
-    examples = [e.strip()[:400] for e in (reference_examples or []) if e and e.strip()]
+    """Trả về list dòng prompt tham khảo mẫu từ Thư viện — strong few-shot để AI học văn phong thật sự."""
+    examples = [e.strip()[:500] for e in (reference_examples or []) if e and e.strip()]
     if not examples:
         return []
     lines = [
         "",
-        "## THAM KHẢO TỪ THƯ VIỆN MẪU",
-        "Các đoạn sau là hook/kịch bản/transcript mẫu do người dùng tự chọn lưu lại (vd: video",
-        "TikTok đang viral). HỌC văn phong, cách mở đầu, cấu trúc câu — TUYỆT ĐỐI KHÔNG copy",
-        "nguyên văn vì sản phẩm/ngữ cảnh khác:",
+        "## PHONG CÁCH VIẾT — BẮT BUỘC HỌC TỪ MẪU SAU",
+        "Các mẫu dưới đây là hook/kịch bản/transcript người dùng chọn lọc vì hiệu quả thực tế.",
+        "BẮT BUỘC học và áp dụng vào kịch bản lần này:",
+        "  • Nhịp câu, độ dài câu, cách ngắt câu",
+        "  • Cách mở đầu (hook), cách chuyển ý, cách kết thúc",
+        "  • Văn phong tự nhiên, cách dùng từ ngữ đời thường",
+        "Giữ đúng giọng điệu và sản phẩm đã chỉ định — nhưng CÁCH VIẾT phải gần với mẫu.",
+        "Không copy nguyên văn — sản phẩm và ngữ cảnh khác nhau:",
     ]
-    for ex in examples[:3]:
-        lines.append(f'  - "{ex}"')
+    for i, ex in enumerate(examples[:3], 1):
+        lines.append(f'  [{i}] "{ex}"')
+    lines += [
+        "→ Kịch bản lần này phải có văn phong và nhịp điệu gần với các mẫu trên.",
+        "",
+    ]
     return lines
 
 
@@ -756,7 +764,6 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         ]),
         "",
         *_struct_check,
-        *_reference_examples,
         "",
         "---",
         "",
@@ -773,6 +780,7 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         "Bối cảnh quay: video liên tục, người quay KHÔNG NÓI — miệng im hoàn toàn.",
         "Giọng lồng vào sau khi edit qua ElevenLabs. Người quay chỉ làm hành động khớp với giọng.",
         "",
+        *_reference_examples,
         "---",
         "",
         "# ĐẦU RA — Chỉ trả về JSON hợp lệ, không text nào ngoài JSON:",

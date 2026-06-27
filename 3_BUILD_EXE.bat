@@ -14,30 +14,11 @@ if not exist "%PYTHON%" (
     if %errorlevel% == 0 ( set "PYTHON=python" )
 )
 
-echo Installing PyInstaller...
-"%PYTHON%" -m pip install pyinstaller >nul 2>&1
+echo Installing dependencies...
+"%PYTHON%" -m pip install pyinstaller pythonnet >nul 2>&1
 
 echo Building...
-"%PYTHON%" -m PyInstaller --noconfirm --onefile --windowed --name "BELLA_AI_Script" ^
-  --add-data "templates;templates" ^
-  --hidden-import flask ^
-  --hidden-import openai ^
-  --hidden-import werkzeug ^
-  --hidden-import webview ^
-  --hidden-import webview.platforms.edgechromium ^
-  --hidden-import cryptography ^
-  --hidden-import cryptography.hazmat.primitives.ciphers.aead ^
-  --hidden-import playwright ^
-  --hidden-import playwright.sync_api ^
-  --exclude-module clr ^
-  --exclude-module pythonnet ^
-  --exclude-module webview.platforms.winforms ^
-  --exclude-module google.generativeai ^
-  --exclude-module grpc ^
-  --exclude-module numpy ^
-  --exclude-module pandas ^
-  --exclude-module matplotlib ^
-  app.py
+"%PYTHON%" -m PyInstaller --noconfirm BELLA_AI_Script.spec
 
 echo.
 if exist "dist\BELLA_AI_Script.exe" (

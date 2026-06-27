@@ -60,7 +60,7 @@
     </div>
     <nav class="flex gap-0.5">
       <template x-for="tab in tabs" :key="tab.id">
-        <button @click="if(activeTab==='library' && tab.id!=='library') resetLibraryForm(); activeTab = tab.id" :class="activeTab===tab.id ? 'tab-active bg-purple-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="px-2 sm:px-3 py-1.5 text-sm rounded-md transition-all flex items-center gap-1">
+        <button @click="if(activeTab==='library' && tab.id!=='library') { resetLibraryForm(); expandedLibraryId=null; } activeTab = tab.id" :class="activeTab===tab.id ? 'tab-active bg-purple-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="px-2 sm:px-3 py-1.5 text-sm rounded-md transition-all flex items-center gap-1">
           <span class="sm:hidden" x-text="tab.icon"></span>
           <span class="hidden sm:inline" x-text="tab.label"></span>
         </button>
@@ -355,7 +355,7 @@
           </div>
         </div>
 
-        <div class="mt-3">
+        <div class="px-4 pb-4 pt-3">
           <label class="block text-xs font-semibold text-gray-600 mb-1">Ngành hàng</label>
           <select x-model="form.industry" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
             <option value="auto">🔍 Tự động nhận diện</option>
@@ -400,6 +400,11 @@
         <!-- V8.1: thêm nhanh mẫu vào Thư viện ngay tại đây, không cần qua tab Thư viện mẫu -->
         <button @click="toggleQuickAddLibrary()" class="border text-sm px-4 py-2 rounded-lg text-purple-700 border-purple-200 bg-purple-50 hover:bg-purple-100 flex items-center gap-1.5">
           <span>📚</span> Thêm mẫu
+        </button>
+        <!-- Panel chỉnh nhanh tùy chọn video -->
+        <button @click="showVideoOptions=!showVideoOptions" class="border text-sm px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors" :class="showVideoOptions ? 'bg-gray-100 text-gray-800 border-gray-300' : 'text-gray-600 hover:bg-gray-50'">
+          <svg class="w-3.5 h-3.5 transition-transform duration-200" :class="showVideoOptions ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          Tùy chọn
         </button>
         <!-- Image analysis status badge -->
         <template x-if="(imageAnalysisStatus === 'gemini' || imageAnalysisStatus === 'openai') && lastImageAnalysis">
@@ -456,6 +461,104 @@
         <p class="text-[11px] text-gray-400 mt-2">
           Sau khi lưu, bấm "Tạo lại" — AI sẽ tự xét mẫu này khi viết kịch bản tiếp theo.
         </p>
+      </div>
+
+      <!-- Panel chỉnh nhanh tùy chọn video -->
+      <div x-show="showVideoOptions" x-transition class="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Tùy chọn video — thay đổi rồi bấm "Tạo lại"</p>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Kiểu quay</label>
+            <select x-model="form.shootingStyle" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              <option value="one-shot">🎬 One Shot</option>
+              <option value="review">📦 Review sản phẩm</option>
+              <option value="koc-review">⭐ KOC Review</option>
+              <option value="tiktok-shop">🛍️ TikTok Shop</option>
+              <option value="ugc">👤 UGC</option>
+              <option value="talking-head">🗣️ Talking Head</option>
+              <option value="pov">👁️ POV</option>
+              <option value="livestream-teaser">📡 Livestream teaser</option>
+              <option value="voiceover">🎙️ Voice Over</option>
+              <option value="custom">✏️ Tùy chỉnh...</option>
+            </select>
+            <input x-show="form.shootingStyle==='custom'" x-model="form.shootingStyleCustom" @change="saveFormOptions()" type="text" placeholder="Nhập kiểu quay..." class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Thời lượng</label>
+            <select x-model="form.duration" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              <option value="15s">15 giây</option>
+              <option value="20s">20 giây</option>
+              <option value="30s">30 giây</option>
+              <option value="45s">45 giây</option>
+              <option value="60s">60 giây</option>
+              <option value="90s">90 giây</option>
+              <option value="custom">Tùy chỉnh...</option>
+            </select>
+            <input x-show="form.duration==='custom'" x-model="form.durationCustom" @change="saveFormOptions()" type="text" placeholder="VD: 35 giây" class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Giọng điệu</label>
+            <select x-model="form.tone" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              <option value="natural-koc">🌿 Tự nhiên như KOC</option>
+              <option value="friendly">💬 Gần gũi</option>
+              <option value="cute">🌸 Dễ thương</option>
+              <option value="light-elegant">✨ Sang nhẹ</option>
+              <option value="tiktok-nhay">🔥 Nhây nhây TikTok</option>
+              <option value="light-humor">😄 Hài hước nhẹ</option>
+              <option value="soft-close">💰 Chốt sale mềm</option>
+              <option value="real-review">🔍 Review trải nghiệm thật</option>
+              <option value="custom">✏️ Tùy chỉnh...</option>
+            </select>
+            <input x-show="form.tone==='custom'" x-model="form.toneCustom" @change="saveFormOptions()" type="text" placeholder="Nhập giọng điệu..." class="mt-1 w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Mục tiêu video</label>
+            <select x-model="form.videoGoal" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              <option value="increase-conversion">📈 Tăng chuyển đổi</option>
+              <option value="build-trust">🤝 Tạo niềm tin</option>
+              <option value="introduce-new">🆕 Giới thiệu SP mới</option>
+              <option value="push-bestseller">🔥 Đẩy SP bán chạy</option>
+              <option value="solve-pain">💊 Xử lý nỗi đau</option>
+              <option value="increase-comments">💬 Tăng bình luận</option>
+              <option value="click-to-cart">🛒 Kéo click vào giỏ</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Ngành hàng</label>
+            <select x-model="form.industry" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              <option value="auto">🔍 Tự động nhận diện</option>
+              <option value="fashion">👗 Thời trang</option>
+              <option value="beauty">💄 Mỹ phẩm &amp; Skincare</option>
+              <option value="electronics">📱 Điện tử &amp; Công nghệ</option>
+              <option value="home">🏠 Gia dụng</option>
+              <option value="food">🍜 Thực phẩm &amp; Đồ uống</option>
+              <option value="pet">🐾 Thú cưng</option>
+              <option value="baby">👶 Mẹ &amp; Bé</option>
+              <option value="other">📦 Ngành hàng khác</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Chủ thể video</label>
+            <select x-model="form.subjectMode" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              <option value="auto">🤖 Tự động</option>
+              <option value="face">👩 Có người / Lộ mặt</option>
+              <option value="hands">🤲 Chỉ quay tay</option>
+              <option value="product">📦 Chỉ sản phẩm</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Hình thức SX</label>
+            <select x-model="form.productionMode" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              <option value="real">🎬 Quay thật</option>
+              <option value="ai">🤖 AI tạo video</option>
+              <option value="both">🎬🤖 Kết hợp</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-2">
+          <label class="block text-xs font-medium text-gray-600 mb-1">Đối tượng khách hàng</label>
+          <input x-model="form.targetAudience" @change="saveFormOptions()" type="text" placeholder="VD: Mẹ bầu 5-8 tháng... (để trống AI tự suy luận)" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+        </div>
       </div>
 
       <!-- Section error banner -->
@@ -1007,12 +1110,22 @@
 
   <!-- ====== TAB: THƯ VIỆN MẪU (V8) ====== -->
   <div x-show="activeTab==='library'">
+    <!-- Header -->
     <div class="flex items-center justify-between mb-4">
-      <div>
-        <h2 class="text-xl font-bold">Thư viện mẫu</h2>
-        <p class="text-sm text-gray-500 mt-0.5">Hook/kịch bản/transcript mẫu để AI tham khảo khi viết — không chờ số liệu, tự tay nhập</p>
+      <div class="flex items-center gap-3">
+        <div>
+          <h2 class="text-xl font-bold flex items-center gap-2">
+            Thư viện mẫu
+            <span x-show="referenceLibrary.length > 0" class="text-sm font-normal bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full" x-text="referenceLibrary.length + ' mẫu'"></span>
+          </h2>
+          <p class="text-sm text-gray-500 mt-0.5">AI học văn phong từ mẫu này khi tạo kịch bản — ảnh hưởng ~30% output</p>
+        </div>
       </div>
       <div class="flex gap-2">
+        <button @click="showLibraryForm=!showLibraryForm" class="text-sm border px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors" :class="showLibraryForm ? 'bg-purple-50 text-purple-700 border-purple-200' : 'text-gray-600 hover:bg-gray-50'">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          <span x-text="editingLibraryId ? 'Sửa mẫu' : 'Thêm mẫu'"></span>
+        </button>
         <button @click="exportLibrary()" x-show="referenceLibrary.length>0" class="text-sm border px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50">Export</button>
         <label class="text-sm border px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 cursor-pointer">
           Import
@@ -1021,14 +1134,14 @@
       </div>
     </div>
 
-    <!-- Form thêm/sửa mẫu -->
-    <div class="bg-white border rounded-xl shadow-sm p-4 mb-4">
-      <p class="text-sm font-semibold text-gray-700 mb-3" x-text="editingLibraryId ? 'Sửa mẫu' : 'Thêm mẫu mới'"></p>
+    <!-- Form thêm/sửa mẫu (collapsible) -->
+    <div x-show="showLibraryForm" x-transition class="bg-white border rounded-xl shadow-sm p-4 mb-4">
+      <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3" x-text="editingLibraryId ? '✏️ Sửa mẫu' : '✚ Thêm mẫu mới'"></p>
       <textarea x-model="libraryForm.content" rows="4" placeholder="Dán transcript video TikTok đang viral, hook hay, hoặc cả kịch bản vào đây..."
         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 mb-3"></textarea>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
         <div>
-          <label class="text-xs text-gray-500">Loại</label>
+          <label class="text-xs text-gray-500 mb-0.5 block">Loại</label>
           <select x-model="libraryForm.type" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
             <option value="hook">Hook ngắn</option>
             <option value="script">Kịch bản đầy đủ</option>
@@ -1036,9 +1149,9 @@
           </select>
         </div>
         <div>
-          <label class="text-xs text-gray-500">Ngành hàng</label>
+          <label class="text-xs text-gray-500 mb-0.5 block">Ngành hàng</label>
           <select x-model="libraryForm.industry" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
-            <option value="auto">🔍 Tự động / mọi ngành</option>
+            <option value="auto">🔍 Tất cả ngành</option>
             <option value="fashion">👗 Thời trang</option>
             <option value="beauty">💄 Mỹ phẩm & Skincare</option>
             <option value="electronics">📱 Điện tử & Công nghệ</option>
@@ -1050,56 +1163,85 @@
           </select>
         </div>
         <div>
-          <label class="text-xs text-gray-500">Gắn với sản phẩm/ngữ cảnh (tùy chọn)</label>
+          <label class="text-xs text-gray-500 mb-0.5 block">Gắn với sản phẩm (tùy chọn)</label>
           <input x-model="libraryForm.productTag" type="text" placeholder="VD: sạc dự phòng, son lì..."
             class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
         </div>
       </div>
-      <input x-model="libraryForm.note" type="text" placeholder="Ghi chú (tùy chọn) — VD: video này viral vì hook bất ngờ"
+      <input x-model="libraryForm.note" type="text" placeholder="Ghi chú (tùy chọn) — VD: video viral vì hook bất ngờ"
         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 mb-3">
       <div class="flex gap-2">
-        <button @click="saveLibraryEntry()" class="gradient-btn text-white text-sm px-4 py-2 rounded-lg" x-text="editingLibraryId ? 'Lưu thay đổi' : 'Thêm vào thư viện'"></button>
-        <button @click="resetLibraryForm()" x-show="editingLibraryId" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50">Hủy sửa</button>
+        <button @click="saveLibraryEntry(); showLibraryForm=false" :disabled="!libraryForm.content.trim()" class="gradient-btn text-white text-sm px-4 py-2 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed" x-text="editingLibraryId ? 'Lưu thay đổi' : 'Thêm vào thư viện'"></button>
+        <button @click="resetLibraryForm(); showLibraryForm=false" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50" x-text="editingLibraryId ? 'Hủy sửa' : 'Hủy'"></button>
       </div>
     </div>
 
-    <div class="mb-3">
-      <input x-model="librarySearch" type="text" placeholder="Tìm theo nội dung, ngành hàng, sản phẩm..."
-        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+    <!-- Filter bar -->
+    <div x-show="referenceLibrary.length > 0" class="flex flex-wrap items-center gap-2 mb-3">
+      <!-- Search -->
+      <input x-model="librarySearch" type="text" placeholder="Tìm theo nội dung, ngành, sản phẩm..."
+        class="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+      <!-- Type filter chips -->
+      <div class="flex gap-1">
+        <button @click="libraryTypeFilter='all'" class="text-xs px-3 py-1.5 rounded-lg border transition-colors" :class="libraryTypeFilter==='all' ? 'bg-purple-600 text-white border-purple-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50'">Tất cả</button>
+        <button @click="libraryTypeFilter='hook'" class="text-xs px-3 py-1.5 rounded-lg border transition-colors" :class="libraryTypeFilter==='hook' ? 'bg-purple-600 text-white border-purple-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50'">Hook</button>
+        <button @click="libraryTypeFilter='script'" class="text-xs px-3 py-1.5 rounded-lg border transition-colors" :class="libraryTypeFilter==='script' ? 'bg-purple-600 text-white border-purple-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50'">Kịch bản</button>
+        <button @click="libraryTypeFilter='transcript'" class="text-xs px-3 py-1.5 rounded-lg border transition-colors" :class="libraryTypeFilter==='transcript' ? 'bg-purple-600 text-white border-purple-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50'">Transcript</button>
+      </div>
     </div>
 
-    <!-- Empty state -->
+    <!-- Empty state (no entries at all) -->
     <div x-show="referenceLibrary.length===0" class="text-center py-16">
       <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
         <span class="text-2xl">📚</span>
       </div>
       <h3 class="font-semibold text-gray-700">Thư viện trống</h3>
-      <p class="text-sm text-gray-400 mt-1">Thêm mẫu hook/kịch bản/transcript video viral để AI tham khảo</p>
+      <p class="text-sm text-gray-400 mt-1 max-w-sm mx-auto">Thêm hook, kịch bản, hoặc transcript video viral — AI sẽ học văn phong từ đây khi tạo kịch bản mới</p>
+    </div>
+
+    <!-- Empty state (filter no results) -->
+    <div x-show="referenceLibrary.length > 0 && filteredLibrary().length === 0" class="text-center py-10 text-gray-400 text-sm">
+      Không tìm thấy mẫu nào khớp với bộ lọc.
+      <button @click="librarySearch=''; libraryTypeFilter='all'" class="text-purple-600 hover:underline ml-1">Xóa bộ lọc</button>
     </div>
 
     <!-- List mẫu -->
     <div class="space-y-2">
       <template x-for="entry in filteredLibrary()" :key="entry.id">
-        <div class="bg-white border rounded-xl shadow-sm p-4">
-          <div class="flex items-start justify-between gap-3">
-            <div class="flex-1 min-w-0">
-              <div class="flex flex-wrap gap-1.5 mb-2">
-                <span class="bg-purple-50 text-purple-700 text-[11px] px-2 py-0.5 rounded-full"
-                  x-text="entry.type === 'hook' ? 'Hook ngắn' : entry.type === 'script' ? 'Kịch bản đầy đủ' : 'Transcript viral'"></span>
-                <span class="bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 rounded-full" x-text="entry.industry"></span>
-                <span x-show="entry.productTag" class="bg-amber-50 text-amber-700 text-[11px] px-2 py-0.5 rounded-full" x-text="entry.productTag"></span>
+        <div class="bg-white border rounded-xl shadow-sm" :class="expandedLibraryId===entry.id ? 'border-purple-200' : ''">
+          <div class="p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex-1 min-w-0">
+                <!-- Badges -->
+                <div class="flex flex-wrap gap-1.5 mb-2">
+                  <span class="bg-purple-50 text-purple-700 text-[11px] px-2 py-0.5 rounded-full font-medium"
+                    x-text="entry.type === 'hook' ? 'Hook ngắn' : entry.type === 'script' ? 'Kịch bản đầy đủ' : 'Transcript viral'"></span>
+                  <span class="bg-blue-50 text-blue-600 text-[11px] px-2 py-0.5 rounded-full" x-text="industryLabel(entry.industry)"></span>
+                  <span x-show="entry.productTag" class="bg-amber-50 text-amber-700 text-[11px] px-2 py-0.5 rounded-full" x-text="entry.productTag"></span>
+                </div>
+                <!-- Content preview / full -->
+                <p class="text-sm text-gray-700 cursor-pointer"
+                   :class="expandedLibraryId===entry.id ? 'whitespace-pre-wrap' : 'line-clamp-3'"
+                   @click="expandedLibraryId = expandedLibraryId===entry.id ? null : entry.id"
+                   x-text="entry.content"></p>
+                <!-- Note + date row -->
+                <div class="flex items-center gap-3 mt-1.5">
+                  <p x-show="entry.note" class="text-xs text-gray-400 italic" x-text="'💬 ' + entry.note"></p>
+                  <p class="text-[11px] text-gray-300" x-text="formatDate(entry.createdAt)"></p>
+                  <button @click="expandedLibraryId = expandedLibraryId===entry.id ? null : entry.id"
+                    class="text-[11px] text-purple-500 hover:text-purple-700 ml-auto"
+                    x-text="expandedLibraryId===entry.id ? '▲ Thu gọn' : '▼ Xem đầy đủ'"></button>
+                </div>
               </div>
-              <p class="text-sm text-gray-700 line-clamp-3" x-text="entry.content"></p>
-              <p x-show="entry.note" class="text-xs text-gray-400 mt-1 italic" x-text="entry.note"></p>
-              <p class="text-[11px] text-gray-400 mt-1.5" x-text="formatDate(entry.createdAt)"></p>
-            </div>
-            <div class="flex gap-1 shrink-0">
-              <button @click="editLibraryEntry(entry)" class="p-1.5 text-gray-400 hover:text-purple-500 rounded">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-              </button>
-              <button @click="deleteLibraryEntry(entry.id)" class="p-1.5 text-gray-400 hover:text-red-500 rounded">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-              </button>
+              <!-- Actions -->
+              <div class="flex gap-1 shrink-0">
+                <button @click="editLibraryEntry(entry); showLibraryForm=true; expandedLibraryId=null" class="p-1.5 text-gray-400 hover:text-purple-500 rounded" title="Sửa">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                </button>
+                <button @click="deleteLibraryEntry(entry.id)" class="p-1.5 text-gray-400 hover:text-red-500 rounded" title="Xóa">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1515,9 +1657,13 @@ function bellaApp() {
     // Reference Library (V8)
     referenceLibrary: [],
     librarySearch: '',
+    libraryTypeFilter: 'all',
+    expandedLibraryId: null,
+    showLibraryForm: true,
     libraryForm: { type: 'hook', industry: 'auto', productTag: '', content: '', note: '' },
     editingLibraryId: null,
     showQuickAddLibrary: false,  // V8.1: panel thêm nhanh mẫu ngay trên tab Generate
+    showVideoOptions: false,     // panel chỉnh nhanh tùy chọn video trên trang kết quả
 
     // Toast
     toast: {show: false, message: '', type: 'info'},
@@ -1530,6 +1676,7 @@ function bellaApp() {
       this.loadPrompts();
       this.loadHistory();
       this.loadReferenceLibrary();
+      if (this.referenceLibrary.length > 0) this.showLibraryForm = false;
       this.loadFormOptions();
 
       // Hiện banner nếu là iOS Safari và chưa cài PWA và chưa dismiss
@@ -2133,6 +2280,11 @@ function bellaApp() {
       this.imageAnalysisStatus = null;
       this.lastImageAnalysis = '';
       this.lastSentImages = [];
+      // Reset visual prompt (kịch bản lịch sử không có visual prompt)
+      this.visualPromptResult = null;
+      this.visualError = null;
+      // Đóng quick-add panel nếu đang mở
+      this.showQuickAddLibrary = false;
       // Reset hook selection về hook khuyên dùng của kịch bản này
       const _hs = item.script?.section3?.hooks || [];
       const _ri = _hs.findIndex(h => h.isRecommended);
@@ -2195,17 +2347,24 @@ function bellaApp() {
     deleteLibraryEntry(id) {
       this.referenceLibrary = this.referenceLibrary.filter(e => e.id !== id);
       localStorage.setItem('bella_reference_library', JSON.stringify(this.referenceLibrary));
-      if (this.editingLibraryId === id) this.resetLibraryForm();
+      if (this.expandedLibraryId === id) this.expandedLibraryId = null;
+      if (this.editingLibraryId === id) { this.resetLibraryForm(); this.showLibraryForm = false; }
       this.showToast('Đã xóa mẫu', 'info');
     },
     filteredLibrary() {
+      let list = this.referenceLibrary;
+      if (this.libraryTypeFilter !== 'all') list = list.filter(e => e.type === this.libraryTypeFilter);
       const q = this.librarySearch.toLowerCase().trim();
-      if (!q) return this.referenceLibrary;
-      return this.referenceLibrary.filter(e =>
+      if (q) list = list.filter(e =>
         (e.content || '').toLowerCase().includes(q) ||
         (e.productTag || '').toLowerCase().includes(q) ||
         (e.industry || '').toLowerCase().includes(q)
       );
+      return list;
+    },
+    industryLabel(key) {
+      const m = { auto: 'Tất cả ngành', fashion: 'Thời trang', beauty: 'Mỹ phẩm', electronics: 'Điện tử', home: 'Gia dụng', food: 'Thực phẩm', pet: 'Thú cưng', baby: 'Mẹ & Bé', other: 'Ngành khác' };
+      return m[key] || key;
     },
     // Pre-filter rẻ ở frontend (theo ngành hàng + từ khóa) trước khi gửi cho AI chọn lọc cuối
     // ở backend (select_relevant_examples trong ai_providers.py) — tránh gửi nguyên thư viện
