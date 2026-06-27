@@ -1359,37 +1359,50 @@
 
   <!-- ====== TAB: PROMPT ====== -->
   <div x-show="activeTab==='prompt'">
-    <div class="flex items-center justify-between mb-4">
-      <div>
-        <h2 class="text-xl font-bold">Cài đặt Prompt</h2>
-        <p class="text-sm text-gray-500 mt-1">Chỉnh sửa các khối prompt theo ý muốn</p>
-      </div>
-      <div class="flex gap-2">
-        <button @click="resetPrompts()" class="border text-sm px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50">Reset mặc định</button>
-        <button @click="savePrompts()" class="gradient-btn text-white text-sm px-4 py-1.5 rounded-lg">Lưu</button>
-      </div>
+    <div class="mb-5">
+      <h2 class="text-xl font-bold">Cài đặt Prompt</h2>
+      <p class="text-sm text-gray-500 mt-1">Cung cấp thêm ngữ cảnh cho AI khi tạo kịch bản</p>
     </div>
 
     <div class="space-y-4">
-      <template x-for="block in promptBlocks" :key="block.key">
-        <div class="bg-white border rounded-xl shadow-sm">
-          <div class="p-4 border-b">
-            <p class="font-semibold text-sm" x-text="block.title"></p>
-            <p class="text-xs text-gray-400 mt-0.5" x-text="block.desc"></p>
-          </div>
-          <div class="p-4">
-            <textarea x-model="promptSettings[block.key]" rows="6"
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-purple-400 resize-y"
-              :placeholder="block.key==='additionalPrompt' ? 'VD: Viết hài hước hơn, tập trung vào mẹ sau sinh, nhấn mạnh mặc mùa hè...' : ''"></textarea>
+      <!-- Shop context -->
+      <div class="bg-white border rounded-xl shadow-sm">
+        <div class="p-4 border-b">
+          <p class="font-semibold text-sm">Thông tin kênh / shop của bạn</p>
+          <p class="text-xs text-gray-400 mt-0.5">AI tham khảo thông tin này mỗi khi tạo kịch bản. Điền một lần, dùng mãi.</p>
+        </div>
+        <div class="p-4">
+          <textarea x-model="promptSettings.shopContext" rows="5" @input="savePromptsSilent()"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-purple-400 resize-y"
+            placeholder="VD: Shop mình bán thời trang nữ phong cách Hàn, target chị em 25–35 tuổi. Văn phong trẻ trung, nhẹ nhàng. Không nhắc đến đối thủ. Cuối kịch bản luôn kêu gọi xem link bio."></textarea>
+        </div>
+      </div>
+
+      <!-- Additional prompt -->
+      <div class="bg-white border rounded-xl shadow-sm">
+        <div class="p-4 border-b">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="font-semibold text-sm">Yêu cầu riêng cho lần tạo tiếp theo</p>
+              <p class="text-xs text-gray-400 mt-0.5">Ghi chú tạm thời hoặc yêu cầu đặc biệt — được áp dụng ngay lần generate tiếp.</p>
+            </div>
+            <button @click="promptSettings.additionalPrompt = ''; savePromptsSilent()"
+              x-show="promptSettings.additionalPrompt && promptSettings.additionalPrompt.trim()"
+              class="text-xs text-gray-400 hover:text-red-500 px-2 py-1 border rounded-lg transition-colors">Xóa</button>
           </div>
         </div>
-      </template>
-    </div>
+        <div class="p-4">
+          <textarea x-model="promptSettings.additionalPrompt" rows="3" @input="savePromptsSilent()"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-purple-400 resize-y"
+            placeholder="VD: Sản phẩm này collab với KOL X, nhấn mạnh chất liệu organic. Không nhắc đến giá. Kết thúc bằng mã giảm giá BELLA20."></textarea>
+        </div>
+      </div>
 
-    <div class="flex gap-2 mt-4">
-      <button @click="exportPrompts()" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50">Export JSON</button>
-      <button @click="importPrompts()" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50">Import JSON</button>
-      <input type="file" accept=".json" x-ref="promptImportInput" class="hidden" @change="handlePromptImport($event)">
+      <!-- Info box -->
+      <div class="bg-purple-50 border border-purple-200 rounded-xl p-4">
+        <p class="text-sm font-medium text-purple-800 mb-1">Phần còn lại AI tự xử lý</p>
+        <p class="text-xs text-purple-600 leading-relaxed">Quy tắc hook, lời thoại, cấu trúc video, hành động quay — tất cả được tối ưu sẵn theo Ngành hàng, Kiểu quay và Giọng điệu bạn chọn trong form Tạo kịch bản. Không cần điều chỉnh thêm.</p>
+      </div>
     </div>
   </div>
 
@@ -1404,14 +1417,7 @@
 
 <script>
 const DEFAULT_PROMPTS = {
-  rolePrompt: `Bạn là Content Creator kiêm TikTok Shop Seller có hơn 10 năm kinh nghiệm, chuyên tạo video chuyển đổi cao cho ngành thời trang nữ và thời trang bầu.\n\nBạn hiểu cách viết kịch bản video ngắn TikTok Shop, Douyin, UGC, KOC review, livestream teaser.\n\nBạn viết tự nhiên như người thật, không văn mẫu, không nói kiểu MC quảng cáo.`,
-  bellaContext: `Tôi là nhân viên của BELLA.\n\nTôi quay video TikTok Shop theo dạng One Shot, quay liên tục từ đầu đến cuối, không cắt cảnh.\n\nNgười mẫu đã mặc sẵn sản phẩm.\n\nNgười mẫu vừa đi, vừa tạo dáng, vừa nói chuyện với camera như đang chia sẻ trải nghiệm thật.\n\nVideo không đọc thông số sản phẩm.\nVideo không đọc nguyên mô tả sản phẩm.\nVideo không nói theo kiểu MC bán hàng.\n\nPhải giống một KOC đang review sau khi đã mặc sản phẩm.`,
-  productAnalysisRules: `AI phải tự phân tích sản phẩm để xác định:\n\n- Khách hàng mục tiêu\n- Pain point của khách hàng\n- Điểm nổi bật nhất của sản phẩm\n- Lợi ích thực tế khi sử dụng\n- Tình huống sử dụng phù hợp\n- Hành động nên quay để showcase sản phẩm\n- Chi tiết sản phẩm nên zoom hoặc chỉ tay\n- Lý do khách nên quan tâm\n- Insight mua hàng\n\nKhông được bê nguyên mô tả sản phẩm vào kịch bản.\nPhải chuyển thành lời nói tự nhiên.`,
-  hookRules: `Hook nằm trong 3 giây đầu. Hook phải khiến người xem dừng lướt ngay lập tức.\n\nKhông được mở đầu bằng:\n- "Đây là..."\n- "Hôm nay mình giới thiệu..."\n- "Mẹ nào cần..."\n- "Xin chào mọi người..."\n- "Sản phẩm này..."\n- "Bên em có..."\n\nMỗi lần tạo phải đổi hook. Không được lặp hook cũ.\n\nVí dụ hook tốt:\n- "Trời nóng thế này mà mặc đồ bầu bí đúng là cực hình."\n- "Em mặc bộ này từ sáng đến giờ vẫn thấy mát."\n- "Mặc thử mới hiểu vì sao khách bên BELLA quay lại mua thêm màu."\n\nViết 3 hook khác nhau. Đánh dấu hook chính nên dùng.`,
-  dialogueRules: `Lời thoại phải:\n- Như đang nói chuyện thật, không phải đọc bài\n- Câu ngắn, có nhịp điệu tự nhiên\n- Tự nhiên, có cảm xúc thật\n- Không văn mẫu, không khoa trương\n- Không lặp ý, không lặp từ, không lặp cấu trúc câu\n- Không đọc thông số khô khan\n- Không nói như quảng cáo truyền thống\n- Không dùng quá nhiều từ sáo rỗng như "siêu phẩm", "đỉnh của chóp", "hot hit"\n- Nên dùng ngôi "em" và gọi người xem là "mẹ" hoặc "chị"`,
-  benefitRules: `Luôn chuyển tính năng thành lợi ích thực tế.\n\nKHÔNG viết: "Vải cotton."\nPHẢI viết: "Chất vải này mặc mùa hè rất mát, ở nhà cả ngày cũng không bị bí."\n\nKHÔNG viết: "Form rộng."\nPHẢI viết: "Bụng lớn lên từng tháng vẫn mặc rất thoải mái."\n\nKHÔNG viết: "Có túi."\nPHẢI viết: "Có túi nên ở nhà cầm điện thoại, chìa khóa hay khăn nhỏ đều tiện."`,
-  actionRules: `Sau mỗi 1-2 câu thoại phải có một hành động. Không để nhân vật đứng yên quá lâu.\n\nHành động phải phù hợp với loại sản phẩm.\n\nDanh sách hành động:\n- (Bước nhẹ về phía camera)\n- (Xoay người một vòng chậm)\n- (Vuốt nhẹ phần bụng)\n- (Kéo nhẹ gấu áo)\n- (Vò nhẹ chất vải)\n- (Kéo nhẹ ống quần)\n- (Nghiêng người để thấy form)\n- (Tiến sát camera)\n- (Chỉ nhẹ vào phần túi)\n- (Ngồi xuống rồi đứng lên)\n- (Cười nhẹ)\n- (Quay nghiêng 45 độ)`,
-  endingRules: `Kết thúc nhẹ nhàng, không ép mua.\n\nVí dụ kết tốt:\n- "Nếu thích kiểu mặc nhà vừa mát vừa xinh thì mẫu này rất đáng thử."\n- "Mình nghĩ đây là bộ mặc rất đáng có trong thai kỳ."\n- "Ai thích mặc thoải mái mà vẫn gọn người thì xem thử mẫu này nha."\n\nKHÔNG dùng CTA gắt như: "Mua ngay", "Chốt đơn ngay", "Không mua là tiếc"`,
+  shopContext: '',
   additionalPrompt: ''
 };
 
@@ -1500,17 +1506,6 @@ function bellaApp() {
 
     // Prompt
     promptSettings: {...DEFAULT_PROMPTS},
-    promptBlocks: [
-      {key:'rolePrompt', title:'Vai trò AI', desc:'Định nghĩa nhân cách và chuyên môn của AI'},
-      {key:'bellaContext', title:'Bối cảnh BELLA', desc:'Mô tả quy trình và phong cách quay của BELLA'},
-      {key:'productAnalysisRules', title:'Quy tắc phân tích sản phẩm', desc:'Cách AI phân tích sản phẩm'},
-      {key:'hookRules', title:'Quy tắc Hook', desc:'Quy tắc viết hook mở đầu'},
-      {key:'dialogueRules', title:'Quy tắc lời thoại', desc:'Tiêu chuẩn lời thoại trong kịch bản'},
-      {key:'benefitRules', title:'Quy tắc chuyển tính năng thành lợi ích', desc:'Cách chuyển đổi tính năng'},
-      {key:'actionRules', title:'Quy tắc hành động', desc:'Hành động đan xen trong kịch bản'},
-      {key:'endingRules', title:'Quy tắc kết thúc', desc:'Cách kết thúc video tự nhiên'},
-      {key:'additionalPrompt', title:'Prompt bổ sung', desc:'Yêu cầu riêng cho lần generate này'},
-    ],
 
     // History
     history: [],
@@ -1742,42 +1737,17 @@ function bellaApp() {
     },
     savePrompts() {
       localStorage.setItem('bella_prompts', JSON.stringify(this.promptSettings));
-      this.showToast('Đã lưu cài đặt prompt!', 'success');
+      this.showToast('Đã lưu!', 'success');
+    },
+    savePromptsSilent() {
+      localStorage.setItem('bella_prompts', JSON.stringify(this.promptSettings));
     },
     resetPrompts() {
-      if (confirm('Reset về prompt mặc định? Mọi thay đổi sẽ mất.')) {
+      if (confirm('Xóa thông tin kênh và yêu cầu riêng?')) {
         this.promptSettings = {...DEFAULT_PROMPTS};
         localStorage.removeItem('bella_prompts');
-        this.showToast('Đã reset về mặc định', 'info');
+        this.showToast('Đã xóa', 'info');
       }
-    },
-    exportPrompts() {
-      const json = JSON.stringify(this.promptSettings, null, 2);
-      const blob = new Blob([json], {type: 'application/json'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'bella_prompts.json';
-      a.click();
-    },
-    importPrompts() {
-      this.$refs.promptImportInput.click();
-    },
-    handlePromptImport(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        try {
-          const data = JSON.parse(ev.target.result);
-          this.promptSettings = {...DEFAULT_PROMPTS, ...data};
-          this.savePrompts();
-          this.showToast('Import thành công!', 'success');
-        } catch {
-          this.showToast('File JSON không hợp lệ', 'error');
-        }
-      };
-      reader.readAsText(file);
-      e.target.value = '';
     },
 
     // ---- IMAGES ----

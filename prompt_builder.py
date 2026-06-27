@@ -6,29 +6,13 @@ import random
 def build_system_prompt(prompt_settings: dict) -> str:
     parts = [
         "# VAI TRÒ",
-        prompt_settings.get('rolePrompt', '').strip(),
-        "",
-        "# BỐI CẢNH BELLA",
-        prompt_settings.get('bellaContext', '').strip(),
-        "",
-        "# QUY TẮC PHÂN TÍCH SẢN PHẨM",
-        prompt_settings.get('productAnalysisRules', '').strip(),
-        "",
-        "# QUY TẮC HOOK",
-        prompt_settings.get('hookRules', '').strip(),
-        "",
-        "# QUY TẮC LỜI THOẠI",
-        prompt_settings.get('dialogueRules', '').strip(),
-        "",
-        "# QUY TẮC CHUYỂN TÍNH NĂNG THÀNH LỢI ÍCH",
-        prompt_settings.get('benefitRules', '').strip(),
-        "",
-        "# QUY TẮC HÀNH ĐỘNG TRONG VIDEO",
-        prompt_settings.get('actionRules', '').strip(),
-        "",
-        "# QUY TẮC KẾT THÚC",
-        prompt_settings.get('endingRules', '').strip(),
+        "Bạn là chuyên gia sáng tạo nội dung TikTok Shop — am hiểu cách viết hook, lời thoại và CTA tự nhiên, chuyển đổi cao.",
+        "Bạn viết kịch bản như người thật đang chia sẻ trải nghiệm: tự nhiên, không văn mẫu, không kiểu MC quảng cáo.",
+        "Bạn am hiểu đặc thù từng ngành hàng và điều chỉnh văn phong theo đúng yêu cầu của từng sản phẩm.",
     ]
+    shop_context = prompt_settings.get('shopContext', '').strip()
+    if shop_context:
+        parts += ["", "# THÔNG TIN KÊNH / SHOP", shop_context]
     additional = prompt_settings.get('additionalPrompt', '').strip()
     if additional:
         parts += ["", "# YÊU CẦU BỔ SUNG", additional]
@@ -1102,7 +1086,7 @@ def parse_ai_response(raw: str) -> dict:
     return parsed
 
 
-SECTION_SYSTEM = "Bạn là chuyên gia viết kịch bản TikTok Shop cho BELLA. Chỉ trả về JSON hợp lệ, không thêm text nào bên ngoài JSON."
+SECTION_SYSTEM = "Bạn là chuyên gia viết kịch bản TikTok Shop. Chỉ trả về JSON hợp lệ, không thêm text nào bên ngoài JSON."
 
 
 def build_section_prompt(section: str, product_name: str, product_desc: str,
