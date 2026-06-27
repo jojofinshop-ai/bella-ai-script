@@ -29,13 +29,14 @@ def index():
 @app.route('/api/generate', methods=['POST'])
 def generate():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         product_name = data.get('productName', '').strip()
         product_desc = data.get('productDescription', '').strip()
         images = data.get('images', [])
         settings = data.get('settings', {})
         prompt_settings = data.get('promptSettings', {})
         input_data = data.get('input', {})
+        reference_candidates = data.get('referenceLibraryCandidates', [])  # V8: Reference Library
 
         if not product_name:
             return jsonify({'success': False, 'error': 'Thiếu tên sản phẩm'}), 400
@@ -92,6 +93,17 @@ def generate():
 
         # has_images_effective: True chỉ khi AI thực sự nhận được ảnh (qua analysis text hoặc trực tiếp)
         has_images_effective = bool(image_analysis) or bool(images_to_send)
+
+        # V8: Reference Library — AI chọn lọc mẫu phù hợp nhất từ candidates (frontend đã
+        # pre-filter theo ngành hàng). Lỗi ở bước này KHÔNG được làm fail cả lần generate chính.
+        reference_examples = []
+        if reference_candidates:
+            from ai_providers import select_relevant_examples
+            reference_examples = select_relevant_examples(
+                settings, product_name, product_desc, input_data.get('industry', 'auto'), reference_candidates
+            )
+        input_data['referenceExamples'] = reference_examples
+
         user_prompt = build_user_prompt(input_data, has_images_effective, image_analysis)
         raw_response = call_ai(settings, system_prompt, user_prompt, images_to_send)
 
@@ -117,8 +129,6 @@ def generate():
             msg = 'Không thể kết nối API. Kiểm tra internet và Base URL'
         return jsonify({'success': False, 'error': msg}), 500
 
-
-BROWSER_PROFILE = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'BELLA_AI', 'browser')
 
 def _get_chrome_cookies(domain):
     """Đọc cookies từ Chrome (Windows) cho domain cụ thể."""
@@ -952,7 +962,7 @@ def _download_image_b64(url, ua):
 
 @app.route('/api/open-browser', methods=['POST'])
 def open_browser():
-    url = request.get_json().get('url', '')
+    url = (request.get_json() or {}).get('url', '')
     if url.startswith('http'):
         import webbrowser
         webbrowser.open(url)
@@ -963,7 +973,7 @@ def fetch_url():
     import re, urllib.request as _req
     from html.parser import HTMLParser
 
-    data = request.get_json()
+    data = request.get_json() or {}
     url = data.get('url', '').strip()
     if not url:
         return jsonify({'success': False, 'error': 'Chưa nhập URL'}), 400
@@ -1171,7 +1181,7 @@ def fetch_url():
 @app.route('/api/regenerate-section', methods=['POST'])
 def regenerate_section():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         section      = data.get('section', '')
         product_name = data.get('productName', '').strip()
         product_desc = data.get('productDescription', '').strip()
@@ -1210,7 +1220,15 @@ def regenerate_section():
             if s != -1 and e != -1:
                 text = text[s:e+1]
 
-        result = _try_parse_json(text)
+        try:
+            result = _try_parse_json(text)
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': 'AI trả về định dạng không hợp lệ. Thử lại.',
+                'rawResponse': raw[:2000]
+            }), 422
+
         return jsonify({'success': True, 'data': result})
 
     except Exception as e:
@@ -1227,7 +1245,7 @@ def regenerate_section():
 @app.route('/api/scan-product', methods=['POST'])
 def scan_product():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         images = data.get('images') or ([data['image']] if data.get('image') else [])
         if not images:
             return jsonify({'success': False, 'error': 'Không nhận được ảnh'}), 400
@@ -1257,10 +1275,87 @@ def scan_product():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/generate-visual-prompt', methods=['POST'])
+def generate_visual_prompt():
+    try:
+        data = request.get_json() or {}
+        script = data.get('script', {})
+        product_name = data.get('productName', '').strip()
+        product_desc = data.get('productDescription', '').strip()
+        image_analysis = data.get('imageAnalysis', '')
+        input_data = data.get('input', {})
+        visual_settings = data.get('visualSettings', {})
+        settings = dict(data.get('settings', {}))
+
+        if not product_name:
+            return jsonify({'success': False, 'error': 'Thiếu tên sản phẩm'}), 400
+        if not script:
+            return jsonify({'success': False, 'error': 'Chưa có kịch bản. Tạo kịch bản trước.'}), 400
+
+        provider = settings.get('provider', 'openai')
+        api_key = settings.get('apiKey', '')
+        if not api_key and provider != 'custom':
+            return jsonify({'success': False, 'error': 'Chưa nhập API key'}), 400
+
+        settings['maxTokens'] = 0
+
+        from prompt_builder import build_visual_prompt, assemble_visual_section10
+        from ai_providers import call_ai
+
+        system_prompt, user_prompt = build_visual_prompt(
+            script, product_name, product_desc, image_analysis, input_data, visual_settings
+        )
+
+        raw = call_ai(settings, system_prompt, user_prompt, [])
+
+        import re as _re
+        text = raw.strip()
+        m = _re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
+        if m:
+            text = m.group(1).strip()
+        else:
+            s, e = text.find('{'), text.rfind('}')
+            if s != -1 and e != -1:
+                text = text[s:e+1]
+
+        try:
+            import json as _json
+            ai_draft = _json.loads(text)
+        except Exception:
+            return jsonify({
+                'success': False,
+                'error': 'AI trả về định dạng không hợp lệ. Thử lại.',
+                'rawResponse': raw[:2000]
+            }), 422
+
+        # AI có thể trả wrap dưới key 'section10' hoặc 'draft' — bóc ra nếu có
+        if isinstance(ai_draft, dict):
+            if 'section10' in ai_draft and isinstance(ai_draft['section10'], dict):
+                ai_draft = ai_draft['section10']
+            elif 'draft' in ai_draft and isinstance(ai_draft['draft'], dict):
+                ai_draft = ai_draft['draft']
+
+        # Lắp ráp section10 đầy đủ: Python tự gắn PRODUCT LOCK / negative prompt cố định,
+        # AI draft chỉ cung cấp phần bối cảnh/camera/chuyển động (xem prompt_builder.py)
+        section10 = assemble_visual_section10(ai_draft, product_name, input_data, visual_settings, script)
+
+        return jsonify({'success': True, 'section10': section10})
+
+    except Exception as e:
+        msg = str(e)
+        if 'api key' in msg.lower() or '401' in msg:
+            msg = 'API key không hợp lệ hoặc đã hết hạn'
+        elif '429' in msg or 'rate limit' in msg.lower():
+            msg = 'Rate limit. Thử lại sau vài giây'
+        elif 'connection' in msg.lower() or 'timeout' in msg.lower():
+            msg = 'Không thể kết nối API'
+        return jsonify({'success': False, 'error': msg}), 500
+
+
 @app.route('/api/test-connection', methods=['POST'])
 def test_connection():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         settings = data.get('settings', {})
         from ai_providers import test_ai_connection
         result = test_ai_connection(settings)
@@ -1404,7 +1499,7 @@ def debug_shopee():
 
 
 def run_flask():
-    app.run(host='127.0.0.1', port=5001, debug=False, use_reloader=False)
+    app.run(host='127.0.0.1', port=5001, debug=False, use_reloader=False, threaded=True)
 
 
 if __name__ == '__main__':

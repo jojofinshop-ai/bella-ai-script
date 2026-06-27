@@ -391,6 +391,200 @@ INDUSTRY_GUIDE = {
     },
 }
 
+# ============================================================
+# V6: SUBJECT MODE + PRODUCTION MODE
+# ============================================================
+
+SUBJECT_MODE_LABELS = {
+    'auto': 'Tự động',
+    'face': 'Có người / Lộ mặt',
+    'hands': 'Chỉ quay tay / Không lộ mặt',
+    'product': 'Chỉ sản phẩm',
+}
+
+
+SUBJECT_MODE_GUIDE = {
+    'face': (
+        "Có người xuất hiện trong video. Có thể nhìn camera, nói trực tiếp, có biểu cảm, reaction cơ thể.\n"
+        "ĐƯỢC DÙNG: nhìn camera, mỉm cười, xoay người, chỉ vào sản phẩm, đưa sản phẩm ra camera, demo trên người, cầm sản phẩm.\n"
+        "KHÔNG ĐƯỢC DÙNG: action chỉ phù hợp khi không có người (orbit camera thuần, macro 100% sản phẩm, top-view tay trắng)."
+    ),
+    'hands': (
+        "Không lộ mặt. Chỉ thấy tay hoặc góc POV từ mắt người quay. Không có khuôn mặt.\n"
+        "ĐƯỢC DÙNG: cầm, mở, xoay, bóp, thoa, đổ, xịt, cắm, test, top-view, zoom tay thao tác cận cảnh.\n"
+        "TUYỆT ĐỐI KHÔNG: nhìn camera (không có mắt để nhìn), mỉm cười, biểu cảm khuôn mặt, bước vào khung hình, xoay người, reaction mặt."
+    ),
+    'product': (
+        "Không người, không tay là chính. Video tập trung vào sản phẩm — như packshot hoặc quảng cáo cinematic.\n"
+        "ĐƯỢC DÙNG: macro chi tiết, camera orbit, sản phẩm xoay chậm, ánh sáng lia qua bề mặt, close-up texture, packshot, reveal.\n"
+        "TUYỆT ĐỐI KHÔNG: người xuất hiện, tay làm chủ cảnh, biểu cảm, hành động cơ thể."
+    ),
+    'auto': (
+        "AI tự suy luận subject mode phù hợp dựa trên kiểu quay, ngành hàng và mô tả sản phẩm.\n"
+        "Phải resolve thành face / hands / product và ghi vào section1.subjectModeResolved."
+    ),
+}
+
+FACE_ACTIONS = [
+    'nhìn thẳng vào camera', 'mỉm cười tự nhiên', 'đưa sản phẩm sát camera',
+    'chỉ vào chi tiết sản phẩm', 'mặc thử / dùng thử trên người', 'xoay người nhẹ',
+    'bước nhẹ vào khung hình', 'reaction tự nhiên (gật đầu, gương mặt bất ngờ)',
+    'đổi biểu cảm theo nội dung', 'cầm sản phẩm ngang ngực', 'demo sản phẩm trên người',
+]
+
+HANDS_ACTIONS = [
+    'đặt sản phẩm lên bàn (top-view)', 'hai tay mở hộp / mở nắp', 'xoay sản phẩm 45°',
+    'lật mặt sau / lật lên thấy rõ', 'bóp thử / nhấn thử bề mặt', 'thoa thử lên cổ tay',
+    'đổ ra chén / cốc / đĩa', 'xịt thử / bóp thử', 'kéo khóa / mở nắp / tháo bao',
+    'cắm sạc / bật nút / test chức năng', 'quay top-view chi tiết', 'zoom tay thao tác cận cảnh',
+]
+
+PRODUCT_ACTIONS = [
+    'macro chi tiết texture / chất liệu', 'camera orbit quanh sản phẩm chậm',
+    'sản phẩm xoay chậm 360°', 'ánh sáng lia qua bề mặt sản phẩm',
+    'close-up texture / logo / chi tiết đặc trưng', 'packshot (hero shot trên nền sạch)',
+    'reveal từ bóng tối ra ánh sáng', 'đặt sản phẩm trên nền tối giản (trắng/đen/marble)',
+    'slow motion drop / pour / open', 'hero shot với ánh sáng studio nổi bật',
+]
+
+INDUSTRY_SUBJECT_ACTIONS = {
+    ('fashion', 'face'): 'mặc thử, xoay người 360°, vuốt chất vải, tạo dáng, chỉ vào form/cut, nhìn camera',
+    ('fashion', 'hands'): 'cận chất vải, kéo vải kiểm tra độ đàn hồi, zoom đường may, lật mặt trong, flat lay',
+    ('fashion', 'product'): 'áo/váy treo trên móc, macro chất vải, ánh sáng lướt qua, flat lay pan 360°',
+    ('beauty', 'face'): 'bôi thử lên mặt, phản ứng khi cảm nhận, so sánh da trước/sau, biểu cảm',
+    ('beauty', 'hands'): 'swatch lên cổ tay, mở nắp, bóp lấy texture, thoa đều, zoom texture',
+    ('beauty', 'product'): 'lọ mỹ phẩm trên nền studio, macro texture khi đổ, ánh sáng nổi bật thiết kế, orbit',
+    ('electronics', 'face'): 'cầm sản phẩm, bật thử, nhìn màn hình rồi nhìn camera, reaction',
+    ('electronics', 'hands'): 'bấm nút, cắm sạc, test màn hình, mở hộp (unbox), zoom cổng kết nối',
+    ('electronics', 'product'): 'orbit camera, macro cổng/nút/chi tiết, ánh sáng viền sản phẩm, reveal từ hộp',
+    ('home', 'face'): 'demo sử dụng thật, nhìn camera reaction, so sánh trước/sau, chỉ vào kết quả',
+    ('home', 'hands'): 'thao tác từng bước, zoom kết quả, test công năng, lắp ráp cận cảnh',
+    ('home', 'product'): 'sản phẩm trong bối cảnh nhà, zoom chi tiết thiết kế, hero shot, orbit',
+    ('food', 'face'): 'taste test, biểu cảm khi ăn/uống, cầm sản phẩm, nhìn camera reaction',
+    ('food', 'hands'): 'mở gói, đổ ra bát, pha/trộn, taste setup top-view, zoom màu sắc/texture',
+    ('food', 'product'): 'packshot, hơi nóng/steam, close-up texture, pouring shot, hero shot',
+    ('pet', 'face'): 'cho thú cưng dùng và quay phản ứng, người có thể xuất hiện nhẹ',
+    ('pet', 'hands'): 'đặt sản phẩm trước mặt thú cưng, mở gói, zoom phản ứng thú cưng, top-view',
+    ('pet', 'product'): 'sản phẩm cận cảnh, thiết kế bao bì, thành phần, macro',
+    ('baby', 'face'): 'demo trên bé (nếu có), mẹ cầm sản phẩm và nhìn camera, biểu cảm yêu thương',
+    ('baby', 'hands'): 'mở hộp, demo từng bước an toàn, kiểm tra chất liệu, vuốt bề mặt mềm',
+    ('baby', 'product'): 'sản phẩm trên nền pastel nhẹ, zoom chất liệu an toàn, close-up chi tiết',
+    ('other', 'face'): 'demo sản phẩm trên người, nhìn camera, chỉ vào điểm nổi bật, reaction',
+    ('other', 'hands'): 'demo tính năng bằng tay, mở, test, zoom chi tiết quan trọng',
+    ('other', 'product'): 'hero shot, macro chi tiết, orbit camera, ánh sáng studio',
+}
+
+SUBJECT_TIPS = {
+    'face': [
+        'Nhìn thẳng vào lens camera — đừng nhìn màn hình preview khi nói',
+        'Biểu cảm tự nhiên, mỉm cười nhẹ khi bắt đầu quay',
+        'Nói to, rõ ràng — tắt quạt và tiếng ồn nền trước khi quay',
+        'Đứng cách camera 50-80cm để thấy cả mặt và sản phẩm',
+        'Chiếu sáng từ phía trước hoặc 45° — tránh bóng ngược sáng',
+    ],
+    'hands': [
+        'Móng tay sạch, gọn — đây là "diễn viên" chính của video',
+        'Không để ngón tay che logo hoặc tên sản phẩm',
+        'Di chuyển tay chậm, mượt — tránh rung giật đột ngột',
+        'Dùng top-view (góc từ trên nhìn xuống) để thấy rõ thao tác nhất',
+        'Nền sạch: vải trắng, đen hoặc marble — không lộn xộn',
+        'Ánh sáng đều từ 2 bên — tránh bóng đổ cứng lên sản phẩm',
+    ],
+    'product': [
+        'Nền tối giản: trắng, đen, pastel nhạt hoặc marble — sản phẩm là trung tâm',
+        'Dùng đèn vòng hoặc softbox — tránh bóng đổ cứng',
+        'Quay macro để thấy rõ chi tiết texture / chất liệu / logo',
+        'Xoay sản phẩm chậm 360° để người xem thấy toàn diện',
+        'Tắt auto-focus khi quay close-up để tránh blur đột ngột',
+        'Chụp từ nhiều góc: front, 45°, top-down, close-up chi tiết',
+    ],
+    'auto': [
+        'Chọn cách quay phù hợp nhất với sản phẩm',
+        'Ổn định camera để video không bị rung',
+        'Ánh sáng đủ và đều — tránh quay ngược sáng',
+    ],
+}
+
+
+# ============================================================
+# V8: REFERENCE LIBRARY — tham khảo mẫu user tự nhập (hook/script/transcript viral)
+# ============================================================
+# Thay cho V7 (đã gỡ — học theo view/đơn hàng không có tín hiệu khi mọi video đều 0 đơn).
+# User tự tay nhập hook/kịch bản/transcript mẫu vào thư viện (localStorage, quản lý ở
+# frontend). Khi generate, backend được gửi sẵn 1 danh sách text đã chọn lọc (AI hoặc
+# fallback heuristic chọn ở app.py/ai_providers.py) — hàm dưới đây chỉ làm 1 việc: chèn các
+# đoạn text đó vào prompt làm ví dụ tham khảo văn phong/cấu trúc, không đụng gì khác.
+
+def _build_reference_examples_block(reference_examples: list) -> list:
+    """Trả về list dòng prompt tham khảo mẫu từ Thư viện (few-shot nhẹ, không bắt buộc copy)."""
+    examples = [e.strip()[:400] for e in (reference_examples or []) if e and e.strip()]
+    if not examples:
+        return []
+    lines = [
+        "",
+        "## THAM KHẢO TỪ THƯ VIỆN MẪU",
+        "Các đoạn sau là hook/kịch bản/transcript mẫu do người dùng tự chọn lưu lại (vd: video",
+        "TikTok đang viral). HỌC văn phong, cách mở đầu, cấu trúc câu — TUYỆT ĐỐI KHÔNG copy",
+        "nguyên văn vì sản phẩm/ngữ cảnh khác:",
+    ]
+    for ex in examples[:3]:
+        lines.append(f'  - "{ex}"')
+    return lines
+
+
+def resolve_subject_mode(input_data: dict) -> str:
+    """Tự động xác định subject mode nếu user chọn auto.
+    Ưu tiên: user choice → shooting style mạnh → product keywords → industry → fallback."""
+    mode = input_data.get('subjectMode', 'auto')
+    if mode and mode != 'auto':
+        return mode
+
+    shooting = input_data.get('shootingStyle', 'one-shot')
+    industry = input_data.get('industry', 'auto')
+    desc = (input_data.get('productDescription', '') + ' ' + input_data.get('productName', '')).lower()
+
+    # Shooting styles với tín hiệu STRONG face (người xuất hiện, nhìn camera)
+    if shooting in ('talking-head', 'koc-review', 'ugc', 'livestream-teaser'):
+        return 'face'
+
+    # Shooting styles với tín hiệu STRONG no-face (narrator off-camera hoặc POV)
+    if shooting in ('pov', 'voiceover'):
+        return 'hands'
+
+    # Product keywords → product-only cinematic (check TRƯỚC industry)
+    # Áp dụng khi sản phẩm có tính visual cao, không cần người thao tác
+    product_kw = (
+        'nước hoa', 'đồng hồ', 'trang sức', 'dây chuyền', 'nhẫn', 'nến thơm',
+        'decor', 'lọ hoa', 'bình hoa', 'perfume', 'watch', 'jewelry', 'candle',
+        'vase', 'earring', 'bông tai', 'vòng tay', 'bracelet',
+        'sofa', 'bàn ghế', 'nội thất', 'furniture', 'đèn led', 'đèn ngủ',
+        'máy lọc không khí', 'máy pha cà phê', 'loa bluetooth',
+    )
+    if any(kw in desc for kw in product_kw):
+        return 'product'
+
+    # Industry-based (cho style ambiguous: one-shot, review, tiktok-shop)
+    if industry == 'fashion':
+        return 'face'
+    if industry in ('beauty', 'food', 'home', 'electronics', 'baby', 'pet'):
+        return 'hands'
+
+    return 'hands'
+
+
+def get_subject_action_guide(industry: str, resolved_mode: str) -> str:
+    """Trả về action guide phù hợp ngành + subject mode."""
+    key = (industry, resolved_mode)
+    if key in INDUSTRY_SUBJECT_ACTIONS:
+        return INDUSTRY_SUBJECT_ACTIONS[key]
+    if resolved_mode == 'face':
+        return ', '.join(FACE_ACTIONS[:6])
+    if resolved_mode == 'hands':
+        return ', '.join(HANDS_ACTIONS[:6])
+    if resolved_mode == 'product':
+        return ', '.join(PRODUCT_ACTIONS[:6])
+    return 'demo sản phẩm tự nhiên, phù hợp với nội dung'
+
 
 def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: str = '') -> str:
     """Prompt V3 cho Voice Over (ElevenLabs V3 Enhance) — pure voice script, không emotion tag."""
@@ -405,6 +599,16 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
     industry_data = INDUSTRY_GUIDE.get(industry, {})
     _is_auto_industry = industry == 'auto'
 
+    # V6: Subject Mode + Production Mode
+    subject_mode = input_data.get('subjectMode', 'auto')
+    production_mode = input_data.get('productionMode', 'real')
+    resolved_mode = resolve_subject_mode(input_data)
+    resolved_label = SUBJECT_MODE_LABELS.get(resolved_mode, resolved_mode)
+    subject_guide_vo = SUBJECT_MODE_GUIDE.get(resolved_mode, SUBJECT_MODE_GUIDE['auto'])
+    industry_for_action = industry if not _is_auto_industry else 'other'
+    subject_action_vo = get_subject_action_guide(industry_for_action, resolved_mode)
+    subject_tips_vo = SUBJECT_TIPS.get(resolved_mode, SUBJECT_TIPS['auto'])
+
     img_line = ("Phân tích ảnh sản phẩm:\n" + image_analysis if image_analysis
                 else ("Đã đính kèm ảnh sản phẩm." if has_images else "Không có ảnh."))
 
@@ -415,6 +619,8 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
     _pattern = random.choice(STRUCTURE_PATTERNS)
     _hook_type = random.choice(HOOK_TYPES)
     _caption_styles = random.sample(CAPTION_STYLES, 3)
+    # V8: Reference Library — mẫu user tự nhập (đã được app.py chọn lọc trước khi tới đây)
+    _reference_examples = _build_reference_examples_block(input_data.get('referenceExamples', []))
     _reaction_min = '3' if duration in ('15s', '20s') else '4-5' if duration == '30s' else '6-8'
     _hook_short = _hook_type.split(' —')[0]
     _pattern_short = _pattern['name'].split(' —')[0].strip()
@@ -541,22 +747,22 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         f"  Caption 3: {_caption_styles[2]}",
         "Mỗi caption ≤ 100 ký tự, có 1-2 emoji, đề cập tên hoặc loại sản phẩm.",
         "",
+        "## SUBJECT MODE (V6) — BẮT BUỘC",
+        f"Chủ thể quay đã xác định: {resolved_label}",
+        subject_guide_vo,
+        f"Hành động camera / quay phù hợp: {subject_action_vo}",
+        "HARD RULE: Mọi hành động trong lines[] và section5.timeline PHẢI khớp subject mode trên.",
+        "Không được dùng action sai subject mode (VD: 'nhìn camera' khi mode=hands, 'orbit sản phẩm' khi mode=face).",
+        "",
         "## PRE-WRITE PROTOCOL — làm TRƯỚC khi viết kịch bản",
         *(["0. Xác định NGÀNH HÀNG từ tên + mô tả sản phẩm (Thời trang / Mỹ phẩm / Điện tử / Gia dụng / Thực phẩm / Thú cưng / Mẹ&Bé / Khác) → dùng để chọn camera action ở bước 3."]
           if _is_auto_industry else [f"0. Ngành hàng: {industry_label} — áp dụng camera action phù hợp ngành này ở bước 3."]),
         "1. Xác định HERO BENEFIT — 1 lợi ích bán hàng mạnh nhất cho khách mục tiêu. Ghi vào section2.heroBenefit.",
         "   Ví dụ: " + industry_data.get('hero_examples', "'Lợi ích mạnh nhất' (TT) / 'Thấm nhanh không nhờn' (MP) / 'Pin trâu 2 ngày' (ĐT)"),
         "2. voScript: 70% xoay quanh Hero Benefit. 30% mới nói lợi ích phụ.",
-        "3. Camera action trong lines[] phục vụ Hero Benefit (người quay im lặng — chỉ di chuyển camera):",
-        *([ f"   {industry_data.get('camera', '')}" ] if not _is_auto_industry and industry_data.get('camera') else [
-            "   Thời trang → quay nghiêng, zoom chất vải/chi tiết, pan full body",
-            "   Mỹ phẩm → close-up texture, zoom da trước-sau, cận mặt khi bôi",
-            "   Điện tử → zoom màn hình/nút bấm, demo chức năng, unbox reveal",
-            "   Gia dụng → góc rộng demo, zoom kết quả, before/after",
-            "   Thực phẩm → close-up màu/texture, steam, reveal thành phẩm",
-            "   Thú cưng / Mẹ&Bé → zoom phản ứng/chi tiết an toàn, sản phẩm cận cảnh",
-            "   Khác → focus camera vào điểm thể hiện Hero Benefit tốt nhất",
-        ]),
+        f"3. Camera action trong lines[] phục vụ Hero Benefit + Subject Mode [{resolved_label}]:",
+        f"   {subject_action_vo}",
+        "   KHÔNG dùng action sai subject mode. Action phải phục vụ Hero Benefit đang nói.",
         *([
             "4. Thân voScript: tự nhiên thêm 1-2 Mini Hook ngắt nhịp giữ người nghe (khớp giọng điệu):",
             f"   {_mini_hooks}",
@@ -566,6 +772,7 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         ]),
         "",
         *_struct_check,
+        *_reference_examples,
         "",
         "---",
         "",
@@ -588,7 +795,7 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         "",
         '```json',
         '{',
-        '  "section1": {"productName":"","targetAudience":"","shootingStyle":"Voice Over (ElevenLabs)","duration":"","tone":"","videoGoal":""},',
+        f'  "section1": {{"productName":"","targetAudience":"","shootingStyle":"Voice Over (ElevenLabs)","duration":"","tone":"","videoGoal":"","subjectMode":"{subject_mode}","subjectModeResolved":"{resolved_mode}","productionMode":"{production_mode}"}},',
         '  "section2": {"targetCustomer":"","painPoints":"","insight":"","highlights":"","mainBenefits":"","usageSituations":"","heroBenefit":""},',
         '  "section3": {"hooks":[{"text":"câu hook tự nhiên mạnh 0-3s, không tag, không chào hỏi","isRecommended":true},{"text":"hook 2 kiểu khác — phủ định hoặc câu hỏi","isRecommended":false},{"text":"hook 3 kiểu khác — nhận xét bất ngờ","isRecommended":false}]},',
         '  "section7": {"captions":["caption 1 ≤100 ký tự + 1-2 emoji","caption 2 ≤100 ký tự + 1-2 emoji","caption 3 ≤100 ký tự + 1-2 emoji"]},',
@@ -597,11 +804,11 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         '    "duration":"30s",',
         '    "hook":"câu hook ngắn (không tag)",',
         '    "voScript":"HOOK:\\nCâu hook mạnh, tự nhiên, không tag...\\n\\nVOICE OVER:\\nCâu 1 như đang trò chuyện...\\nCâu 2 tự nhiên tiếp theo...\\n\\nCTA:\\nCâu kêu gọi cuối tự nhiên...",',
-        '    "lines":[{"type":"action","text":"hành động camera cụ thể khi voiceover câu 1"},{"type":"action","text":"hành động camera câu 2"}],',
+        f'    "lines":[{{"type":"action","text":"hành động {resolved_label} câu 1 — phù hợp subject mode"}},{{"type":"action","text":"hành động {resolved_label} câu 2"}}],',
         '    "rawScript":""',
         '  },',
         '  "section5": {"timeline":[{"timeRange":"0-3s","voice":"câu hook (không tag)","action":"hành động camera tương ứng"}]},',
-        '  "section9": {"tips":["tip quay (im lặng hoàn toàn, tắt micro, ánh sáng)","tip edit lồng tiếng (sync audio, cut theo nhịp giọng)"]}',
+        f'  "section9": {{"tips":["{subject_tips_vo[0] if subject_tips_vo else "Im lặng hoàn toàn khi quay"}","Im lặng hoàn toàn khi quay — giọng sẽ lồng sau qua ElevenLabs","Sync audio và cắt video theo nhịp giọng khi edit","Ánh sáng đủ và ổn định suốt video"]}}',
         '}',
         '```',
         "",
@@ -634,10 +841,22 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
     industry_data = INDUSTRY_GUIDE.get(industry, {})
     _is_auto_industry = industry == 'auto'
 
-    # V3: Random diversity for non-voiceover scripts
+    # V6: Subject Mode + Production Mode
+    subject_mode = input_data.get('subjectMode', 'auto')
+    production_mode = input_data.get('productionMode', 'real')
+    resolved_mode = resolve_subject_mode(input_data)
+    resolved_label = SUBJECT_MODE_LABELS.get(resolved_mode, resolved_mode)
+    subject_guide_text = SUBJECT_MODE_GUIDE.get(resolved_mode, SUBJECT_MODE_GUIDE['auto'])
+    industry_for_action = industry if not _is_auto_industry else 'other'
+    subject_action_text = get_subject_action_guide(industry_for_action, resolved_mode)
+    subject_tips_list = SUBJECT_TIPS.get(resolved_mode, SUBJECT_TIPS['auto'])
+
+    # V3: Random engines — varied each request
     _pattern = random.choice(STRUCTURE_PATTERNS)
     _hook_type = random.choice(HOOK_TYPES)
     _caption_styles = random.sample(CAPTION_STYLES, 3)
+    # V8: Reference Library — mẫu user tự nhập (đã được app.py chọn lọc trước khi tới đây)
+    _reference_examples = _build_reference_examples_block(input_data.get('referenceExamples', []))
 
     # KOC Discovery Engine — one-shot / review / koc-review + natural-koc
     _is_koc = shooting in ('one-shot', 'review', 'koc-review') and tone == 'natural-koc'
@@ -781,9 +1000,16 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         "",
         f"**ENGINE 6 — CAPTION:** 3 kiểu {_caption_styles[0].split(' —')[0]} / {_caption_styles[1].split(' —')[0]} / {_caption_styles[2].split(' —')[0]}.",
         "",
+        "**SUBJECT MODE (V6) — BẮT BUỘC:**",
+        f"Chủ thể quay đã xác định: {resolved_label}",
+        subject_guide_text,
+        f"Action phù hợp ({resolved_label}): {subject_action_text}",
+        "HARD RULE: Mọi action trong section4.lines PHẢI khớp subject mode. Không dùng action sai subject mode.",
+        "",
         *_koc_extra,
         *( [""] if _koc_extra else [] ),
         *_selfcheck_lines,
+        *_reference_examples,
         "---",
         "",
         "# YÊU CẦU ĐẦU RA",
@@ -792,19 +1018,20 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         "",
         '```json',
         '{',
-        '  "section1": {"productName":"","targetAudience":"","shootingStyle":"","duration":"","tone":"","videoGoal":""},',
+        f'  "section1": {{"productName":"","targetAudience":"","shootingStyle":"","duration":"","tone":"","videoGoal":"","subjectMode":"{subject_mode}","subjectModeResolved":"{resolved_mode}","productionMode":"{production_mode}"}},',
         '  "section2": {"targetCustomer":"","painPoints":"","insight":"","highlights":"","mainBenefits":"","usageSituations":"","heroBenefit":""},',
         '  "section3": {"hooks":[{"text":"hook 1","isRecommended":true},{"text":"hook 2","isRecommended":false},{"text":"hook 3","isRecommended":false}]},',
         '  "section7": {"captions":["1 câu ngắn ≤100 ký tự: tên SP + lợi ích + 1-2 emoji + CTA","caption 2 góc khác cũng ≤100 ký tự","caption 3 góc khác cũng ≤100 ký tự"]},',
         '  "section8": {"hashtags":["#tag_chinh_xac_san_pham","#tag_niche","#tag_rong","#tiktokshop","#reviewsanpham"]},',
-        '  "section4": {"duration":"","hook":"","lines":[{"type":"action","text":"hành động"},{"type":"dialogue","text":"lời thoại"}],"rawScript":""},',
+        f'  "section4": {{"duration":"","hook":"","lines":[{{"type":"action","text":"action {resolved_label}"}},{{"type":"dialogue","text":"lời thoại"}}],"rawScript":""}},',
         '  "section5": {"timeline":[{"timeRange":"0-3s","description":"hook + bước vào khung hình"}]},',
-        '  "section9": {"tips":["lưu ý 1","lưu ý 2"]}',
+        f'  "section9": {{"tips":["{subject_tips_list[0] if subject_tips_list else "Ổn định camera"}","lưu ý 2","lưu ý 3"]}}',
         '}',
         '```',
         "",
         "Lưu ý quan trọng:",
         "- Kịch bản: hoàn toàn mới mỗi lần, lời thoại tự nhiên như đang nói thật, hành động đan xen sau mỗi 1-2 câu.",
+        f"- section9 tips: viết 4-6 lưu ý phù hợp subject mode '{resolved_label}'. Ví dụ: {' / '.join(subject_tips_list[:2]) if len(subject_tips_list) >= 2 else 'lưu ý quay phù hợp'}.",
         "- Caption TikTok: Tối đa 100 ký tự. Phải đề cập tên/loại sản phẩm, có 1-2 emoji. Chỉ 1 câu duy nhất.",
         "- Hashtag (section8): Brand(1-2) + Product(3) + Audience(2) + Usage(2) + TikTokShop(2) + Discovery(tối đa 1). Tổng đúng 10-12 tag. KHÔNG spam viral (#fyp #viral #xuhuong cùng lúc — chỉ được 1). KHÔNG lặp từ gốc liên tiếp trong Product.",
     ]
@@ -852,7 +1079,8 @@ def parse_ai_response(raw: str) -> dict:
     parsed = _try_parse_json(text)
 
     defaults = {
-        'section1': {'productName': '', 'targetAudience': '', 'shootingStyle': '', 'duration': '', 'tone': '', 'videoGoal': ''},
+        # V5 fields — backward compat: section1 V6 fields default to empty strings
+        'section1': {'productName': '', 'targetAudience': '', 'shootingStyle': '', 'duration': '', 'tone': '', 'videoGoal': '', 'subjectMode': '', 'subjectModeResolved': '', 'productionMode': ''},
         'section2': {'targetCustomer': '', 'painPoints': '', 'insight': '', 'highlights': '', 'mainBenefits': '', 'usageSituations': '', 'heroBenefit': ''},
         'section3': {'hooks': []},
         'section4': {'duration': '', 'hook': '', 'lines': [], 'rawScript': '', 'voScript': ''},
@@ -864,6 +1092,11 @@ def parse_ai_response(raw: str) -> dict:
     for key, default in defaults.items():
         if key not in parsed:
             parsed[key] = default
+        elif key == 'section1':
+            # Merge V6 fields into old scripts without overwriting existing values
+            for field, val in default.items():
+                if field not in parsed[key]:
+                    parsed[key][field] = val
 
     parsed['rawResponse'] = raw
     return parsed
@@ -886,6 +1119,13 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
     industry = input_data.get('industry', 'auto')
     industry_label = INDUSTRY_LABELS.get(industry, 'Tự động nhận diện')
     industry_data = INDUSTRY_GUIDE.get(industry, {})
+
+    # V6: Subject Mode
+    _resolved_mode_sec = resolve_subject_mode(input_data)
+    _resolved_label_sec = SUBJECT_MODE_LABELS.get(_resolved_mode_sec, _resolved_mode_sec)
+    _subject_action_sec = get_subject_action_guide(industry if industry != 'auto' else 'other', _resolved_mode_sec)
+    _subject_tips_sec = SUBJECT_TIPS.get(_resolved_mode_sec, SUBJECT_TIPS['auto'])
+    _subject_note = f"\nSUBJECT MODE: {_resolved_label_sec} — action phải khớp: {_subject_action_sec}"
 
     base = f"Sản phẩm: {product_name}\nMô tả: {product_desc}"
     if audience:
@@ -947,6 +1187,7 @@ ENGINE 2 — HUMAN CONVERSATION: Được phép dùng reaction ngắn, ngập ng
 ENGINE 3 — EMOTION CURVE: Năng lượng không đều — hook mạnh, body xen kẽ cao/thấp, CTA bật lên.
 
 Reaction độc lập tối thiểu: {_reaction_min} câu (đứng riêng, không nhét vào câu review).{_nhay_law}
+{_subject_note}
 
 Tạo voScript lời thoại thuần túy (ElevenLabs V3 Enhance tự thêm emotion — KHÔNG được viết tag [xxx] nào).{hook_instruction}
 
@@ -1000,7 +1241,8 @@ ENGINE 4 — HOOK LẦN NÀY: {_hook_type}
 ENGINE 2 — HUMAN CONVERSATION: Lời thoại tự nhiên như đang nói thật — được phép reaction, câu bỏ lửng, tự sửa.
 
 ENGINE 3 — EMOTION CURVE: Năng lượng không đều — hook mạnh, body xen kẽ, CTA bật lên.
-{_koc_block}
+{_koc_block}{_subject_note}
+
 Tạo kịch bản mới và timeline quay tương ứng. Lời thoại tự nhiên, hành động đan xen sau mỗi 1-2 câu.{"" if not selected_hook else " Câu đầu tiên của kịch bản PHẢI là hook đã cho, không được thay đổi."}
 
 ```json
@@ -1147,11 +1389,13 @@ Ví dụ Hero Benefit ({industry_label}): {_ind_hero_ex}
         _demo_tip = industry_data.get('demo', '')
         _camera_tip = industry_data.get('camera', '')
         _tips_industry_hint = f'\nNgành hàng ({industry_label}): demo = {_demo_tip}. Camera = {_camera_tip}.' if _demo_tip else ''
+        _subject_tips_hint = f'\nSubject Mode [{_resolved_label_sec}]: {chr(10).join("- " + t for t in _subject_tips_sec)}'
         user = f"""{base}
-{context_line}{_tips_industry_hint}
+{context_line}{_tips_industry_hint}{_subject_tips_hint}
 
 Tạo 4-6 lưu ý thực tế khi quay video cho sản phẩm này.
-Gồm: setup góc máy phù hợp ngành, cách demo rõ Hero Benefit, ánh sáng, âm thanh, lưu ý đặc thù kiểu quay này.
+Subject Mode: {_resolved_label_sec}. Tips PHẢI phù hợp với subject mode này.
+Gồm: setup góc máy phù hợp subject mode + ngành, cách demo rõ Hero Benefit, ánh sáng, âm thanh, lưu ý đặc thù kiểu quay này.
 {"Voiceover: nhấn mạnh tắt micro hoàn toàn, đồng bộ hành động theo script." if shooting == "voiceover" else ""}
 
 ```json
@@ -1162,3 +1406,508 @@ Gồm: setup góc máy phù hợp ngành, cách demo rõ Hero Benefit, ánh sán
         raise ValueError(f'Section không hợp lệ: {section}')
 
     return SECTION_SYSTEM, user
+
+
+# ============================================================
+# V6: AI VISUAL PROMPT MODULE
+# ============================================================
+
+# ============================================================
+# V6.1: PRODUCT LOCK ENGINE — fix Seedream/Seedance tự vẽ lại sản phẩm
+# ============================================================
+# Vấn đề: khi AI viết prompt kiểu "make the product look compact, premium,
+# and identical...", Seedream vẫn hiểu nhiệm vụ là VẼ LẠI sản phẩm → sai
+# hình dáng/cổng/logo. Giải pháp: KHÔNG để AI tự viết phần Product Lock.
+# Python lắp ráp các block PRODUCT LOCK/negative prompt CỐ ĐỊNH (nguyên văn),
+# AI chỉ được yêu cầu mô tả bối cảnh/ánh sáng/camera/chuyển động xung quanh
+# sản phẩm — không bao giờ được mô tả lại chính sản phẩm. Điều này đảm bảo
+# Product Lock luôn đúng 100%, không phụ thuộc việc AI có tuân thủ hay không.
+
+PRODUCT_LOCK_IMAGE_TEXT = (
+    "CRITICAL PRODUCT LOCK:\n"
+    "Use the uploaded Product Image as the exact product reference. Do not redesign, "
+    "reinterpret, simplify, replace, stylize, or generate a new version of the product. "
+    "Preserve the exact shape, proportions, ports, buttons, plug, logo placement, color, "
+    "material, surface details, and all visible design features from the uploaded Product Image."
+)
+
+PRODUCT_LOCK_VIDEO_TEXT = (
+    "CRITICAL VIDEO PRODUCT LOCK:\n"
+    "Animate the provided Scene Image only. Do not morph, redesign, replace, melt, stretch, "
+    "rotate into a different object, change ports, change buttons, change logo, change plug, "
+    "or alter the product geometry. The product must remain visually identical throughout the entire clip."
+)
+
+GLOBAL_NEGATIVE_PROMPT_TEXT = (
+    "generic product, redesigned product, changed product shape, wrong product proportions, "
+    "wrong ports, wrong buttons, wrong plug, missing plug, extra plug, changed logo, fake logo, "
+    "fake text, changed packaging, different color, duplicated or extra product, "
+    "new accessories, extra cable, fake cable, distorted product geometry, blurry product, "
+    "low detail product, melted product, warped product, morphing product, cartoon style, "
+    "CGI look, watermark, subtitles, text overlay, "
+    "deformed hands, extra fingers, missing fingers, extra hands, three or more hands, "
+    "floating disembodied hand, "
+    "face visible when hands-only, cluttered background"
+)
+
+SUBJECT_MODE_NEGATIVE_EXTRA = {
+    'hands': "face, eyes, smile, looking at camera, facial expression, woman face, creator face",
+    'product': "hands holding product, face, person, model, creator",
+    'face': "",
+}
+
+SUBJECT_MODE_IMAGE_RULE = {
+    'hands': (
+        "Hands-only composition. EXACTLY ONE pair of hands (2 hands total, both belonging to the same "
+        "single person) is visible in the frame — never show a second person's hands, never show more "
+        "than 2 hands, never duplicate or repeat a hand. The hands gently support or interact with the "
+        "product in ONE single coherent action only (e.g. only holding, OR only opening, OR only "
+        "plugging — never combine multiple simultaneous hand actions in one frame) without covering "
+        "important front details (ports, buttons, plug, logo). No face, no eyes, no facial expression, "
+        "no person visible anywhere in the frame."
+    ),
+    'face': (
+        "A person may appear naturally in the frame, holding or demonstrating the product. The product "
+        "must remain fully visible at all times — hands must never cover ports, buttons, plug, or logo. "
+        "Only one person's hands (a single pair, 2 hands total) should be visible."
+    ),
+    'product': (
+        "Product-only composition. No human, no hands, no face anywhere in the frame. Pure product "
+        "photography / packshot style — the product is the sole subject."
+    ),
+}
+
+INPUT_IMAGES_REFERENCE_STEP = [
+    "Product Image — uploaded product photo, must be preserved exactly",
+    "Optional Style Reference — optional, only for lighting/color/background style",
+    "Optional Background Reference — optional, only for environment style",
+]
+
+INPUT_IMAGES_SCENE_STEP = [
+    "Product Image — exact product reference, highest priority",
+    "Reference Image — use only for hand/background/lighting/composition consistency",
+    "Optional Style Reference — optional",
+]
+
+INPUT_IMAGES_VIDEO_STEP = [
+    "Scene Image — main image to animate",
+    "Reference Image — consistency reference only",
+    "Product Image — product identity lock if Freepik allows",
+]
+
+
+FALLBACK_CAMERA_MOVEMENTS = [
+    "Static close-up, slight push-in",
+    "Slow pan left to right, eye-level",
+    "Top-down static shot with gentle zoom-in",
+    "Subtle handheld-style movement, close framing",
+    "Slow orbit around the subject, medium-close shot",
+]
+
+FALLBACK_MOTION_VISUALS = [
+    "Subtle natural movement, slight shift in hand position",
+    "Smooth continuous motion matching the camera move",
+    "Gentle motion revealing a new angle of the scene",
+    "Slow steady motion with natural micro-movements",
+    "Calm motion with slight ambient movement (soft light shift)",
+]
+
+
+def _fallback_camera_movement(index: int) -> str:
+    return FALLBACK_CAMERA_MOVEMENTS[index % len(FALLBACK_CAMERA_MOVEMENTS)]
+
+
+def _fallback_motion_visual(index: int) -> str:
+    return FALLBACK_MOTION_VISUALS[index % len(FALLBACK_MOTION_VISUALS)]
+
+
+def _align_scenes_to_timeline(ai_scenes: list, timeline: list) -> list:
+    """Ép 1:1 giữa timeline gốc (script.section5.timeline) và scenes — không phụ thuộc AI
+    trả đúng số lượng/thứ tự. timeRange/description luôn lấy từ timeline gốc làm ground truth;
+    AI draft chỉ đóng góp phần creative (sceneVisual/motionVisual/cameraMovement/purpose).
+    Nếu AI trả thiếu scene → bổ sung rỗng (dùng fallback ở nơi gọi). Nếu trả dư → cắt bỏ."""
+    if not timeline:
+        return ai_scenes or [{}]
+    aligned = []
+    for i, t in enumerate(timeline):
+        draft = ai_scenes[i] if i < len(ai_scenes) else {}
+        draft = draft or {}
+        aligned.append({
+            **draft,
+            'scene': i + 1,
+            'timeRange': t.get('timeRange', '') or draft.get('timeRange', ''),
+            'description': draft.get('description') or t.get('description') or t.get('voice', '') or '',
+        })
+    return aligned
+
+
+def _build_visual_workflow(img_model: str, vid_model: str, aspect_ratio: str) -> dict:
+    """Workflow cố định bằng Python (không qua AI) — đúng quy trình Freepik Flow 3 bước."""
+    return {
+        "title": "Freepik Flow Workflow",
+        "imageModel": img_model,
+        "videoModel": vid_model,
+        "aspectRatio": aspect_ratio,
+        "productLockNote": (
+            "Always upload the Product Image as the highest-priority reference. "
+            "Do not let the AI redesign the product."
+        ),
+        "steps": [
+            {
+                "step": 1,
+                "title": "Create Reference Image",
+                "inputImages": ["Product Image"],
+                "instruction": "Create a clean reference setup. The uploaded Product Image is the exact product reference.",
+            },
+            {
+                "step": 2,
+                "title": "Create Scene Images",
+                "inputImages": ["Product Image", "Reference Image"],
+                "instruction": "Use Product Image to preserve the product exactly. Use Reference Image only for hand/background/lighting.",
+            },
+            {
+                "step": 3,
+                "title": "Create Video Clips",
+                "inputImages": ["Scene Image", "Reference Image", "Product Image"],
+                "instruction": "Animate the Scene Image. Keep product geometry fixed.",
+            },
+        ],
+    }
+
+
+def _build_negative_prompt(resolved_mode: str) -> str:
+    parts = [GLOBAL_NEGATIVE_PROMPT_TEXT]
+    mode_extra = SUBJECT_MODE_NEGATIVE_EXTRA.get(resolved_mode, '')
+    if mode_extra:
+        parts.append(mode_extra)
+    return ', '.join(p.strip(', ') for p in parts if p)
+
+
+def _build_continuity_block(environment: str, lighting: str, character_or_hands: str) -> str:
+    """Khối CONTINUITY — lặp lại nguyên văn trong reference/image/video prompt để giữ
+    bối cảnh/ánh sáng/kiểu tay nhất quán giữa các scene (mỗi lần gọi Seedream/Seedance là
+    1 generation độc lập, không có trí nhớ — chỉ có text lặp lại mới giữ được continuity)."""
+    lines = []
+    if environment:
+        lines.append(f"- Background/environment: {environment}")
+    if lighting:
+        lines.append(f"- Lighting: {lighting}")
+    if character_or_hands:
+        lines.append(f"- Hands/character appearance: {character_or_hands}")
+    if not lines:
+        return ""
+    return "CONTINUITY (keep identical across all scenes):\n" + "\n".join(lines) + "\n\n"
+
+
+def _build_reference_prompt_text(resolved_mode: str, reference_scene: str, aspect_ratio: str,
+                                  environment: str = '', lighting: str = '', character_or_hands: str = '') -> str:
+    """Template cố định — PRODUCT LOCK nguyên văn. AI chỉ điền phần 'Scene' (bối cảnh).
+    CONTINUITY block thiết lập bối cảnh/ánh sáng/tay làm chuẩn cho các scene sau dùng lại."""
+    style_line = {
+        'hands': "Close-up product-first composition",
+        'face': "Natural lifestyle composition with person and product both visible",
+        'product': "Studio packshot composition, product as sole subject",
+    }.get(resolved_mode, "Close-up product-first composition")
+    continuity = _build_continuity_block(environment, lighting, character_or_hands)
+
+    return (
+        f"Create a vertical {aspect_ratio} realistic UGC-style reference setup using the uploaded "
+        f"Product Image as the exact product.\n\n"
+        f"{PRODUCT_LOCK_IMAGE_TEXT}\n\n"
+        f"{continuity}"
+        f"Scene:\n{reference_scene}\n\n"
+        f"Camera:\n{style_line}, vertical {aspect_ratio}, soft daylight, sharp product focus, clean "
+        f"minimal background, TikTok Shop UGC review style.\n\n"
+        f"Hand count (if hands appear): exactly one pair of hands (2 hands, one person) — never more.\n\n"
+        f"Do not add text, captions, labels, icons, extra cables, extra ports, extra accessories, "
+        f"new branding, new product elements, extra hands, or duplicated hands."
+    )
+
+
+def _build_image_prompt_text(resolved_mode: str, scene_visual: str,
+                              environment: str = '', lighting: str = '', character_or_hands: str = '') -> str:
+    """Template cố định — PRODUCT LOCK nguyên văn. AI chỉ điền phần 'SCENE' (bối cảnh/hành động).
+    CONTINUITY block lặp lại environment/lighting/hands-style từ visualDirector ở mọi scene
+    để Seedream giữ bối cảnh nhất quán xuyên suốt video (mỗi scene là 1 generation độc lập)."""
+    subject_rule = SUBJECT_MODE_IMAGE_RULE.get(resolved_mode, SUBJECT_MODE_IMAGE_RULE['hands'])
+    continuity = _build_continuity_block(environment, lighting, character_or_hands)
+    return (
+        "INPUTS:\n"
+        "- Product Image: exact product reference, highest priority.\n"
+        "- Reference Image: use only for hand/background/lighting/composition consistency.\n\n"
+        f"{PRODUCT_LOCK_IMAGE_TEXT}\n\n"
+        f"{continuity}"
+        f"SCENE:\n{scene_visual}\n\n"
+        f"SUBJECT MODE:\n{subject_rule}\n\n"
+        "COMPOSITION:\n"
+        "Product-first composition. The product must be fully visible and recognizable. Do not cover "
+        "important details. If hands are present, show exactly one pair of hands (2 hands, one person) "
+        "performing a single action — never duplicate hands, never show extra or floating hands.\n\n"
+        "STYLE:\n"
+        "Vertical 9:16 realistic TikTok Shop UGC/commercial style, soft lighting, sharp focus, clean "
+        "background.\n\n"
+        "AVOID:\n"
+        "No text overlay, no subtitles, no watermark, no extra branding, no fake UI, no product redesign, "
+        "no extra hands, no duplicated hands."
+    )
+
+
+def _build_video_prompt_text(motion_visual: str, camera_movement: str, clip_dur: str, aspect_ratio: str,
+                              environment: str = '', lighting: str = '', character_or_hands: str = '') -> str:
+    """Template cố định — VIDEO PRODUCT LOCK nguyên văn. AI chỉ điền MOTION/CAMERA.
+    CONTINUITY block giữ bối cảnh/ánh sáng/tay nhất quán với ảnh tĩnh gốc khi animate."""
+    continuity = _build_continuity_block(environment, lighting, character_or_hands)
+    return (
+        "INPUTS:\n"
+        "- Scene Image: main image to animate.\n"
+        "- Reference Image: consistency reference.\n"
+        "- Product Image: product identity lock if supported.\n\n"
+        f"{PRODUCT_LOCK_VIDEO_TEXT}\n\n"
+        f"{continuity}"
+        f"MOTION:\n{motion_visual}\n\n"
+        f"CAMERA:\n{camera_movement}\n\n"
+        f"DURATION:\n{clip_dur}, vertical {aspect_ratio}.\n\n"
+        "HAND COUNT LOCK:\n"
+        "If hands are present, keep exactly one pair of hands (2 hands, one person) visible throughout "
+        "the entire clip. Do not add a second person's hands, do not duplicate hands, do not let hands "
+        "multiply or appear/disappear inconsistently between frames.\n\n"
+        "STYLE:\n"
+        "Realistic TikTok Shop UGC/commercial video, natural motion, stable product visibility.\n\n"
+        "AVOID:\n"
+        "No text overlay, no subtitles, no watermark, no product transformation, no new accessories, "
+        "no distorted hands, no extra hands, no duplicated hands."
+    )
+
+
+VISUAL_SYSTEM_PROMPT = """Bạn là AI Visual Director cho Freepik Flow (Seedream tạo ảnh, Seedance tạo video).
+
+QUAN TRỌNG NHẤT — ĐỌC KỸ TRƯỚC KHI VIẾT:
+Sản phẩm trong video LÀ ẢNH THẬT do người dùng tải lên (Product Image). Bạn KHÔNG được mô tả lại
+hình dáng, màu sắc, logo, cổng kết nối, nút bấm, hay bất kỳ chi tiết thiết kế nào của sản phẩm.
+Sản phẩm đã có sẵn trong ảnh upload — không cần và không được sáng tạo lại hay tưởng tượng thêm.
+
+Nhiệm vụ của bạn CHỈ là mô tả những gì XUNG QUANH sản phẩm:
+- Bối cảnh / background / setting / bề mặt
+- Ánh sáng
+- Góc máy / camera / chuyển động
+- Tay hoặc người (nếu subject mode cho phép) — chỉ mô tả HÀNH ĐỘNG của tay/người, KHÔNG mô tả lại
+  sản phẩm họ đang cầm hay tương tác
+
+TUYỆT ĐỐI KHÔNG dùng các cụm mô tả/sáng tạo lại sản phẩm như: "a compact charger", "a premium-looking
+device", "a product similar to...", "make the product look...", "create a sleek gadget that...",
+"identical to a...". Sản phẩm không cần bạn miêu tả vì nó đã có sẵn trong ảnh upload — nếu cần nhắc tới,
+chỉ dùng "the product" hoặc "the exact product from the uploaded image".
+
+QUY TẮC KHÁC:
+- Không viết lại kịch bản bán hàng, không viết lời thoại.
+- 1 timeline item = 1 scene.
+- Tất cả mô tả bằng tiếng Anh, trừ "description" và "purpose" viết tiếng Việt.
+- Output JSON hợp lệ duy nhất. Không markdown. Không giải thích ngoài JSON."""
+
+
+def build_visual_prompt(script: dict, product_name: str, product_desc: str,
+                        image_analysis: str, input_data: dict, visual_settings: dict) -> tuple:
+    """Tạo (system_prompt, user_prompt) để AI sinh DRAFT mô tả bối cảnh/ánh sáng/camera/chuyển động.
+
+    AI KHÔNG được mô tả lại sản phẩm. assemble_visual_section10() sẽ lắp ráp PRODUCT LOCK +
+    section10 đầy đủ từ draft này. Lựa chọn kỹ thuật này (Python lắp khung cố định, AI chỉ điền
+    phần bối cảnh) đảm bảo Product Lock luôn đúng 100%, không phụ thuộc AI có tuân thủ instruction
+    hay không — fix lỗi Seedream tự vẽ lại sản phẩm (sai hình dáng/cổng/logo)."""
+    resolved_mode = resolve_subject_mode(input_data)
+    shooting = input_data.get('shootingStyle', 'one-shot')
+    shooting_label = SHOOTING_LABELS.get(shooting, shooting)
+    duration = input_data.get('duration', '30s')
+    duration_label = DURATION_LABELS.get(duration, duration)
+    tone = input_data.get('tone', 'natural-koc')
+    tone_label = TONE_LABELS.get(tone, tone)
+    industry = input_data.get('industry', 'auto')
+    industry_label = INDUSTRY_LABELS.get(industry, 'Tự động nhận diện')
+    video_goal = GOAL_LABELS.get(input_data.get('videoGoal', ''), input_data.get('videoGoal', ''))
+
+    s2 = script.get('section2', {})
+    s4 = script.get('section4', {})
+    s5 = script.get('section5', {})
+    hero_benefit = s2.get('heroBenefit', '')
+
+    timeline = s5.get('timeline', [])
+    timeline_text = '\n'.join(
+        f"  Scene {i+1} [{t.get('timeRange','?')}]: {t.get('description', '') or t.get('voice','') or ''} | Action: {t.get('action','')}"
+        for i, t in enumerate(timeline)
+    ) if timeline else '  (Chưa có timeline — tự đề xuất scene dựa trên kịch bản)'
+
+    lines_data = s4.get('lines', [])
+    vo_script = s4.get('voScript', '')
+    script_summary = vo_script[:500] if vo_script else ' '.join(
+        l.get('text', '') for l in lines_data if l.get('type') == 'dialogue'
+    )[:500]
+
+    subject_rule = SUBJECT_MODE_IMAGE_RULE.get(resolved_mode, SUBJECT_MODE_IMAGE_RULE['hands'])
+    n_scenes = len(timeline) or 5
+
+    character_field_hint = (
+        'description of consistent character appearance in English (clothing, vibe) — never describe the product they hold'
+        if resolved_mode == 'face' else
+        'description of hand style in English (skin tone, nails) — no face'
+        if resolved_mode == 'hands' else
+        'no human in this mode — empty string'
+    )
+
+    user_prompt = f"""# PRODUCT CONTEXT (chỉ để hiểu bối cảnh — KHÔNG mô tả lại sản phẩm trong output)
+Name: {product_name}
+Description: {product_desc[:400]}
+Industry: {industry_label}
+Hero Benefit: {hero_benefit}
+
+# SCRIPT SUMMARY
+Shooting style: {shooting_label}
+Duration: {duration_label}
+Tone: {tone_label}
+Video goal: {video_goal}
+Script excerpt: {script_summary[:300]}
+
+# TIMELINE (each item = 1 scene, tạo đúng {n_scenes} scene theo thứ tự)
+{timeline_text}
+
+# SUBJECT MODE: {resolved_mode}
+{subject_rule}
+
+# YÊU CẦU OUTPUT — JSON DRAFT (chỉ bối cảnh/camera/chuyển động, KHÔNG một chữ nào mô tả sản phẩm):
+{{
+  "visualDirector": {{
+    "visualStyle": "overall aesthetic in English (e.g. clean TikTok Shop UGC, soft natural light)",
+    "environment": "background/setting description in English — NOT the product",
+    "lighting": "lighting setup in English",
+    "cameraStyle": "camera angle/movement style in English",
+    "characterOrHands": "{character_field_hint}"
+  }},
+  "referenceScene": "English description of the reference setup's surrounding scene only (surface, background, props, hand/person position) — do NOT describe the product itself",
+  "scenes": [
+    {{
+      "scene": 1,
+      "timeRange": "0-4s",
+      "description": "Mô tả tiếng Việt việc gì xảy ra trong cảnh này",
+      "purpose": "Mục đích bán hàng của cảnh này (tiếng Việt)",
+      "sceneVisual": "English description of composition/environment/action around the product for the static keyframe — do NOT describe the product's shape/color/ports/logo",
+      "cameraMovement": "English camera movement description",
+      "motionVisual": "English description of what moves in the video (hands, camera, environment) — do NOT describe the product transforming",
+      "motionNotes": "extra motion details in English"
+    }}
+  ]
+}}
+
+Tạo đúng {n_scenes} scene, mỗi scene tương ứng 1 timeline item theo thứ tự ở trên.
+Output ONLY valid JSON. No markdown. No explanation outside JSON."""
+
+    return VISUAL_SYSTEM_PROMPT, user_prompt
+
+
+def assemble_visual_section10(ai_draft: dict, product_name: str, input_data: dict, visual_settings: dict,
+                               script: dict = None) -> dict:
+    """Lắp ráp section10 đầy đủ từ AI draft (chỉ bối cảnh/camera/chuyển động) + PRODUCT LOCK
+    templates cố định bằng Python (xem các hàm _build_*_prompt_text ở trên). Đảm bảo
+    CRITICAL PRODUCT LOCK / negative prompt luôn đúng 100% trong mọi imagePrompt/videoPrompt/
+    referencePrompt, không phụ thuộc việc AI có tuân thủ instruction hay không.
+
+    script (optional): nếu truyền vào, dùng script['section5']['timeline'] làm ground truth để
+    ép 1:1 số lượng/timeRange scene — không phụ thuộc AI trả đúng số lượng (Fix #2)."""
+    resolved_mode = resolve_subject_mode(input_data)
+    aspect_ratio = visual_settings.get('aspectRatio', '9:16')
+    clip_dur = visual_settings.get('clipDuration', '4s')
+    img_model = visual_settings.get('targetImageModel', 'Seedream 3.0')
+    vid_model = visual_settings.get('targetVideoModel', 'Seedance 1.0')
+
+    ai_draft = ai_draft or {}
+    vd = ai_draft.get('visualDirector', {}) or {}
+    environment = vd.get('environment', '')
+    lighting = vd.get('lighting', '')
+    character_or_hands = vd.get('characterOrHands', '')
+    reference_scene = ai_draft.get('referenceScene') or 'Clean tabletop setup with soft natural lighting, minimal background.'
+    ai_scenes = ai_draft.get('scenes', []) or []
+
+    # Fix #2: ép 1:1 với timeline gốc nếu có (không phụ thuộc AI trả đúng số lượng/thứ tự)
+    timeline = ((script or {}).get('section5', {}) or {}).get('timeline', [])
+    if timeline:
+        ai_scenes = _align_scenes_to_timeline(ai_scenes, timeline)
+
+    workflow = _build_visual_workflow(img_model, vid_model, aspect_ratio)
+
+    visual_director = {
+        "subjectMode": input_data.get('subjectMode', 'auto'),
+        "resolvedSubjectMode": resolved_mode,
+        "visualStyle": vd.get('visualStyle', ''),
+        "environment": environment,
+        "lighting": lighting,
+        "cameraStyle": vd.get('cameraStyle', ''),
+        "characterOrHands": character_or_hands,
+        "productLock": PRODUCT_LOCK_IMAGE_TEXT,
+    }
+
+    # Fix #1: CONTINUITY (environment/lighting/characterOrHands) cũng được gắn vào Reference Prompt
+    # vì Reference Image chính là cái xác lập bối cảnh cho mọi scene sau đó
+    reference_prompt = {
+        "inputImagesNeeded": list(INPUT_IMAGES_REFERENCE_STEP),
+        "prompt": _build_reference_prompt_text(resolved_mode, reference_scene, aspect_ratio,
+                                                 environment, lighting, character_or_hands),
+        "negativePrompt": _build_negative_prompt(resolved_mode),
+    }
+
+    global_negative = _build_negative_prompt(resolved_mode)
+
+    scenes = []
+    for i, sc in enumerate(ai_scenes):
+        sc = sc or {}
+        scene_no = sc.get('scene', i + 1)
+        time_range = sc.get('timeRange', '')
+        description = sc.get('description', '')
+        purpose = sc.get('purpose', '')
+        scene_visual = sc.get('sceneVisual') or description or 'Clean product-first setup, soft lighting.'
+        # Fix #4: fallback đa dạng theo index thay vì lặp lại 1 câu cho mọi scene
+        camera_movement = sc.get('cameraMovement', '') or _fallback_camera_movement(i)
+        motion_visual = sc.get('motionVisual') or _fallback_motion_visual(i)
+        motion_notes = sc.get('motionNotes', '')
+
+        scenes.append({
+            "scene": scene_no,
+            "timeRange": time_range,
+            "description": description,
+            "purpose": purpose,
+            "inputImagesForImageGeneration": list(INPUT_IMAGES_SCENE_STEP),
+            "imagePrompt": _build_image_prompt_text(resolved_mode, scene_visual,
+                                                      environment, lighting, character_or_hands),
+            "inputImagesForVideoGeneration": list(INPUT_IMAGES_VIDEO_STEP),
+            "videoPrompt": _build_video_prompt_text(motion_visual, camera_movement, clip_dur, aspect_ratio,
+                                                      environment, lighting, character_or_hands),
+            "duration": clip_dur,
+            "cameraMovement": camera_movement,
+            "motionNotes": motion_notes,
+            "negativePrompt": _build_negative_prompt(resolved_mode),
+        })
+
+    all_image_prompts = '\n\n'.join(
+        f"=== SCENE {s['scene']} ({s['timeRange']}) ===\n{s['imagePrompt']}\n\nNegative prompt: {s['negativePrompt']}"
+        for s in scenes
+    )
+    all_video_prompts = '\n\n'.join(
+        f"=== SCENE {s['scene']} ({s['timeRange']}) ===\n{s['videoPrompt']}\n\nNegative prompt: {s['negativePrompt']}"
+        for s in scenes
+    )
+    freepik_workflow_text = (
+        "1. Tạo Reference Image: upload Product Image, dùng Reference Prompt.\n"
+        "2. Tạo Scene Image cho từng cảnh: upload Product Image + Reference Image, dùng Image Prompt tương ứng.\n"
+        "3. Tạo Video cho từng cảnh: upload Scene Image (+ Reference Image, + Product Image nếu Freepik hỗ trợ), dùng Video Prompt tương ứng.\n"
+        "4. Luôn ưu tiên Product Image để giữ đúng sản phẩm thật — không để AI tự vẽ lại sản phẩm."
+    )
+
+    return {
+        "workflow": workflow,
+        "visualDirector": visual_director,
+        "referencePrompt": reference_prompt,
+        "globalNegativePrompt": global_negative,
+        "scenes": scenes,
+        "copyBlocks": {
+            "referencePromptFull": reference_prompt["prompt"] + "\n\nNegative prompt: " + reference_prompt["negativePrompt"],
+            "allImagePrompts": all_image_prompts,
+            "allVideoPrompts": all_video_prompts,
+            "freepikWorkflow": freepik_workflow_text,
+        },
+    }

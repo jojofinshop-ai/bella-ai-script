@@ -148,9 +148,11 @@ def analyze_images_with_gemini(gemini_api_keys, images: list) -> str:
                 return call_gemini(settings, system_prompt, user_prompt, images)
             except Exception as e:
                 err_s = str(e)
-                if '429' in err_s or '404' in err_s or '503' in err_s:
-                    continue
-                break
+                if '429' in err_s:
+                    break  # key bị rate-limit → sang key tiếp ngay
+                if '404' in err_s or '503' in err_s:
+                    continue  # model không có/unavailable → thử model tiếp
+                break  # lỗi khác (auth...) → sang key tiếp
     return ''
 
 
@@ -206,8 +208,10 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list, main_se
                     return _parse_json(raw)
                 except Exception as e:
                     err_s = str(e)
-                    if '429' in err_s or '404' in err_s or '503' in err_s:
-                        continue
+                    if '429' in err_s:
+                        break  # key bị rate-limit → sang key tiếp ngay
+                    if '404' in err_s or '503' in err_s:
+                        continue  # model không có/unavailable → thử model tiếp
                     break  # lỗi khác (key sai) → sang key tiếp
 
     # ── Fallback: dùng provider chính (ChatGPT/OpenAI/custom) ───────────────
@@ -239,6 +243,53 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list, main_se
             return _parse_json(raw)
 
     raise ValueError('Không scan được ảnh. Vui lòng kiểm tra API key trong Cài đặt.')
+
+
+def select_relevant_examples(settings: dict, product_name: str, product_desc: str, industry: str, candidates: list) -> list:
+    """V8 Reference Library: dùng AI chọn tối đa 3 mẫu (hook/script/transcript) phù hợp nhất
+    từ candidates (frontend đã pre-filter theo ngành hàng trước khi gửi lên).
+    Lỗi ở bước chọn lọc này KHÔNG được làm fail lần generate chính — luôn fallback an toàn
+    về vài candidate đầu tiên (frontend đã sắp theo mới nhất) nếu AI lỗi/parse hỏng."""
+    if not candidates:
+        return []
+
+    fallback = [c.get('content', '') for c in candidates[:3] if c.get('content')]
+
+    try:
+        import json as _json, re as _re
+
+        listing = '\n'.join(
+            f"[{i}] loại={c.get('type', '')} ngành={c.get('industry', '')} tag={c.get('productTag', '')}: "
+            f"{(c.get('content', '') or '')[:150]}"
+            for i, c in enumerate(candidates)
+        )
+        system_prompt = 'Bạn là bộ lọc chọn mẫu tham khảo cho copywriter. Chỉ trả JSON, không giải thích gì thêm.'
+        user_prompt = (
+            f"Sản phẩm cần viết kịch bản: {product_name}\n"
+            f"Mô tả: {(product_desc or '')[:300]}\n"
+            f"Ngành hàng: {industry}\n\n"
+            f"Danh sách mẫu trong thư viện:\n{listing}\n\n"
+            'Chọn tối đa 3 mẫu PHÙ HỢP NHẤT để tham khảo văn phong/cấu trúc cho sản phẩm này '
+            '(ngành tương tự, hoặc cách viết đáng học hỏi dù ngành khác). '
+            'Trả về JSON: {"selected": [index, ...]} — index là số trong dấu [] ở trên. '
+            'Nếu không mẫu nào phù hợp, trả {"selected": []}.'
+        )
+        scan_settings = dict(settings)
+        scan_settings['maxTokens'] = 300
+        scan_settings['temperature'] = 0.2
+        raw = call_ai(scan_settings, system_prompt, user_prompt, [])
+
+        m = _re.search(r'\{[\s\S]*\}', raw)
+        if not m:
+            return fallback
+        parsed = _json.loads(m.group(0))
+        selected_idx = parsed.get('selected', [])
+        result = [candidates[i].get('content', '') for i in selected_idx
+                  if isinstance(i, int) and 0 <= i < len(candidates)]
+        result = [r for r in result if r]
+        return result[:3] if result else fallback
+    except Exception:
+        return fallback
 
 
 def call_ai(settings: dict, system_prompt: str, user_prompt: str, images: list) -> str:

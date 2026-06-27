@@ -60,7 +60,7 @@
     </div>
     <nav class="flex gap-0.5">
       <template x-for="tab in tabs" :key="tab.id">
-        <button @click="activeTab = tab.id" :class="activeTab===tab.id ? 'tab-active bg-purple-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="px-2 sm:px-3 py-1.5 text-sm rounded-md transition-all flex items-center gap-1">
+        <button @click="if(activeTab==='library' && tab.id!=='library') resetLibraryForm(); activeTab = tab.id" :class="activeTab===tab.id ? 'tab-active bg-purple-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'" class="px-2 sm:px-3 py-1.5 text-sm rounded-md transition-all flex items-center gap-1">
           <span class="sm:hidden" x-text="tab.icon"></span>
           <span class="hidden sm:inline" x-text="tab.label"></span>
         </button>
@@ -333,6 +333,25 @@
                 <option value="click-to-cart">🛒 Kéo click vào giỏ hàng</option>
               </select>
             </div>
+            <!-- V6: Subject Mode -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Chủ thể video <span class="text-xs text-purple-500 font-normal">(V6)</span></label>
+              <select x-model="form.subjectMode" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                <option value="auto">🤖 Tự động nhận diện</option>
+                <option value="face">👩 Có người / Lộ mặt</option>
+                <option value="hands">🤲 Chỉ quay tay / Không lộ mặt</option>
+                <option value="product">📦 Chỉ sản phẩm</option>
+              </select>
+            </div>
+            <!-- V6: Production Mode -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Hình thức sản xuất <span class="text-xs text-purple-500 font-normal">(V6)</span></label>
+              <select x-model="form.productionMode" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                <option value="real">🎬 Quay thật</option>
+                <option value="ai">🤖 AI tạo video</option>
+                <option value="both">🎬🤖 Quay thật &amp; AI</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -378,6 +397,10 @@
         <button @click="saveToHistory()" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 flex items-center gap-1.5" x-show="!settings.autoSave">
           Lưu lịch sử
         </button>
+        <!-- V8.1: thêm nhanh mẫu vào Thư viện ngay tại đây, không cần qua tab Thư viện mẫu -->
+        <button @click="toggleQuickAddLibrary()" class="border text-sm px-4 py-2 rounded-lg text-purple-700 border-purple-200 bg-purple-50 hover:bg-purple-100 flex items-center gap-1.5">
+          <span>📚</span> Thêm mẫu
+        </button>
         <!-- Image analysis status badge -->
         <template x-if="(imageAnalysisStatus === 'gemini' || imageAnalysisStatus === 'openai') && lastImageAnalysis">
           <button @click="document.getElementById('image-analysis-card')?.scrollIntoView({behavior:'smooth', block:'center'})"
@@ -404,6 +427,35 @@
           <button @click="downloadScript('md')" class="border text-xs px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">MD</button>
           <button @click="downloadScript('json')" class="border text-xs px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">JSON</button>
         </div>
+      </div>
+
+      <!-- V8.1: Panel thêm nhanh mẫu vào Thư viện ngay trên tab Generate -->
+      <div x-show="showQuickAddLibrary" x-transition class="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-xs font-semibold text-purple-700 uppercase">📚 Thêm vào Thư viện mẫu</p>
+          <span class="text-[11px] text-purple-500 bg-purple-100 rounded px-2 py-0.5">
+            Tự động gắn với ngành &amp; SP hiện tại<span x-show="form.productName">: <strong x-text="form.productName"></strong></span>
+          </span>
+        </div>
+        <textarea x-model="libraryForm.content" rows="3"
+          placeholder="Dán hook hay, kịch bản, hoặc transcript video TikTok đang viral vào đây..."
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 mb-2"></textarea>
+        <div class="flex items-center gap-2">
+          <select x-model="libraryForm.type" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+            <option value="hook">Hook ngắn</option>
+            <option value="script">Kịch bản đầy đủ</option>
+            <option value="transcript">Transcript video viral</option>
+          </select>
+          <button @click="saveLibraryEntry(); showQuickAddLibrary=false"
+            :disabled="!libraryForm.content.trim()"
+            class="text-xs bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg">
+            Lưu &amp; Đóng
+          </button>
+          <button @click="showQuickAddLibrary=false" class="text-xs text-gray-500 px-3 py-1.5 hover:bg-purple-100 rounded-lg">Hủy</button>
+        </div>
+        <p class="text-[11px] text-gray-400 mt-2">
+          Sau khi lưu, bấm "Tạo lại" — AI sẽ tự xét mẫu này khi viết kịch bản tiếp theo.
+        </p>
       </div>
 
       <!-- Section error banner -->
@@ -699,6 +751,140 @@
         </div>
       </div>
 
+      <!-- 9. AI Visual Prompt (V6 — chỉ hiện khi productionMode = ai hoặc both) -->
+      <div x-show="form.productionMode === 'ai' || form.productionMode === 'both'" class="bg-white border border-purple-200 rounded-xl shadow-sm mb-4">
+        <div class="p-4 border-b border-purple-100 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            <span class="font-semibold text-sm text-purple-700">AI Visual Prompt <span class="text-xs font-normal text-purple-400">(Freepik Seedream + Seedance)</span></span>
+          </div>
+          <button @click="generateVisualPrompt()" :disabled="isGeneratingVisual"
+            class="inline-flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-xs px-4 py-1.5 rounded-lg transition-colors">
+            <svg x-show="isGeneratingVisual" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <svg x-show="!isGeneratingVisual" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 9-14 9V3z"/></svg>
+            <span x-text="isGeneratingVisual ? 'Đang tạo...' : (visualPromptResult ? 'Tạo lại' : 'Tạo AI Visual Prompt')"></span>
+          </button>
+        </div>
+
+        <!-- Error -->
+        <div x-show="visualError" class="mx-4 mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700" x-text="visualError"></div>
+
+        <!-- Loading placeholder -->
+        <div x-show="isGeneratingVisual && !visualPromptResult" class="p-4 space-y-3">
+          <div class="shimmer h-4 rounded w-2/3"></div>
+          <div class="shimmer h-4 rounded w-full"></div>
+          <div class="shimmer h-4 rounded w-5/6"></div>
+        </div>
+
+        <!-- Empty state -->
+        <div x-show="!visualPromptResult && !isGeneratingVisual && !visualError" class="p-6 text-center text-sm text-gray-400">
+          <p>Bấm <strong class="text-purple-600">Tạo AI Visual Prompt</strong> để nhận prompt tạo ảnh &amp; video AI cho từng scene</p>
+          <p class="mt-1 text-xs">Hỗ trợ Freepik Seedream (ảnh) + Seedance (video) — 9:16</p>
+        </div>
+
+        <!-- Results -->
+        <div x-show="visualPromptResult" class="p-4 space-y-4">
+
+          <!-- Product Lock Note -->
+          <div x-show="visualPromptResult?.workflow?.productLockNote" class="bg-amber-50 border border-amber-200 rounded-lg p-3 flex gap-2">
+            <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <p class="text-xs text-amber-700 leading-relaxed" x-text="visualPromptResult?.workflow?.productLockNote"></p>
+          </div>
+
+          <!-- Workflow -->
+          <div x-show="visualPromptResult?.workflow" class="bg-purple-50 rounded-lg p-3">
+            <p class="text-xs font-semibold text-purple-600 uppercase mb-2">Workflow</p>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <span class="text-xs bg-white border border-purple-200 text-purple-700 px-2 py-0.5 rounded-full" x-text="visualPromptResult?.workflow?.imageModel"></span>
+              <span class="text-xs bg-white border border-purple-200 text-purple-700 px-2 py-0.5 rounded-full" x-text="visualPromptResult?.workflow?.videoModel"></span>
+              <span class="text-xs bg-white border border-purple-200 text-purple-700 px-2 py-0.5 rounded-full" x-text="visualPromptResult?.workflow?.aspectRatio"></span>
+            </div>
+            <ol class="space-y-1.5">
+              <template x-for="(step, i) in (visualPromptResult?.workflow?.steps || [])" :key="i">
+                <li class="text-xs text-gray-700">
+                  <span class="font-bold text-purple-500" x-text="step.step + '. ' + step.title"></span>
+                  <span class="block text-gray-500 mt-0.5" x-text="step.instruction"></span>
+                  <span class="block text-gray-400 mt-0.5">Ảnh input: <span x-text="(step.inputImages || []).join(' + ')"></span></span>
+                </li>
+              </template>
+            </ol>
+          </div>
+
+          <!-- Reference Prompt -->
+          <div x-show="visualPromptResult?.referencePrompt" class="border rounded-lg overflow-hidden">
+            <div class="px-3 py-2 bg-gray-50 border-b flex items-center justify-between">
+              <span class="text-xs font-semibold text-gray-600">Bước 1 — Reference Image Prompt</span>
+              <button @click="copyText((visualPromptResult?.referencePrompt?.prompt || '') + '\n\nNegative prompt: ' + (visualPromptResult?.referencePrompt?.negativePrompt || ''))" class="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                Copy
+              </button>
+            </div>
+            <div class="p-3">
+              <p class="text-xs text-gray-500 mb-1">Upload vào Freepik:
+                <span class="font-medium text-gray-700" x-text="(visualPromptResult?.referencePrompt?.inputImagesNeeded || []).join(' · ')"></span>
+              </p>
+              <p class="text-sm text-gray-800 leading-relaxed whitespace-pre-line" x-text="visualPromptResult?.referencePrompt?.prompt"></p>
+              <p x-show="visualPromptResult?.referencePrompt?.negativePrompt" class="text-xs text-red-500 mt-2">Negative: <span x-text="visualPromptResult?.referencePrompt?.negativePrompt"></span></p>
+            </div>
+          </div>
+
+          <!-- Scenes -->
+          <div x-show="(visualPromptResult?.scenes || []).length > 0">
+            <p class="text-xs font-semibold text-gray-600 uppercase mb-2">Bước 2-3 — Scenes</p>
+            <div class="space-y-3">
+              <template x-for="(scene, i) in (visualPromptResult?.scenes || [])" :key="i">
+                <div class="border rounded-lg overflow-hidden">
+                  <div class="px-3 py-2 bg-gray-50 border-b flex items-center gap-2">
+                    <span class="text-xs font-bold text-purple-600" x-text="'Scene ' + scene.scene"></span>
+                    <span class="text-xs text-gray-400" x-text="scene.timeRange"></span>
+                    <span class="text-xs text-gray-500 flex-1 truncate" x-text="scene.purpose || scene.description"></span>
+                  </div>
+                  <div class="p-3 space-y-2">
+                    <!-- Image Prompt -->
+                    <div class="bg-blue-50 rounded p-2">
+                      <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-semibold text-blue-700">Image Prompt (Seedream)</span>
+                        <button @click="copyText('Upload: ' + ((scene.inputImagesForImageGeneration || []).join(' + ')) + '\n\n' + (scene.imagePrompt || '') + '\n\nNegative prompt: ' + (scene.negativePrompt || ''))" class="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                          Copy
+                        </button>
+                      </div>
+                      <p class="text-xs text-gray-500 mb-1">Upload: <span class="font-medium" x-text="(scene.inputImagesForImageGeneration || []).join(' · ')"></span></p>
+                      <p class="text-xs text-gray-700 leading-relaxed whitespace-pre-line" x-text="scene.imagePrompt"></p>
+                    </div>
+                    <!-- Video Prompt -->
+                    <div class="bg-green-50 rounded p-2">
+                      <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-semibold text-green-700">Video Prompt (Seedance)</span>
+                        <button @click="copyText('Upload: ' + ((scene.inputImagesForVideoGeneration || []).join(' + ')) + '\n\n' + (scene.videoPrompt || '') + '\n\nNegative prompt: ' + (scene.negativePrompt || ''))" class="text-xs text-green-600 hover:text-green-800 flex items-center gap-1">
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                          Copy
+                        </button>
+                      </div>
+                      <p class="text-xs text-gray-500 mb-1">Upload: <span class="font-medium" x-text="(scene.inputImagesForVideoGeneration || []).join(' · ')"></span></p>
+                      <p class="text-xs text-gray-700 leading-relaxed whitespace-pre-line" x-text="scene.videoPrompt"></p>
+                    </div>
+                    <!-- Scene Negative -->
+                    <div x-show="scene.negativePrompt" class="flex items-center justify-between">
+                      <p class="text-xs text-red-500 flex-1" x-text="'Negative: ' + scene.negativePrompt"></p>
+                      <button @click="copyText(scene.negativePrompt || '')" class="text-xs text-red-500 hover:text-red-700 ml-2 shrink-0">Copy</button>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Copy All Blocks -->
+          <div x-show="visualPromptResult?.copyBlocks" class="border-t pt-3 flex flex-wrap gap-2">
+            <button @click="copyText(visualPromptResult?.copyBlocks?.referencePromptFull || '')" class="text-xs border border-purple-200 text-purple-600 px-3 py-1.5 rounded-lg hover:bg-purple-50">Copy Reference Prompt</button>
+            <button @click="copyText(visualPromptResult?.copyBlocks?.allImagePrompts || '')" class="text-xs border border-blue-200 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50">Copy tất cả Image Prompts</button>
+            <button @click="copyText(visualPromptResult?.copyBlocks?.allVideoPrompts || '')" class="text-xs border border-green-200 text-green-600 px-3 py-1.5 rounded-lg hover:bg-green-50">Copy tất cả Video Prompts</button>
+            <button @click="copyText(visualPromptResult?.copyBlocks?.freepikWorkflow || '')" class="text-xs border border-purple-200 text-purple-600 px-3 py-1.5 rounded-lg hover:bg-purple-50">Copy hướng dẫn Freepik</button>
+          </div>
+        </div>
+      </div>
+
     </div><!-- end result -->
   </div><!-- end generate tab -->
 
@@ -819,6 +1005,108 @@
     </div>
   </div>
 
+  <!-- ====== TAB: THƯ VIỆN MẪU (V8) ====== -->
+  <div x-show="activeTab==='library'">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-xl font-bold">Thư viện mẫu</h2>
+        <p class="text-sm text-gray-500 mt-0.5">Hook/kịch bản/transcript mẫu để AI tham khảo khi viết — không chờ số liệu, tự tay nhập</p>
+      </div>
+      <div class="flex gap-2">
+        <button @click="exportLibrary()" x-show="referenceLibrary.length>0" class="text-sm border px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50">Export</button>
+        <label class="text-sm border px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 cursor-pointer">
+          Import
+          <input type="file" accept=".json" class="hidden" @change="importLibrary($event)">
+        </label>
+      </div>
+    </div>
+
+    <!-- Form thêm/sửa mẫu -->
+    <div class="bg-white border rounded-xl shadow-sm p-4 mb-4">
+      <p class="text-sm font-semibold text-gray-700 mb-3" x-text="editingLibraryId ? 'Sửa mẫu' : 'Thêm mẫu mới'"></p>
+      <textarea x-model="libraryForm.content" rows="4" placeholder="Dán transcript video TikTok đang viral, hook hay, hoặc cả kịch bản vào đây..."
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 mb-3"></textarea>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+        <div>
+          <label class="text-xs text-gray-500">Loại</label>
+          <select x-model="libraryForm.type" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+            <option value="hook">Hook ngắn</option>
+            <option value="script">Kịch bản đầy đủ</option>
+            <option value="transcript">Transcript video viral</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Ngành hàng</label>
+          <select x-model="libraryForm.industry" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+            <option value="auto">🔍 Tự động / mọi ngành</option>
+            <option value="fashion">👗 Thời trang</option>
+            <option value="beauty">💄 Mỹ phẩm & Skincare</option>
+            <option value="electronics">📱 Điện tử & Công nghệ</option>
+            <option value="home">🏠 Gia dụng</option>
+            <option value="food">🍜 Thực phẩm & Đồ uống</option>
+            <option value="pet">🐾 Thú cưng</option>
+            <option value="baby">👶 Mẹ & Bé</option>
+            <option value="other">📦 Ngành hàng khác</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Gắn với sản phẩm/ngữ cảnh (tùy chọn)</label>
+          <input x-model="libraryForm.productTag" type="text" placeholder="VD: sạc dự phòng, son lì..."
+            class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+        </div>
+      </div>
+      <input x-model="libraryForm.note" type="text" placeholder="Ghi chú (tùy chọn) — VD: video này viral vì hook bất ngờ"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 mb-3">
+      <div class="flex gap-2">
+        <button @click="saveLibraryEntry()" class="gradient-btn text-white text-sm px-4 py-2 rounded-lg" x-text="editingLibraryId ? 'Lưu thay đổi' : 'Thêm vào thư viện'"></button>
+        <button @click="resetLibraryForm()" x-show="editingLibraryId" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50">Hủy sửa</button>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <input x-model="librarySearch" type="text" placeholder="Tìm theo nội dung, ngành hàng, sản phẩm..."
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+    </div>
+
+    <!-- Empty state -->
+    <div x-show="referenceLibrary.length===0" class="text-center py-16">
+      <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <span class="text-2xl">📚</span>
+      </div>
+      <h3 class="font-semibold text-gray-700">Thư viện trống</h3>
+      <p class="text-sm text-gray-400 mt-1">Thêm mẫu hook/kịch bản/transcript video viral để AI tham khảo</p>
+    </div>
+
+    <!-- List mẫu -->
+    <div class="space-y-2">
+      <template x-for="entry in filteredLibrary()" :key="entry.id">
+        <div class="bg-white border rounded-xl shadow-sm p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap gap-1.5 mb-2">
+                <span class="bg-purple-50 text-purple-700 text-[11px] px-2 py-0.5 rounded-full"
+                  x-text="entry.type === 'hook' ? 'Hook ngắn' : entry.type === 'script' ? 'Kịch bản đầy đủ' : 'Transcript viral'"></span>
+                <span class="bg-gray-100 text-gray-600 text-[11px] px-2 py-0.5 rounded-full" x-text="entry.industry"></span>
+                <span x-show="entry.productTag" class="bg-amber-50 text-amber-700 text-[11px] px-2 py-0.5 rounded-full" x-text="entry.productTag"></span>
+              </div>
+              <p class="text-sm text-gray-700 line-clamp-3" x-text="entry.content"></p>
+              <p x-show="entry.note" class="text-xs text-gray-400 mt-1 italic" x-text="entry.note"></p>
+              <p class="text-[11px] text-gray-400 mt-1.5" x-text="formatDate(entry.createdAt)"></p>
+            </div>
+            <div class="flex gap-1 shrink-0">
+              <button @click="editLibraryEntry(entry)" class="p-1.5 text-gray-400 hover:text-purple-500 rounded">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              </button>
+              <button @click="deleteLibraryEntry(entry.id)" class="p-1.5 text-gray-400 hover:text-red-500 rounded">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
   <!-- ====== TAB: SETTINGS ====== -->
   <div x-show="activeTab==='settings'">
     <div class="mb-6">
@@ -854,6 +1142,7 @@
               <textarea
                 :value="settings.apiKeys.gemini ?? ''"
                 @input="settings.apiKeys.gemini = $event.target.value"
+                @change="saveSettings(true)"
                 placeholder="AIzaSy... (mỗi key một dòng, tự động xoay vòng khi bị rate limit)"
                 rows="3"
                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 font-mono resize-none"></textarea>
@@ -865,6 +1154,7 @@
               <input :type="showApiKey ? 'text' : 'password'"
                 :value="settings.apiKeys[settings.provider] ?? ''"
                 @input="settings.apiKeys[settings.provider] = $event.target.value"
+                @change="saveSettings(true)"
                 :placeholder="settings.provider==='openai' ? 'sk-...' : 'API key...'"
                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm pr-10 focus:outline-none focus:ring-2 focus:ring-purple-400">
               <button @click="showApiKey=!showApiKey" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -879,16 +1169,18 @@
         <div x-show="settings.provider !== 'gemini'">
           <label class="block text-sm font-medium text-gray-700 mb-1">Base URL</label>
           <input x-model="settings.baseUrl" type="text" placeholder="https://api.openai.com/v1"
+            @change="saveSettings(true)"
             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
         </div>
 
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Model</label>
           <input x-model="settings.modelName" type="text" placeholder="gpt-4o"
+            @change="saveSettings(true)"
             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
           <div class="flex flex-wrap gap-1.5 mt-2">
             <template x-for="m in suggestedModels()" :key="m">
-              <button @click="settings.modelName=m" :class="settings.modelName===m ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="text-xs px-2 py-1 rounded-full transition-colors" x-text="m"></button>
+              <button @click="settings.modelName=m; saveSettings(true)" :class="settings.modelName===m ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="text-xs px-2 py-1 rounded-full transition-colors" x-text="m"></button>
             </template>
           </div>
           <div x-show="settings.provider==='deepseek'" class="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-700">
@@ -903,7 +1195,7 @@
             <label class="text-sm font-medium text-gray-700">Temperature (Độ sáng tạo)</label>
             <span class="text-sm text-gray-500 font-mono" x-text="settings.temperature.toFixed(1)"></span>
           </div>
-          <input type="range" min="0" max="2" step="0.1" x-model="settings.temperature" class="w-full accent-purple-600">
+          <input type="range" min="0" max="2" step="0.1" x-model="settings.temperature" @change="saveSettings(true)" class="w-full accent-purple-600">
           <div class="flex justify-between text-xs text-gray-400 mt-0.5">
             <span>Chính xác (0)</span><span>Cân bằng (1)</span><span>Sáng tạo (2)</span>
           </div>
@@ -955,21 +1247,21 @@
           <label class="block text-sm font-medium text-gray-700 mb-2">Dùng AI nào để phân tích ảnh?</label>
           <div class="space-y-2">
             <label class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors" :class="settings.visionProvider==='gemini' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'">
-              <input type="radio" x-model="settings.visionProvider" value="gemini" class="mt-0.5 accent-blue-500">
+              <input type="radio" x-model="settings.visionProvider" value="gemini" @change="saveSettings(true)" class="mt-0.5 accent-blue-500">
               <div>
                 <div class="text-sm font-medium text-gray-800">Google Gemini <span class="text-xs text-green-600 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full ml-1">Khuyên dùng • Miễn phí</span></div>
                 <div class="text-xs text-gray-500 mt-0.5">Hỗ trợ ảnh xuất sắc, có 15 request/phút miễn phí. Nhập API key Gemini riêng bên dưới.</div>
               </div>
             </label>
             <label class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors" :class="settings.visionProvider==='same' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'">
-              <input type="radio" x-model="settings.visionProvider" value="same" class="mt-0.5 accent-blue-500">
+              <input type="radio" x-model="settings.visionProvider" value="same" @change="saveSettings(true)" class="mt-0.5 accent-blue-500">
               <div>
                 <div class="text-sm font-medium text-gray-800">Dùng chung AI viết kịch bản</div>
                 <div class="text-xs text-gray-500 mt-0.5">Dùng cùng key &amp; model với mục 1. Cần model hỗ trợ vision như gpt-4o, gpt-4.1.</div>
               </div>
             </label>
             <label class="flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors" :class="settings.visionProvider==='openai' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'">
-              <input type="radio" x-model="settings.visionProvider" value="openai" class="mt-0.5 accent-blue-500">
+              <input type="radio" x-model="settings.visionProvider" value="openai" @change="saveSettings(true)" class="mt-0.5 accent-blue-500">
               <div>
                 <div class="text-sm font-medium text-gray-800">ChatGPT / OpenAI-compatible <span class="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-full ml-1">Key riêng</span></div>
                 <div class="text-xs text-gray-500 mt-0.5">Dùng GPT-4o-mini để đọc ảnh trong khi dùng DeepSeek hay AI khác để viết kịch bản.</div>
@@ -982,6 +1274,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Gemini API Key <span class="text-xs font-normal text-gray-400">(dành riêng cho phân tích ảnh)</span></label>
           <textarea
             x-model="settings.visionGeminiKeys"
+            @change="saveSettings(true)"
             placeholder="AIzaSy...&#10;AIzaSy... (mỗi key một dòng)"
             rows="3"
             class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono resize-none"></textarea>
@@ -995,15 +1288,15 @@
         <div x-show="settings.visionProvider === 'openai'" x-transition class="space-y-3">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">OpenAI API Key <span class="text-xs font-normal text-gray-400">(chỉ dùng để đọc ảnh)</span></label>
-            <input type="password" x-model="settings.visionOpenaiKey" placeholder="sk-..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono">
+            <input type="password" x-model="settings.visionOpenaiKey" @change="saveSettings(true)" placeholder="sk-..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Base URL <span class="text-xs font-normal text-gray-400">(để mặc định nếu dùng OpenAI)</span></label>
-            <input type="text" x-model="settings.visionOpenaiBaseUrl" placeholder="https://api.openai.com/v1" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono">
+            <input type="text" x-model="settings.visionOpenaiBaseUrl" @change="saveSettings(true)" placeholder="https://api.openai.com/v1" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono">
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Model vision</label>
-            <input type="text" x-model="settings.visionOpenaiModel" placeholder="gpt-4o-mini" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono">
+            <input type="text" x-model="settings.visionOpenaiModel" @change="saveSettings(true)" placeholder="gpt-4o-mini" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono">
             <p class="text-xs text-gray-400 mt-1">Gợi ý: <span class="font-mono">gpt-4o-mini</span> (rẻ nhất) · <span class="font-mono">gpt-4o</span> · <span class="font-mono">gpt-4.1-mini</span></p>
           </div>
         </div>
@@ -1012,10 +1305,11 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Tối đa ảnh phân tích mỗi lần</label>
           <div class="flex items-center gap-3">
             <input type="number" x-model.number="settings.maxAnalysisImages" min="1" max="10"
+              @change="saveSettings(true)"
               class="w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-400">
             <div class="flex gap-2">
               <template x-for="n in [1, 2, 3, 5]" :key="n">
-                <button @click="settings.maxAnalysisImages = n"
+                <button @click="settings.maxAnalysisImages = n; saveSettings(true)"
                   :class="settings.maxAnalysisImages === n ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
                   class="border text-xs px-3 py-1.5 rounded-lg transition-colors" x-text="n + ' ảnh'"></button>
               </template>
@@ -1045,7 +1339,7 @@
             <p class="text-xs text-gray-400 mt-0.5">AI tạo kịch bản từ tên và mô tả sản phẩm, không cần upload ảnh.</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" x-model="settings.allowWithoutImage" class="sr-only peer" @change="saveSettings()">
+            <input type="checkbox" x-model="settings.allowWithoutImage" class="sr-only peer" @change="saveSettings(true)">
             <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
           </label>
         </div>
@@ -1055,7 +1349,7 @@
             <p class="text-xs text-gray-400 mt-0.5">Tự động lưu kịch bản sau mỗi lần generate thành công.</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" x-model="settings.autoSave" class="sr-only peer" @change="saveSettings()">
+            <input type="checkbox" x-model="settings.autoSave" class="sr-only peer" @change="saveSettings(true)">
             <div class="w-11 h-6 bg-gray-200 peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
           </label>
         </div>
@@ -1141,6 +1435,7 @@ function bellaApp() {
     tabs: [
       {id:'generate', label:'Tạo kịch bản', icon:'▶'},
       {id:'history', label:'Lịch sử', icon:'🕐'},
+      {id:'library', label:'Thư viện mẫu', icon:'📚'},
       {id:'settings', label:'Cài đặt', icon:'⚙️'},
       {id:'prompt', label:'Prompt', icon:'📝'},
     ],
@@ -1151,7 +1446,9 @@ function bellaApp() {
       targetAudience: '', shootingStyle: 'one-shot', shootingStyleCustom: '',
       duration: '30s', durationCustom: '', tone: 'natural-koc', toneCustom: '',
       videoGoal: 'increase-conversion',
-      industry: 'auto'
+      industry: 'auto',
+      subjectMode: 'auto',
+      productionMode: 'real',
     },
     formErrors: {},
     isDragging: false,
@@ -1169,6 +1466,11 @@ function bellaApp() {
     imageAnalysisStatus: null,
     lightboxImage: null,
 
+    // V6: AI Visual Prompt
+    isGeneratingVisual: false,
+    visualPromptResult: null,
+    visualError: null,
+
     // URL fetch
     productUrl: '',
     isFetchingUrl: false,
@@ -1183,7 +1485,7 @@ function bellaApp() {
       provider: 'openai',
       apiKeys: { openai: '', deepseek: '', gemini: '', custom: '' },
       baseUrl: 'https://api.openai.com/v1',
-      modelName: 'gpt-5.4-mini', temperature: 2.0, maxTokens: 0,
+      modelName: 'gpt-5.4-mini', temperature: 1.0, maxTokens: 0,
       allowWithoutImage: true, autoSave: true,
       visionProvider: 'same',
       visionGeminiKeys: '',
@@ -1215,6 +1517,13 @@ function bellaApp() {
     historySearch: '',
     selectedHistoryItem: null,
 
+    // Reference Library (V8)
+    referenceLibrary: [],
+    librarySearch: '',
+    libraryForm: { type: 'hook', industry: 'auto', productTag: '', content: '', note: '' },
+    editingLibraryId: null,
+    showQuickAddLibrary: false,  // V8.1: panel thêm nhanh mẫu ngay trên tab Generate
+
     // Toast
     toast: {show: false, message: '', type: 'info'},
 
@@ -1225,6 +1534,7 @@ function bellaApp() {
       this.loadSettings();
       this.loadPrompts();
       this.loadHistory();
+      this.loadReferenceLibrary();
       this.loadFormOptions();
 
       // Hiện banner nếu là iOS Safari và chưa cài PWA và chưa dismiss
@@ -1239,13 +1549,13 @@ function bellaApp() {
     loadFormOptions() {
       try {
         const fo = JSON.parse(localStorage.getItem('bella_form_options') || '{}');
-        const fields = ['targetAudience', 'shootingStyle', 'shootingStyleCustom', 'duration', 'durationCustom', 'tone', 'toneCustom', 'videoGoal', 'industry'];
+        const fields = ['targetAudience', 'shootingStyle', 'shootingStyleCustom', 'duration', 'durationCustom', 'tone', 'toneCustom', 'videoGoal', 'industry', 'subjectMode', 'productionMode'];
         fields.forEach(k => { if (fo[k] !== undefined) this.form[k] = fo[k]; });
       } catch {}
     },
     saveFormOptions() {
-      const { targetAudience, shootingStyle, shootingStyleCustom, duration, durationCustom, tone, toneCustom, videoGoal, industry } = this.form;
-      localStorage.setItem('bella_form_options', JSON.stringify({ targetAudience, shootingStyle, shootingStyleCustom, duration, durationCustom, tone, toneCustom, videoGoal, industry }));
+      const { targetAudience, shootingStyle, shootingStyleCustom, duration, durationCustom, tone, toneCustom, videoGoal, industry, subjectMode, productionMode } = this.form;
+      localStorage.setItem('bella_form_options', JSON.stringify({ targetAudience, shootingStyle, shootingStyleCustom, duration, durationCustom, tone, toneCustom, videoGoal, industry, subjectMode, productionMode }));
     },
 
     // ---- SETTINGS ----
@@ -1271,15 +1581,16 @@ function bellaApp() {
         this.settings = {...this.settings, ...s};
       } catch {}
     },
-    saveSettings() {
+    saveSettings(silent = false) {
       localStorage.setItem('bella_settings', JSON.stringify(this.settings));
-      this.showToast('Đã lưu cài đặt!', 'success');
+      if (!silent) this.showToast('Đã lưu cài đặt!', 'success');
     },
     onProviderChange() {
       this.settings.baseUrl = PROVIDER_URLS[this.settings.provider] || '';
       const models = PROVIDER_MODELS[this.settings.provider];
       if (models && models.length > 0) this.settings.modelName = models[0];
       this.testResult = null;
+      this.saveSettings(true);
     },
     suggestedModels() {
       return PROVIDER_MODELS[this.settings.provider] || [];
@@ -1327,7 +1638,7 @@ function bellaApp() {
         const res = await fetch('/api/scan-product', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ images: dataUrls, geminiKeys, settings: this.settings }),
+          body: JSON.stringify({ images: dataUrls, settings: this.settings }),
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
@@ -1512,6 +1823,9 @@ function bellaApp() {
       this.lastImageAnalysis = '';
       this.lastSentImages = [];
       this.imageAnalysisStatus = null;
+      this.visualPromptResult = null;
+      this.visualError = null;
+      this.selectedHistoryItem = null;    // tránh dữ liệu cũ từ History modal "dính" lại
       try {
         const res = await fetch('/api/generate', {
           method: 'POST',
@@ -1522,7 +1836,8 @@ function bellaApp() {
             images: this.form.images,
             settings: {...this.settings, apiKey: this.settings.apiKeys[this.settings.provider] || ''},
             promptSettings: this.promptSettings,
-            input: this.form
+            input: this.form,
+            referenceLibraryCandidates: this.findCandidateLibraryEntries(this.form.productName, this.form.productDescription, this.form.industry)
           })
         });
         const data = await res.json();
@@ -1594,6 +1909,42 @@ function bellaApp() {
       if (this.selectedHookIndex === i) return;
       this.selectedHookIndex = i;
       this.regenerateSection('script');
+    },
+
+    async generateVisualPrompt() {
+      if (!this.currentScript) return;
+      this.isGeneratingVisual = true;
+      this.visualError = null;
+      this.visualPromptResult = null;
+      try {
+        const res = await fetch('/api/generate-visual-prompt', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            script: this.currentScript,
+            productName: this.form.productName,
+            productDescription: this.form.productDescription,
+            imageAnalysis: this.lastImageAnalysis || '',
+            input: this.form,
+            visualSettings: {
+              aspectRatio: '9:16',
+              clipDuration: '4s',
+              targetImageModel: 'Seedream 3.0',
+              targetVideoModel: 'Seedance 1.0',
+              visualStyle: 'tiktok-ugc',
+            },
+            settings: {...this.settings, apiKey: this.settings.apiKeys[this.settings.provider] || ''},
+          })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Lỗi không xác định');
+        this.visualPromptResult = data.section10;
+        this.showToast('Đã tạo AI Visual Prompt!', 'success');
+      } catch(e) {
+        this.visualError = e.message;
+      } finally {
+        this.isGeneratingVisual = false;
+      }
     },
 
     // ---- RESULT ----
@@ -1767,10 +2118,6 @@ function bellaApp() {
         this.history = JSON.parse(localStorage.getItem('bella_history') || '[]');
       } catch { this.history = []; }
     },
-    async _makeThumbnail(dataUrl) {
-      // Dùng trực tiếp dataUrl — hiển thị bằng CSS object-fit thay vì canvas (tránh lỗi Safari)
-      return dataUrl || null;
-    },
     async saveToHistory() {
       if (!this.currentScript) return;
       const firstImg = this.form.images?.[0]?.dataUrl;
@@ -1799,10 +2146,15 @@ function bellaApp() {
         (h.modelName || '').toLowerCase().includes(q)
       );
     },
-    viewHistoryItem(item) { this.selectedHistoryItem = item; },
+    viewHistoryItem(item) {
+      this.selectedHistoryItem = item;
+    },
     loadHistoryItem(item) {
       if (!item) return;
-      if (item.input) this.form = {...this.form, ...item.input};
+      if (item.input) {
+        const { images: _ignored, ...restInput } = item.input;
+        this.form = {...this.form, ...restInput};
+      }
       this.currentScript = item.script;
       this.generateError = null;
       this.selectedHistoryItem = null;
@@ -1828,6 +2180,110 @@ function bellaApp() {
         localStorage.removeItem('bella_history');
         this.showToast('Đã xóa toàn bộ lịch sử', 'info');
       }
+    },
+    // ---- REFERENCE LIBRARY (V8) ----
+    loadReferenceLibrary() {
+      try {
+        this.referenceLibrary = JSON.parse(localStorage.getItem('bella_reference_library') || '[]');
+      } catch { this.referenceLibrary = []; }
+    },
+    // V8.1: mở panel thêm nhanh mẫu ngay trên tab Generate — tự gợi ý ngành/sản phẩm hiện tại
+    toggleQuickAddLibrary() {
+      this.showQuickAddLibrary = !this.showQuickAddLibrary;
+      if (this.showQuickAddLibrary && !this.editingLibraryId) {
+        this.libraryForm = { type: 'hook', industry: this.form.industry || 'auto', productTag: this.form.productName || '', content: '', note: '' };
+      }
+    },
+    saveLibraryEntry() {
+      const content = this.libraryForm.content.trim();
+      if (!content) { this.showToast('Vui lòng nhập nội dung mẫu', 'error'); return; }
+      if (this.editingLibraryId) {
+        this.referenceLibrary = this.referenceLibrary.map(e =>
+          e.id === this.editingLibraryId ? { ...e, ...this.libraryForm, content } : e
+        );
+        this.showToast('Đã cập nhật mẫu!', 'success');
+      } else {
+        this.referenceLibrary = [{
+          id: Date.now().toString() + Math.random().toString(36).slice(2),
+          createdAt: new Date().toISOString(),
+          ...this.libraryForm,
+          content,
+        }, ...this.referenceLibrary];
+        this.showToast('Đã thêm vào thư viện!', 'success');
+      }
+      localStorage.setItem('bella_reference_library', JSON.stringify(this.referenceLibrary));
+      this.resetLibraryForm();
+    },
+    editLibraryEntry(entry) {
+      this.editingLibraryId = entry.id;
+      this.libraryForm = { type: entry.type, industry: entry.industry, productTag: entry.productTag, content: entry.content, note: entry.note };
+    },
+    resetLibraryForm() {
+      this.editingLibraryId = null;
+      this.libraryForm = { type: 'hook', industry: 'auto', productTag: '', content: '', note: '' };
+    },
+    deleteLibraryEntry(id) {
+      this.referenceLibrary = this.referenceLibrary.filter(e => e.id !== id);
+      localStorage.setItem('bella_reference_library', JSON.stringify(this.referenceLibrary));
+      if (this.editingLibraryId === id) this.resetLibraryForm();
+      this.showToast('Đã xóa mẫu', 'info');
+    },
+    filteredLibrary() {
+      const q = this.librarySearch.toLowerCase().trim();
+      if (!q) return this.referenceLibrary;
+      return this.referenceLibrary.filter(e =>
+        (e.content || '').toLowerCase().includes(q) ||
+        (e.productTag || '').toLowerCase().includes(q) ||
+        (e.industry || '').toLowerCase().includes(q)
+      );
+    },
+    // Pre-filter rẻ ở frontend (theo ngành hàng + từ khóa) trước khi gửi cho AI chọn lọc cuối
+    // ở backend (select_relevant_examples trong ai_providers.py) — tránh gửi nguyên thư viện
+    // lớn lên AI mỗi lần generate (tốn token, chậm, nhiễu).
+    findCandidateLibraryEntries(productName, productDescription, industry) {
+      if (!this.referenceLibrary.length) return [];
+      const kw = `${productName || ''} ${productDescription || ''}`.toLowerCase();
+      const scored = this.referenceLibrary.map(e => {
+        let score = 0;
+        if (e.industry === industry || e.industry === 'auto') score += 3;
+        if (e.productTag && kw.includes(e.productTag.toLowerCase())) score += 2;
+        return { entry: e, score };
+      });
+      const candidates = scored
+        .sort((a, b) => b.score - a.score || new Date(b.entry.createdAt) - new Date(a.entry.createdAt))
+        .slice(0, 20)
+        .map(s => s.entry);
+      return candidates.map(e => ({ type: e.type, industry: e.industry, productTag: e.productTag, content: e.content }));
+    },
+    exportLibrary() {
+      const blob = new Blob([JSON.stringify(this.referenceLibrary, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'bella_thu_vien_mau.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+    importLibrary(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const imported = JSON.parse(ev.target.result);
+          if (!Array.isArray(imported)) throw new Error('File không đúng định dạng');
+          // Tạo id mới cho mỗi entry import — tránh trùng id với entry có sẵn (VD: import lại
+          // đúng file đã export trước đó), vì id trùng sẽ làm hỏng sửa/xóa theo id (match nhầm
+          // nhiều entry) và vi phạm key uniqueness của x-for trong list.
+          const reIded = imported.map(e => ({ ...e, id: Date.now().toString() + Math.random().toString(36).slice(2) }));
+          this.referenceLibrary = [...reIded, ...this.referenceLibrary];
+          localStorage.setItem('bella_reference_library', JSON.stringify(this.referenceLibrary));
+          this.showToast(`Đã nhập ${imported.length} mẫu!`, 'success');
+        } catch {
+          this.showToast('File không hợp lệ', 'error');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
     },
     downloadHistoryItem(item, format) {
       if (!item) return;
