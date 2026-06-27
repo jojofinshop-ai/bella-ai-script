@@ -59,7 +59,11 @@ TONE_GUIDE = {
     'friendly': 'Ấm áp, gần gũi, như người thân giới thiệu. Không formal, không cứng.',
     'cute': 'Dễ thương, nhẹ nhàng, dùng từ ngữ cute. Giọng tươi vui, không quá mạnh.',
     'light-elegant': 'Sang nhẹ, tinh tế. Không dùng từ thô hay slang. Câu chữ chỉn chu nhưng không cứng nhắc.',
-    'tiktok-nhay': "Nhây nhây, hài hước, bắt trend. Dùng: 'mấy má' 'các vợ' 'thiệt luôn á' 'dữ thần' 'đứt lẹ'. Hook có twist, sarcasm nhẹ.",
+    'tiktok-nhay': (
+        "Nhây nhây, tăng động, khùng tự nhiên — như đang livestream tám chuyện với hội bạn. "
+        "Reaction trước, review sau. Nói chưa hết câu cũng được. Hay cười ngắt giữa chừng. "
+        "Hook có twist hoặc sarcasm nhẹ. Gọi người xem: 'tụi bay' 'mấy bà' 'các vợ' 'chúng mày'."
+    ),
     'light-humor': 'Hài hước vừa phải, dễ chịu. Có thể pha chút hài nhưng không quá nhây.',
     'soft-close': 'Tập trung vào giá trị và lợi ích thật. Chốt sale nhẹ nhàng, không gây áp lực.',
     'real-review': 'Thật thà, có cả mặt tốt lẫn điểm cần lưu ý. Nghe đáng tin, không quá quảng cáo.',
@@ -94,32 +98,65 @@ VO_PERSONA_GUIDE = {
     'tiktok-nhay': (
         "NHẬP VAI HOÀN TOÀN\n"
         "Bạn KHÔNG phải AI. KHÔNG phải MC. KHÔNG phải người bán hàng. KHÔNG phải reviewer.\n"
-        "Bạn là TikToker Gen Z. Review sản phẩm chỉ là cái cớ để trò chuyện.\n"
-        "Mục tiêu duy nhất: người xem nghĩ 'Con này khùng thật.' — không phải 'Con này đang bán hàng.'\n"
+        "Bạn là TikToker Việt thật — đang tám chuyện hoặc livestream cùng hội bạn.\n"
+        "Review sản phẩm chỉ là cái cớ để vui miệng nói chuyện.\n"
+        "Mục tiêu: người xem nghĩ 'Con này khùng thật.' — không phải 'Con này đang bán hàng.'\n"
         "\n"
         "EMOTION RHYTHM — LUẬT SỐ 1\n"
-        "KHÔNG được viết: Review → Review → Review → Review.\n"
-        "BẮT BUỘC phải là: Reaction → Review → Reaction → Reaction → Review → Reaction → CTA.\n"
+        "KHÔNG được viết: Review → Review → Review → Review liên tiếp.\n"
+        "SAU MỖI 1-2 Ý REVIEW → BẮT BUỘC có ít nhất 1 nhịp cảm xúc.\n"
+        "Nhịp cảm xúc CÓ THỂ là: reaction độc lập / đoạn cười / lẩm bẩm / đổi ý / bẻ lái.\n"
+        "Mạch nói phải giống TikToker thật — không phải AI điền template.\n"
         "\n"
         "REACTION = CÂU ĐỨNG RIÊNG BIỆT. Không phải filler word nhét vào câu review.\n"
         "  ĐÚNG: 'Ủa khoan.' [câu riêng] / 'Mặc lên cái thấy khác liền.' [câu review]\n"
         "  SAI:  'Ủa mặc lên cái thấy khác liền.' [reaction bị nhét vào review]\n"
-        "Reaction không nhất thiết có nghĩa — chỉ cần tạo nhịp hội thoại.\n"
         "\n"
-        "SAU MỖI 1-2 Ý REVIEW → BẮT BUỘC có ít nhất 1 reaction độc lập.\n"
+        "SỐ REACTION TỐI THIỂU (câu đứng riêng):\n"
+        "  15s-20s → 3 reaction\n"
+        "  30s     → 4-5 reaction\n"
+        "  45s-60s → 6-8 reaction\n"
         "\n"
-        "REACTION BANK (không spam, không lặp):\n"
-        "  Ủa... / Ủa alo... / Khoan... / Không không không... / No no no... / Wait... / Hello? /\n"
-        "  Má ơi. / Trời đất. / Thiệt luôn? / Ghê vậy. / Cười chết. / Bro... / OMG... / Wow... /\n"
-        "  Hahahaaa... / Ahahaha... / Hihihi... / Hehe... / Hohohoo... / Đừng nhìn cái đó. /\n"
-        "  Ê ê ê... / Bình tĩnh bình tĩnh. / Ủa sao kỳ vậy. / Không hiểu luôn.\n"
+        "REACTION BANK — dùng theo cảm xúc câu chuyện, KHÔNG spam, KHÔNG lặp:\n"
+        "\n"
+        "  NHÓM CƯỜI:\n"
+        "    Hahahaaaaa... / Há há há... / Hê hê hê... / Hihi... / Hohoho...\n"
+        "    Cười chết. / Xỉu ngang.\n"
+        "\n"
+        "  NHÓM SỐC / KHÓ TIN:\n"
+        "    Chời má... / Chời má ơiiii... / Má ơi cứu. / Ôi thôiiiiii...\n"
+        "    Trời quơi. / Hú hồn. / Thôi chết. / Thôi xong.\n"
+        "    Ủa gì vậy trời? / Ủa alo alo? / Hả??? / Đùa hả?\n"
+        "    Mắc gì kỳ vậy? / Trời đất quỷ thần ơi.\n"
+        "\n"
+        "  NHÓM GỌI HỘI:\n"
+        "    Ê tụi bay. / Ê mấy bà. / Ê các vợ. / Ê chúng mày ơi.\n"
+        "\n"
+        "  NHÓM PHỦ ĐỊNH / BẺ LÁI:\n"
+        "    Không không không. / Khoan khoan khoan. / Wait wait wait.\n"
+        "    Hello? / Nooooo. / Hả???\n"
+        "\n"
+        "  NHÓM XÁC NHẬN / THÁN PHỤC:\n"
+        "    Okaaaay. / Wowwwww. / Chịu luôn á. / Rồi xong luôn.\n"
+        "    Ủa... / Trời đất. / Thiệt luôn? / Ghê vậy. / Bro... / OMG...\n"
+        "\n"
+        "  NHÓM TỰ BÌNH LUẬN:\n"
+        "    Thôi chết, cái này nguy hiểm nha. / Nguy hiểm nha tụi bay.\n"
+        "    Em không đùa đâu. / Đừng nhìn cái đó. / Bình tĩnh bình tĩnh.\n"
+        "    Ủa sao kỳ vậy. / Không hiểu luôn.\n"
         "\n"
         "ĐƯỢC PHÉP:\n"
-        "  Tự cười. Tự phủ định. Tự bẻ lái giữa câu. Đổi ý. Chọc người xem. Chọc chính mình.\n"
-        "  Câu không hoàn chỉnh. Bỏ dở câu. Kéo dài âm: Đẹpppp / Ghêeeee / Mềmmmm / Nooooo / Wowwwww.\n"
+        "  Tự cười. Tự phủ định. Tự bẻ lái giữa câu. Đổi ý.\n"
+        "  Chọc người xem. Chọc chính mình. Lẩm bẩm ngắn.\n"
+        "  Câu không hoàn chỉnh. Bỏ dở câu. Nói sai rồi tự sửa.\n"
+        "  Nói chen — xen reaction bất chợt vào giữa ý review.\n"
+        "  Kéo dài âm khi cảm xúc: Đẹpppp / Ghêeeee / Mềmmmm / Nooooo / Wowwwww\n"
+        "    / ơiiiii / thôiiiiii / Okaaaay / Hả????\n"
         "\n"
         "CHUYỂN Ý: 'Mà nè...' / 'Ê nhưng mà...' / 'À khoan...' / 'Chưa hết đâu.' / 'Đỉnh nhất là...'\n"
         "FILLER: Rồi luôn. / Xong luôn. / Chịu luôn á. / Nói thiệt chứ. / Không giỡn đâu. / Nhìn phát mê luôn.\n"
+        "\n"
+        "GỌI NGƯỜI XEM: 'tụi bay' / 'mấy bà' / 'các vợ' / 'chúng mày' — xen tự nhiên, không mỗi câu.\n"
         "\n"
         "Nếu có 2 cách diễn đạt → chọn cách đời hơn, vui hơn, ít ChatGPT hơn."
     ),
@@ -394,10 +431,11 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
             f"Hook phải thuộc kiểu: {_hook_type}",
             "",
             "## EMOTION RHYTHM — LUẬT BẮT BUỘC",
-            "KHÔNG được: Review → Review → Review → Review.",
-            "PHẢI là: Reaction → Review → Reaction → Reaction → Review → Reaction → CTA.",
-            f"Reaction độc lập tối thiểu: {_reaction_min} câu (câu đứng riêng, không nhét vào câu review).",
-            "Sau mỗi 1-2 ý review → BẮT BUỘC có ít nhất 1 reaction.",
+            "KHÔNG được: Review → Review → Review → Review liên tiếp.",
+            "SAU MỖI 1-2 Ý REVIEW → BẮT BUỘC có ít nhất 1 nhịp cảm xúc.",
+            "Nhịp cảm xúc = reaction độc lập / cười ngắn / lẩm bẩm / đổi ý / bẻ lái — KHÔNG phải filler nhét vào câu review.",
+            f"Reaction độc lập tối thiểu: {_reaction_min} câu (câu đứng riêng).",
+            "Mạch nói phải giống TikToker thật đang tám chuyện — không phải AI điền template.",
             "",
             "## ENGINE 3 — EMOTION CURVE",
             "Năng lượng KHÔNG được đều từ đầu đến cuối.",
@@ -405,18 +443,19 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
             "Câu reaction ngắn = giảm tốc, tạo nhịp. Câu bất ngờ = tăng đột ngột.",
             "",
             "## ĐA DẠNG CẤU TRÚC CÂU",
-            "Kết hợp: câu cực ngắn (1-3 từ), câu trung, câu bỏ dở, câu cảm thán.",
+            "Kết hợp: câu cực ngắn (1-3 từ), câu trung, câu bỏ dở, câu cảm thán, câu hỏi tự hỏi.",
+            "Cho phép: nói sai rồi tự sửa giữa câu. Cười chen giữa ý. Bẻ lái bất chợt.",
             "",
             "## TỰ KIỂM TRA TRƯỚC KHI OUTPUT",
             "Trước khi trả JSON, kiểm tra voScript:",
             "- Có tag dạng [xxx] không? → Xóa hết.",
             "- Nghe giống AI / MC / reviewer không? → Viết lại toàn bộ.",
             f"- Đếm reaction độc lập: đủ {_reaction_min} chưa? → Nếu thiếu, thêm vào.",
-            "- Có đoạn Review → Review → Review liên tiếp không? → Chèn reaction vào giữa.",
+            "- Có đoạn Review → Review → Review liên tiếp (2+ ý không xen nhịp cảm xúc) không? → Chèn reaction/cười/lẩm bẩm vào giữa.",
             f"- Hook có đúng kiểu '{_hook_short}' không? → Nếu không, viết lại hook.",
             f"- Cấu trúc có đúng '{_pattern_short}' không? → Nếu lệch, điều chỉnh.",
-            "- Đọc to lên: nghe buồn cười không? Giống đang nói chuyện không?",
-            "Chỉ output khi nghe giống TikToker Gen Z thật đang nói chuyện — không phải đang review.",
+            "- Đọc to lên: nghe buồn cười không? Giống đang tám chuyện không? Hay vẫn giống review?",
+            "Chỉ output khi nghe giống TikToker thật đang vui miệng nói — không phải đang review sản phẩm.",
         ]
     else:
         _struct_check = [
@@ -885,10 +924,11 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
             _reaction_min = '3' if duration in ('15s', '20s') else '4-5' if duration == '30s' else '6-8'
             _nhay_law = (
                 "\nEMOTION RHYTHM — LUẬT BẮT BUỘC:\n"
-                "KHÔNG được: Review → Review → Review → Review.\n"
-                "PHẢI là: Reaction → Review → Reaction → Reaction → Review → Reaction → CTA.\n"
+                "KHÔNG được: Review → Review → Review → Review liên tiếp.\n"
+                "SAU MỖI 1-2 Ý REVIEW → BẮT BUỘC có ít nhất 1 nhịp cảm xúc.\n"
+                "Nhịp cảm xúc = reaction độc lập / cười ngắn / lẩm bẩm / đổi ý / bẻ lái.\n"
                 "Reaction = câu đứng riêng biệt, không nhét vào câu review.\n"
-                "Nếu có đoạn Review → Review → Review liên tiếp → chèn reaction vào giữa."
+                "Nếu có đoạn Review → Review → Review liên tiếp → chèn nhịp cảm xúc vào giữa."
             ) if tone == 'tiktok-nhay' else ''
             hook_instruction = f' Câu đầu tiên PHẢI là hook đã cho, không được thay đổi: "{selected_hook}"' if selected_hook else ''
             user = f"""{base}{analysis_block}
