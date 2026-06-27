@@ -2000,6 +2000,9 @@ function bellaApp() {
             input: this.form,
             currentScript: this.currentScript,
             selectedHook: _selHookText,
+            referenceLibraryCandidates: ['hooks', 'script'].includes(section)
+              ? this.findCandidateLibraryEntries(this.form.productName, this.form.productDescription, this.form.industry)
+              : [],
           })
         });
         const data = await res.json();

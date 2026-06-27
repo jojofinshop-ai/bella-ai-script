@@ -500,25 +500,28 @@ SUBJECT_TIPS = {
 # đoạn text đó vào prompt làm ví dụ tham khảo văn phong/cấu trúc, không đụng gì khác.
 
 def _build_reference_examples_block(reference_examples: list) -> list:
-    """Trả về list dòng prompt tham khảo mẫu từ Thư viện — strong few-shot để AI học văn phong thật sự."""
+    """Trả về list dòng prompt tham khảo mẫu từ Thư viện — học toàn diện: hook angle + cấu trúc + văn phong."""
     examples = [e.strip()[:500] for e in (reference_examples or []) if e and e.strip()]
     if not examples:
         return []
     lines = [
         "",
-        "## PHONG CÁCH VIẾT — BẮT BUỘC HỌC TỪ MẪU SAU",
-        "Các mẫu dưới đây là hook/kịch bản/transcript người dùng chọn lọc vì hiệu quả thực tế.",
-        "BẮT BUỘC học và áp dụng vào kịch bản lần này:",
-        "  • Nhịp câu, độ dài câu, cách ngắt câu",
-        "  • Cách mở đầu (hook), cách chuyển ý, cách kết thúc",
+        "## MẪU THAM KHẢO — BẮT BUỘC HỌC TOÀN DIỆN",
+        "Các mẫu dưới đây là hook/kịch bản/transcript được chọn lọc vì hiệu quả thực tế.",
+        "BẮT BUỘC học và áp dụng TẤT CẢ các yếu tố sau vào kịch bản lần này:",
+        "  • Góc hook — kiểu đặt vấn đề, twist, pain point angle, cách kéo người xem vào ngay câu đầu",
+        "  • Cấu trúc kịch bản — cách dẫn dắt từ hook → thân → CTA, thứ tự trình bày lợi ích",
+        "  • Cách đặt pain point và Hero Benefit — góc tiếp cận, mức độ nhấn mạnh",
+        "  • Nhịp câu, độ dài câu, cách ngắt câu, xen kẽ reaction",
         "  • Văn phong tự nhiên, cách dùng từ ngữ đời thường",
-        "Giữ đúng giọng điệu và sản phẩm đã chỉ định — nhưng CÁCH VIẾT phải gần với mẫu.",
-        "Không copy nguyên văn — sản phẩm và ngữ cảnh khác nhau:",
+        "  • Cách chuyển ý và CTA cuối",
+        "Điều chỉnh nội dung theo đúng sản phẩm đang viết — nhưng GÓC TIẾP CẬN, CẤU TRÚC và VĂN PHONG phải gần với mẫu.",
+        "Ưu tiên mẫu hơn ENGINE 4 khi chọn kiểu hook — mẫu là thực tế đã hiệu quả, ENGINE 4 chỉ là gợi ý đa dạng.",
     ]
     for i, ex in enumerate(examples[:3], 1):
         lines.append(f'  [{i}] "{ex}"')
     lines += [
-        "→ Kịch bản lần này phải có văn phong và nhịp điệu gần với các mẫu trên.",
+        "→ Kịch bản lần này phải có góc tiếp cận, cấu trúc và văn phong gần với các mẫu trên.",
         "",
     ]
     return lines
@@ -1396,6 +1399,13 @@ Gồm: setup góc máy phù hợp subject mode + ngành, cách demo rõ Hero Ben
 
     else:
         raise ValueError(f'Section không hợp lệ: {section}')
+
+    # Inject reference library vào hooks và script — cùng vị trí recency như build_user_prompt
+    if section in ('script', 'hooks'):
+        _ref_lines = _build_reference_examples_block(input_data.get('referenceExamples', []))
+        if _ref_lines:
+            _ref_block = '\n'.join(_ref_lines)
+            user = user.replace('\n```json\n', f'\n{_ref_block}\n```json\n', 1)
 
     return SECTION_SYSTEM, user
 

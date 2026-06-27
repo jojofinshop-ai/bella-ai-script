@@ -1189,6 +1189,7 @@ def regenerate_section():
         input_data   = data.get('input', {})
         current_script = data.get('currentScript', {})
         selected_hook  = data.get('selectedHook', '').strip()
+        reference_candidates = data.get('referenceLibraryCandidates', [])
 
         if not product_name:
             return jsonify({'success': False, 'error': 'Thiếu tên sản phẩm'}), 400
@@ -1200,6 +1201,13 @@ def regenerate_section():
 
         # Section nhỏ không cần nhiều token
         settings['maxTokens'] = max(int(settings.get('maxTokens', 2000)), 2000)
+
+        # Reference Library cho hooks và script — cùng flow như /api/generate
+        if reference_candidates and section in ('script', 'hooks'):
+            from ai_providers import select_relevant_examples
+            input_data['referenceExamples'] = select_relevant_examples(
+                settings, product_name, product_desc, input_data.get('industry', 'auto'), reference_candidates
+            )
 
         from prompt_builder import build_section_prompt, _try_parse_json
         system_prompt, user_prompt = build_section_prompt(
