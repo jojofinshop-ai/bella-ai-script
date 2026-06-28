@@ -96,13 +96,14 @@ def generate():
 
         # V8: Reference Library — AI chọn lọc mẫu phù hợp nhất từ candidates (frontend đã
         # pre-filter theo ngành hàng). Lỗi ở bước này KHÔNG được làm fail cả lần generate chính.
-        reference_examples = []
+        _ref_result = {'contents': [], 'used': []}
         if reference_candidates:
             from ai_providers import select_relevant_examples
-            reference_examples = select_relevant_examples(
+            _ref_result = select_relevant_examples(
                 settings, product_name, product_desc, input_data.get('industry', 'auto'), reference_candidates
             )
-        input_data['referenceExamples'] = reference_examples
+        input_data['referenceExamples'] = _ref_result['contents']
+        _referenced_samples = _ref_result['used']
 
         user_prompt = build_user_prompt(input_data, has_images_effective, image_analysis)
         raw_response = call_ai(settings, system_prompt, user_prompt, images_to_send)
@@ -111,7 +112,7 @@ def generate():
             script = parse_ai_response(raw_response)
             from validators import validate_script_schema
             script, _val_issues = validate_script_schema(script)
-            return jsonify({'success': True, 'script': script, 'imageAnalysis': image_analysis, 'imageAnalysisStatus': analysis_status, 'schemaIssues': _val_issues if _val_issues else None})
+            return jsonify({'success': True, 'script': script, 'imageAnalysis': image_analysis, 'imageAnalysisStatus': analysis_status, 'schemaIssues': _val_issues if _val_issues else None, 'referencedSamples': _referenced_samples})
         except Exception as parse_err:
             return jsonify({
                 'success': False,
@@ -1233,11 +1234,14 @@ def regenerate_section():
         settings['maxTokens'] = max(int(settings.get('maxTokens', 2000) or 2000), 2000)
 
         # Reference Library cho hooks và script — cùng flow như /api/generate
+        _regen_referenced = []
         if reference_candidates and section in ('script', 'hooks'):
             from ai_providers import select_relevant_examples
-            input_data['referenceExamples'] = select_relevant_examples(
+            _ref_r = select_relevant_examples(
                 settings, product_name, product_desc, input_data.get('industry', 'auto'), reference_candidates
             )
+            input_data['referenceExamples'] = _ref_r['contents']
+            _regen_referenced = _ref_r['used']
 
         # V9: Variation rule — trích hook hiện tại để tránh lặp khi regenerate
         _avoid_hooks = []
@@ -1301,7 +1305,7 @@ def regenerate_section():
                 ]
                 result['section4']['lines'] = [ln for ln in result['section4']['lines'] if ln]
 
-        return jsonify({'success': True, 'data': result})
+        return jsonify({'success': True, 'data': result, 'referencedSamples': _regen_referenced})
 
     except Exception as e:
         msg = str(e)

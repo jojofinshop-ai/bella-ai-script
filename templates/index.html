@@ -448,6 +448,28 @@
         </div>
       </div>
 
+      <!-- V8: Referenced samples badge -->
+      <div x-show="referencedSamples.length > 0" class="mb-3">
+        <button @click="showReferencedSamples=!showReferencedSamples"
+          class="flex items-center gap-2 text-sm text-purple-700 bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition-colors">
+          <span>📚</span>
+          <span x-text="'Học từ ' + referencedSamples.length + ' mẫu thư viện'"></span>
+          <svg class="w-3.5 h-3.5 transition-transform duration-200" :class="showReferencedSamples ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <div x-show="showReferencedSamples" x-transition class="mt-2 space-y-2">
+          <template x-for="(s, i) in referencedSamples" :key="i">
+            <div class="border border-purple-100 rounded-lg p-3 bg-white">
+              <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium" x-text="typeLabel(s.type)"></span>
+                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full" x-text="industryLabel(s.industry)"></span>
+                <span x-show="s.productTag" class="text-xs text-gray-400 truncate max-w-xs" x-text="'• ' + s.productTag"></span>
+              </div>
+              <p class="text-xs text-gray-600 leading-relaxed line-clamp-2" x-text="s.preview + '...'"></p>
+            </div>
+          </template>
+        </div>
+      </div>
+
       <!-- V8.1: Panel thêm nhanh mẫu vào Thư viện ngay trên tab Generate -->
       <div x-show="showQuickAddLibrary" x-transition class="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4">
         <div class="flex items-center justify-between mb-2">
@@ -1669,6 +1691,10 @@ function bellaApp() {
     visualPromptResult: null,
     visualError: null,
 
+    // V8: Reference Library — mẫu đã dùng cho lần generate gần nhất
+    referencedSamples: [],
+    showReferencedSamples: false,
+
     // URL fetch
     productUrl: '',
     isFetchingUrl: false,
@@ -1997,6 +2023,8 @@ function bellaApp() {
       this.visualError = null;
       this.isGeneratingVisual = false;
       this.selectedHistoryItem = null;
+      this.referencedSamples = [];
+      this.showReferencedSamples = false;
       // Build progress steps
       const _hasImgs = this.form.images.length > 0;
       const _candidates = this.findCandidateLibraryEntries(this.form.productName, this.form.productDescription, this.form.industry);
@@ -2030,6 +2058,7 @@ function bellaApp() {
         this.lastImageAnalysis = data.imageAnalysis || '';
         this.imageAnalysisStatus = data.imageAnalysisStatus || null;
         this.lastSentImages = (data.imageAnalysisStatus === 'same_ai') ? [...this.form.images] : [];
+        this.referencedSamples = data.referencedSamples || [];
         _visionSkipped = _hasImgs && this.imageAnalysisStatus === 'skipped';
         const _hooks = data.script?.section3?.hooks || [];
         const _recIdx = _hooks.findIndex(h => h.isRecommended);
@@ -2081,6 +2110,7 @@ function bellaApp() {
         if (!data.success) throw new Error(data.error || 'Lỗi không xác định');
         this.currentScript = {...this.currentScript, ...data.data};
         if (section === 'script') this.currentScript = this.applyTimelineToActions(this.currentScript);
+        if (data.referencedSamples?.length) { this.referencedSamples = data.referencedSamples; this.showReferencedSamples = false; }
         if (section === 'hooks') {
           const _hs = this.currentScript?.section3?.hooks || [];
           const _ri = _hs.findIndex(h => h.isRecommended);
@@ -2480,6 +2510,9 @@ function bellaApp() {
         (e.note || '').toLowerCase().includes(q)
       );
       return list;
+    },
+    typeLabel(key) {
+      return { hook: 'Hook ngắn', script: 'Kịch bản đầy đủ', transcript: 'Transcript viral' }[key] || key;
     },
     industryLabel(key) {
       const m = { auto: 'Tất cả ngành', fashion: 'Thời trang', beauty: 'Mỹ phẩm', electronics: 'Điện tử', home: 'Gia dụng', food: 'Thực phẩm', pet: 'Thú cưng', baby: 'Mẹ & Bé', other: 'Ngành khác' };

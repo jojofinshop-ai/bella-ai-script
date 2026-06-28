@@ -262,15 +262,25 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list, main_se
     raise ValueError('Không scan được ảnh. Vui lòng kiểm tra API key trong Cài đặt.')
 
 
-def select_relevant_examples(settings: dict, product_name: str, product_desc: str, industry: str, candidates: list) -> list:
+def select_relevant_examples(settings: dict, product_name: str, product_desc: str, industry: str, candidates: list) -> dict:
     """V8 Reference Library: dùng AI chọn tối đa 3 mẫu (hook/script/transcript) phù hợp nhất
     từ candidates (frontend đã pre-filter theo ngành hàng trước khi gửi lên).
     Lỗi ở bước chọn lọc này KHÔNG được làm fail lần generate chính — luôn fallback an toàn
-    về vài candidate đầu tiên (frontend đã sắp theo mới nhất) nếu AI lỗi/parse hỏng."""
+    về vài candidate đầu tiên (frontend đã sắp theo mới nhất) nếu AI lỗi/parse hỏng.
+    Trả dict: {'contents': list[str], 'used': list[dict]} để frontend hiển thị mẫu đã dùng."""
     if not candidates:
-        return []
+        return {'contents': [], 'used': []}
 
-    fallback = [c.get('content', '') for c in candidates[:3] if c.get('content')]
+    def _make_result(items):
+        items = [c for c in items if c.get('content')][:3]
+        return {
+            'contents': [c.get('content', '') for c in items],
+            'used': [{'type': c.get('type', ''), 'productTag': c.get('productTag', ''),
+                      'industry': c.get('industry', ''), 'preview': (c.get('content', '') or '')[:120]}
+                     for c in items],
+        }
+
+    fallback = _make_result(candidates[:3])
 
     try:
         import json as _json, re as _re
@@ -301,10 +311,9 @@ def select_relevant_examples(settings: dict, product_name: str, product_desc: st
             return fallback
         parsed = _json.loads(m.group(0))
         selected_idx = parsed.get('selected', [])
-        result = [candidates[i].get('content', '') for i in selected_idx
-                  if isinstance(i, int) and 0 <= i < len(candidates)]
-        result = [r for r in result if r]
-        return result[:3] if result else fallback
+        selected_items = [candidates[i] for i in selected_idx
+                          if isinstance(i, int) and 0 <= i < len(candidates)]
+        return _make_result(selected_items) if selected_items else fallback
     except Exception:
         return fallback
 
