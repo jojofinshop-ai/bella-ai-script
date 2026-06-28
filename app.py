@@ -1594,4 +1594,4 @@ if __name__ == '__main__':
         icon_path = os.path.join(EXE_DIR, 'bella_icon.ico') if getattr(sys, 'frozen', False) else os.path.join(BASE_DIR, 'bella_icon.ico')
         _webview_data = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'BELLA AI', 'webview_data')
         os.makedirs(_webview_data, exist_ok=True)
-        webview.start(gui='edgechromium', icon=icon_path if os.path.exists(icon_path) else None, storage_path=_webview_data)
+        webview.start(gui='edgechromium', icon=icon_path if os.path.exists(icon_path) else None, storage_path=_webview_data, private_mode=False)
