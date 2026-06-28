@@ -688,7 +688,7 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
     goal_label = GOAL_LABELS.get(input_data.get('videoGoal', ''), input_data.get('videoGoal', ''))
     tone = input_data.get('tone', 'natural-koc')
     tone_label = input_data.get('toneCustom', '') if tone == 'custom' else TONE_LABELS.get(tone, tone)
-    audience = input_data.get('targetAudience', '').strip()
+    audience = (input_data.get('targetAudience') or '').strip()
     industry = input_data.get('industry', 'auto')
     industry_label = INDUSTRY_LABELS.get(industry, 'Tự động nhận diện')
     industry_data = INDUSTRY_GUIDE.get(industry, {})
@@ -1079,7 +1079,7 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         input_data.get('productDescription', ''),
         "",
     ]
-    audience = input_data.get('targetAudience', '').strip()
+    audience = (input_data.get('targetAudience') or '').strip()
     if audience:
         lines += [f"**Đối tượng khách hàng:** {audience}", ""]
 
@@ -1232,8 +1232,8 @@ def parse_ai_response(raw: str) -> dict:
         'section9': {'tips': []},
     }
     for key, default in defaults.items():
-        if key not in parsed:
-            parsed[key] = default
+        if key not in parsed or not isinstance(parsed[key], dict):
+            parsed[key] = dict(default)
         elif key == 'section1':
             # Merge V6 fields into old scripts without overwriting existing values
             for field, val in default.items():
@@ -1258,7 +1258,7 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
     tone = input_data.get('tone', 'natural-koc')
     tone_label = input_data.get('toneCustom', '') if tone == 'custom' else TONE_LABELS.get(tone, tone)
     goal_label = GOAL_LABELS.get(input_data.get('videoGoal', ''), input_data.get('videoGoal', ''))
-    audience = input_data.get('targetAudience', '').strip()
+    audience = (input_data.get('targetAudience') or '').strip()
     industry = input_data.get('industry', 'auto')
     industry_label = INDUSTRY_LABELS.get(industry, 'Tự động nhận diện')
     industry_data = INDUSTRY_GUIDE.get(industry, {})
@@ -1293,8 +1293,8 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
     )
 
     if section == 'script':
-        s2 = current_script.get('section2', {})
-        hero_benefit = s2.get('heroBenefit', '').strip()
+        s2 = current_script.get('section2') or {}
+        hero_benefit = (s2.get('heroBenefit') or '').strip()
         analysis_parts = list(filter(None, [
             f"Hero Benefit: {hero_benefit}" if hero_benefit else '',
             f"Pain point: {s2.get('painPoints','')}" if s2.get('painPoints') else '',
@@ -1410,7 +1410,7 @@ Tạo kịch bản mới và timeline quay tương ứng. Lời thoại tự nhi
 ```"""
 
     elif section == 'hooks':
-        s2 = current_script.get('section2', {})
+        s2 = current_script.get('section2') or {}
         analysis = '\n'.join(filter(None, [
             f"Hero Benefit: {s2.get('heroBenefit','')}" if s2.get('heroBenefit') else '',
             f"Pain point: {s2.get('painPoints','')}" if s2.get('painPoints') else '',
@@ -1473,7 +1473,7 @@ Hook phải ngắn gọn, đi thẳng vào vấn đề, không lời chào hỏi
 ```"""
 
     elif section == 'caption':
-        s4 = current_script.get('section4', {})
+        s4 = current_script.get('section4') or {}
         lines_data = s4.get('lines', [])
         dialogue = ' '.join(l.get('text', '') for l in lines_data if l.get('type') == 'dialogue')
         vo_script = s4.get('voScript', '')
@@ -1502,7 +1502,7 @@ TỰ KIỂM TRA: Đếm ký tự từng caption trước khi output. Nếu > 100
 ```"""
 
     elif section == 'hashtag':
-        captions = current_script.get('section7', {}).get('captions', [])
+        captions = (current_script.get('section7') or {}).get('captions', [])
         caption_hint = ' '.join(captions[:2])[:300] if captions else ''
         user = f"""{base}
 {context_line}
@@ -1814,7 +1814,7 @@ def _build_visual_workflow(img_model: str, vid_model: str, aspect_ratio: str) ->
 
 def _build_model_ref_instruction(resolved_mode: str, industry: str) -> str:
     """Instruction dùng ảnh người mẫu / thú cưng / em bé, thay đổi theo ngành."""
-    if industry == 'pet':
+    if industry == 'pet' and resolved_mode != 'product':
         return (
             "SỬ DỤNG ẢNH THÚ CƯNG THAM CHIẾU (nếu được upload):\n"
             "Dùng ảnh thú cưng để lock giống, màu lông, vóc dáng — "
@@ -2050,9 +2050,9 @@ def build_visual_prompt(script: dict, product_name: str, product_desc: str,
     industry_label = INDUSTRY_LABELS.get(industry, 'Tự động nhận diện')
     video_goal = GOAL_LABELS.get(input_data.get('videoGoal', ''), input_data.get('videoGoal', ''))
 
-    s2 = script.get('section2', {})
-    s4 = script.get('section4', {})
-    s5 = script.get('section5', {})
+    s2 = script.get('section2') or {}
+    s4 = script.get('section4') or {}
+    s5 = script.get('section5') or {}
     hero_benefit = s2.get('heroBenefit', '')
 
     timeline = s5.get('timeline', [])

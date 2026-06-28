@@ -33,8 +33,8 @@ def call_openai_compatible(settings: dict, system_prompt: str, user_prompt: str,
         messages.append({'role': 'user', 'content': user_prompt})
 
     model_name = settings.get('modelName', 'gpt-4o')
-    max_tok = int(settings.get('maxTokens', 0))
-    temp = float(settings.get('temperature', 0.8))
+    max_tok = int(settings.get('maxTokens') or 0)
+    temp = float(settings.get('temperature') or 0.8)
 
     # o1/o3/o4 chỉ hỗ trợ temperature=1 (mặc định) → không truyền tham số này
     use_new_param = any(model_name.startswith(p) for p in ('gpt-5', 'o1', 'o3', 'o4'))
@@ -51,6 +51,11 @@ def call_openai_compatible(settings: dict, system_prompt: str, user_prompt: str,
     content = response.choices[0].message.content
     if not content:
         raise ValueError('AI trả về nội dung rỗng')
+    # Strip <think>...</think> blocks (DeepSeek V3/V4/reasoner extended thinking)
+    import re as _re
+    content = _re.sub(r'<think>[\s\S]*?</think>\s*', '', content, flags=_re.IGNORECASE).strip()
+    if not content:
+        raise ValueError('AI trả về nội dung rỗng sau khi xử lý thinking block')
     return content
 
 
@@ -62,8 +67,8 @@ def call_gemini(settings: dict, system_prompt: str, user_prompt: str, images: li
     raw_key = settings.get('apiKey', '')
     api_key = raw_key.replace(',', '\n').split('\n')[0].strip()
     model_name = settings.get('modelName', 'gemini-1.5-flash-latest')
-    temperature = float(settings.get('temperature', 0.8))
-    max_tokens = int(settings.get('maxTokens', 0))
+    temperature = float(settings.get('temperature') or 0.8)
+    max_tokens = int(settings.get('maxTokens') or 0)
 
     url = f'https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}'
 
@@ -256,7 +261,10 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list, main_se
                     {'apiKey': api_key, 'modelName': model_name or 'gemini-2.5-flash', 'temperature': 0.1, 'maxTokens': 0},
                     system_prompt, user_prompt, images
                 )
-                return _parse_json(raw)
+                try:
+                    return _parse_json(raw)
+                except ValueError:
+                    raise ValueError('AI phân tích ảnh trả về định dạng không hợp lệ. Thử lại.')
         elif api_key:
             # OpenAI / DeepSeek / custom — thử gửi ảnh trực tiếp
             scan_settings = {
@@ -267,7 +275,10 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list, main_se
                 'maxTokens': 0,
             }
             raw = call_openai_compatible(scan_settings, system_prompt, user_prompt, images)
-            return _parse_json(raw)
+            try:
+                return _parse_json(raw)
+            except ValueError:
+                raise ValueError('AI phân tích ảnh trả về định dạng không hợp lệ. Thử lại.')
 
     raise ValueError('Không scan được ảnh. Vui lòng kiểm tra API key trong Cài đặt.')
 

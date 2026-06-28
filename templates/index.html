@@ -1433,7 +1433,8 @@
             </template>
           </div>
           <div x-show="settings.provider==='deepseek'" class="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-700">
-            ⚠️ DeepSeek không hỗ trợ ảnh. AI sẽ tạo kịch bản từ tên và mô tả sản phẩm.
+            ⚠️ DeepSeek không hỗ trợ ảnh. AI sẽ tạo kịch bản từ tên và mô tả sản phẩm.<br>
+            Model khuyên dùng: <strong>deepseek-chat</strong> (V3, nhanh) hoặc <strong>deepseek-reasoner</strong> (R1, chất lượng cao hơn).
           </div>
         </div>
 
@@ -1672,7 +1673,7 @@ const DEFAULT_PROMPTS = {
 
 const PROVIDER_MODELS = {
   openai: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-4o', 'gpt-4o-mini', 'gpt-4.1'],
-  deepseek: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-chat', 'deepseek-reasoner'],
+  deepseek: ['deepseek-chat', 'deepseek-reasoner', 'deepseek-v4-pro', 'deepseek-v4-flash'],
   gemini: ['gemini-2.5-flash', 'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.0-flash'],
   custom: []
 };
@@ -2145,7 +2146,7 @@ function bellaApp() {
             productName: this.form.productName,
             productDescription: this.form.productDescription,
             settings: {...this.settings, apiKey: this.settings.apiKeys[this.settings.provider] || ''},
-            input: this.form,
+            input: {...this.form, images: []},
             currentScript: this.currentScript,
             selectedHook: _selHookText,
             referenceLibraryCandidates: ['hooks', 'script'].includes(section)
@@ -2190,9 +2191,10 @@ function bellaApp() {
       if (!Array.isArray(lines) || !Array.isArray(timeline) || timeline.length === 0) return script;
       const dialogueLines = lines.filter(l => l.type === 'dialogue');
       if (dialogueLines.length === 0) return script;
+      const result = JSON.parse(JSON.stringify(script));
       const newLines = [];
       let dIdx = 0;
-      for (const line of lines) {
+      for (const line of result.section4.lines) {
         if (line.type === 'action') continue;
         if (line.type === 'dialogue') {
           const tIdx = Math.min(Math.floor(dIdx * timeline.length / dialogueLines.length), timeline.length - 1);
@@ -2205,8 +2207,8 @@ function bellaApp() {
           newLines.push(line);
         }
       }
-      script.section4.lines = newLines;
-      return script;
+      result.section4.lines = newLines;
+      return result;
     },
 
     selectHook(i) {
@@ -2423,10 +2425,29 @@ function bellaApp() {
         this.history = JSON.parse(localStorage.getItem('bella_history') || '[]');
       } catch { this.history = []; }
     },
+    _resizeThumbnail(dataUrl, size = 80) {
+      return new Promise(resolve => {
+        try {
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              const r = Math.min(size / img.width, size / img.height, 1);
+              canvas.width = Math.round(img.width * r);
+              canvas.height = Math.round(img.height * r);
+              canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+              resolve(canvas.toDataURL('image/jpeg', 0.7));
+            } catch { resolve(null); }
+          };
+          img.onerror = () => resolve(null);
+          img.src = dataUrl;
+        } catch { resolve(null); }
+      });
+    },
     async saveToHistory() {
       if (!this.currentScript) return;
       const firstImg = this.form.images?.[0]?.dataUrl;
-      const thumbnail = firstImg || null;
+      const thumbnail = firstImg ? await this._resizeThumbnail(firstImg) : null;
       const item = {
         id: Date.now().toString() + Math.random().toString(36).slice(2),
         createdAt: new Date().toISOString(),
@@ -2439,7 +2460,13 @@ function bellaApp() {
         script: this.currentScript
       };
       this.history = [item, ...this.history].slice(0, 100);
-      localStorage.setItem('bella_history', JSON.stringify(this.history));
+      try {
+        localStorage.setItem('bella_history', JSON.stringify(this.history));
+      } catch {
+        // localStorage full → trim thumbnails rồi thử lại
+        this.history = this.history.map(h => ({...h, thumbnail: null}));
+        try { localStorage.setItem('bella_history', JSON.stringify(this.history)); } catch { /* silent */ }
+      }
       if (!this.settings.autoSave) this.showToast('Đã lưu vào lịch sử!', 'success');
     },
     filteredHistory() {
@@ -2573,7 +2600,8 @@ function bellaApp() {
       const kw = `${productName || ''} ${productDescription || ''}`.toLowerCase();
       const scored = this.referenceLibrary.map(e => {
         let score = 0;
-        if (e.industry === industry || e.industry === 'auto') score += 3;
+        if (e.industry === industry) score += 3;
+        else if (e.industry === 'auto') score += 1;
         if (e.productTag && kw.includes(e.productTag.toLowerCase())) score += 2;
         return { entry: e, score };
       });

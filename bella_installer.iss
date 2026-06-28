@@ -1,5 +1,5 @@
 #define AppName "BELLA AI Script Generator"
-#define AppVersion "8.3.4"
+#define AppVersion "8.3.7"
 #define AppPublisher "BELLA"
 #define AppExeName "BELLA_AI_Script.exe"
 

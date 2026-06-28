@@ -11,3 +11,6 @@ bella_settings.json
 *.png
 !templates/
 .env
+backup/
+backups/
+MicrosoftEdgeWebview2Setup.exe

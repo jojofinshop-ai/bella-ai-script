@@ -1246,10 +1246,10 @@ def regenerate_section():
         # V9: Variation rule — trích hook hiện tại để tránh lặp khi regenerate
         _avoid_hooks = []
         if section in ('script', 'hooks'):
-            _s3 = current_script.get('section3', {})
-            _avoid_hooks = [h.get('text', '') for h in _s3.get('hooks', []) if h.get('text', '').strip()]
+            _s3 = current_script.get('section3') or {}
+            _avoid_hooks = [h.get('text', '') for h in (_s3.get('hooks') or []) if h.get('text', '').strip()]
             # Cũng tránh hook đang dùng trong section4
-            _s4_hook = current_script.get('section4', {}).get('hook', '').strip()
+            _s4_hook = (current_script.get('section4') or {}).get('hook', '').strip()
             if _s4_hook and _s4_hook not in _avoid_hooks:
                 _avoid_hooks.insert(0, _s4_hook)
 
@@ -1311,6 +1311,8 @@ def regenerate_section():
         msg = str(e)
         if 'api key' in msg.lower() or '401' in msg:
             msg = 'API key không hợp lệ'
+        elif '404' in msg or 'model_not_found' in msg or 'not found' in msg.lower():
+            msg = 'Model không tồn tại. Kiểm tra tên model trong Cài đặt'
         elif '429' in msg or 'rate limit' in msg.lower():
             msg = 'Rate limit. Thử lại sau vài giây'
         elif 'connection' in msg.lower() or 'timeout' in msg.lower():
