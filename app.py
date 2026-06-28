@@ -70,7 +70,7 @@ def generate():
                 raw_vision = settings.get('visionGeminiKeys', '') or (settings.get('apiKeys') or {}).get('gemini', '')
                 gemini_keys = [k.strip() for k in raw_vision.replace(',', '\n').split('\n') if k.strip()]
                 if gemini_keys:
-                    image_analysis = analyze_images_with_gemini(gemini_keys, images_for_analysis)
+                    image_analysis = analyze_images_with_gemini(gemini_keys, images_for_analysis, product_name)
                     analysis_status = 'gemini' if image_analysis else 'skipped'
                 else:
                     analysis_status = 'skipped'
@@ -80,7 +80,7 @@ def generate():
                 vision_model = (settings.get('visionOpenaiModel', '') or 'gpt-4o-mini').strip()
                 if vision_key:
                     openai_vision_settings = {'apiKey': vision_key, 'baseUrl': vision_base_url, 'modelName': vision_model}
-                    image_analysis = analyze_images_with_openai(openai_vision_settings, images_for_analysis)
+                    image_analysis = analyze_images_with_openai(openai_vision_settings, images_for_analysis, product_name)
                     analysis_status = 'openai' if image_analysis else 'skipped'
                 else:
                     analysis_status = 'skipped'
@@ -109,7 +109,9 @@ def generate():
 
         try:
             script = parse_ai_response(raw_response)
-            return jsonify({'success': True, 'script': script, 'imageAnalysis': image_analysis, 'imageAnalysisStatus': analysis_status})
+            from validators import validate_script_schema
+            script, _val_issues = validate_script_schema(script)
+            return jsonify({'success': True, 'script': script, 'imageAnalysis': image_analysis, 'imageAnalysisStatus': analysis_status, 'schemaIssues': _val_issues if _val_issues else None})
         except Exception as parse_err:
             return jsonify({
                 'success': False,
@@ -1178,6 +1180,34 @@ def fetch_url():
     return jsonify({'success': True, 'productName': name, 'productDescription': desc, 'images': images})
 
 
+@app.route('/api/save-file', methods=['POST'])
+def save_file():
+    """Mở native Windows save dialog để lưu file — dùng cho export trong pywebview EXE."""
+    try:
+        data = request.get_json() or {}
+        content  = data.get('content', '')
+        filename = data.get('filename', 'export.json')
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        file_path = filedialog.asksaveasfilename(
+            defaultextension='.json',
+            filetypes=[('JSON files', '*.json'), ('All files', '*.*')],
+            initialfile=filename,
+            title='Lưu thư viện mẫu',
+        )
+        root.destroy()
+        if not file_path:
+            return jsonify({'success': False, 'cancelled': True})
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        return jsonify({'success': True, 'path': file_path})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
 @app.route('/api/regenerate-section', methods=['POST'])
 def regenerate_section():
     try:
@@ -1200,7 +1230,7 @@ def regenerate_section():
             return jsonify({'success': False, 'error': 'Chưa nhập API key'}), 400
 
         # Section nhỏ không cần nhiều token
-        settings['maxTokens'] = max(int(settings.get('maxTokens', 2000)), 2000)
+        settings['maxTokens'] = max(int(settings.get('maxTokens', 2000) or 2000), 2000)
 
         # Reference Library cho hooks và script — cùng flow như /api/generate
         if reference_candidates and section in ('script', 'hooks'):
@@ -1209,9 +1239,20 @@ def regenerate_section():
                 settings, product_name, product_desc, input_data.get('industry', 'auto'), reference_candidates
             )
 
+        # V9: Variation rule — trích hook hiện tại để tránh lặp khi regenerate
+        _avoid_hooks = []
+        if section in ('script', 'hooks'):
+            _s3 = current_script.get('section3', {})
+            _avoid_hooks = [h.get('text', '') for h in _s3.get('hooks', []) if h.get('text', '').strip()]
+            # Cũng tránh hook đang dùng trong section4
+            _s4_hook = current_script.get('section4', {}).get('hook', '').strip()
+            if _s4_hook and _s4_hook not in _avoid_hooks:
+                _avoid_hooks.insert(0, _s4_hook)
+
         from prompt_builder import build_section_prompt, _try_parse_json
         system_prompt, user_prompt = build_section_prompt(
-            section, product_name, product_desc, input_data, current_script, selected_hook
+            section, product_name, product_desc, input_data, current_script, selected_hook,
+            avoid_hooks=_avoid_hooks
         )
 
         from ai_providers import call_ai
@@ -1236,6 +1277,29 @@ def regenerate_section():
                 'error': 'AI trả về định dạng không hợp lệ. Thử lại.',
                 'rawResponse': raw[:2000]
             }), 422
+
+        # Auto-repair format cho hooks (string→dict) và lines (string→dict)
+        if 'section3' in result and isinstance(result.get('section3'), dict):
+            hooks = result['section3'].get('hooks', [])
+            if isinstance(hooks, list):
+                result['section3']['hooks'] = [
+                    h if (isinstance(h, dict) and 'text' in h)
+                    else {'text': h, 'isRecommended': i == 0} if isinstance(h, str)
+                    else None
+                    for i, h in enumerate(hooks)
+                ]
+                result['section3']['hooks'] = [h for h in result['section3']['hooks'] if h]
+
+        if 'section4' in result and isinstance(result.get('section4'), dict):
+            lines_data = result['section4'].get('lines', [])
+            if isinstance(lines_data, list):
+                result['section4']['lines'] = [
+                    ln if (isinstance(ln, dict) and 'type' in ln and 'text' in ln)
+                    else {'type': 'dialogue', 'text': ln} if isinstance(ln, str)
+                    else None
+                    for ln in lines_data
+                ]
+                result['section4']['lines'] = [ln for ln in result['section4']['lines'] if ln]
 
         return jsonify({'success': True, 'data': result})
 

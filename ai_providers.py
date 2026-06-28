@@ -16,6 +16,7 @@ def call_openai_compatible(settings: dict, system_prompt: str, user_prompt: str,
     client = OpenAI(
         api_key=settings.get('apiKey', 'no-key'),
         base_url=settings.get('baseUrl', 'https://api.openai.com/v1'),
+        timeout=90,
     )
     messages = [{'role': 'system', 'content': system_prompt}]
 
@@ -90,62 +91,75 @@ def call_gemini(settings: dict, system_prompt: str, user_prompt: str, images: li
     with urllib.request.urlopen(req, timeout=120) as resp:
         data = _json.loads(resp.read())
 
-    text = data['candidates'][0]['content']['parts'][0]['text']
+    candidate = data['candidates'][0]
+    content = candidate.get('content')
+    if not content:
+        reason = candidate.get('finishReason', 'UNKNOWN')
+        raise ValueError(f'Gemini chặn nội dung (finishReason: {reason})')
+    text = content['parts'][0]['text']
     if not text:
         raise ValueError('Gemini trả về nội dung rỗng')
     return text
 
 
-def analyze_images_with_openai(openai_settings: dict, images: list) -> str:
+_VISION_SYSTEM = (
+    'Bạn là chuyên gia phân tích sản phẩm từ ảnh TikTok Shop / e-commerce. '
+    'Ảnh thường chứa model mặc/dùng sản phẩm, background, phụ kiện không liên quan — '
+    'nhiệm vụ của bạn là tách thông tin SẢN PHẨM CHÍNH ra khỏi nhiễu bối cảnh.'
+)
+
+def _vision_user_prompt(n: int, product_name: str = '') -> str:
+    product_line = f'Sản phẩm cần phân tích: "{product_name}"\n' if product_name else ''
+    return (
+        f'{product_line}'
+        f'Tôi gửi {n} ảnh (ảnh TikTok/e-commerce — có thể chứa model, background, watermark). '
+        f'Hãy tập trung vào sản phẩm trên và phân tích TẤT CẢ {n} ảnh theo thứ tự ưu tiên:\n\n'
+        'ƯU TIÊN 1 — ĐẶC ĐIỂM VẬT LÝ SẢN PHẨM CHÍNH:\n'
+        '- Loại sản phẩm: nhận dạng chính xác\n'
+        '- Màu sắc cụ thể, họa tiết, form dáng/kiểu dáng\n'
+        '- Chất liệu nhìn thấy được (bóng/mờ, mềm/cứng, dày/mỏng, vải/nhựa/kim loại...)\n'
+        '- Chi tiết thiết kế: đường may, logo, khóa, cúc, cổ, tay, họa tiết in, label\n'
+        '- Thông tin đọc được trên sản phẩm: brand, size, thành phần, dung tích, model\n'
+        '- Các màu/size/biến thể thấy được trong ảnh\n\n'
+        'ƯU TIÊN 2 — THÔNG TIN SẢN PHẨM SUY RA TỪ CÁCH DÙNG:\n'
+        '- Nếu model mặc quần áo → form ôm người thế nào, độ co giãn, độ dài, cách mặc\n'
+        '- Nếu model dùng mỹ phẩm/thiết bị → cách dùng, vùng áp dụng, hiệu quả thấy được\n'
+        '- Nếu sản phẩm đang hoạt động → trạng thái, output, hiệu quả quan sát được\n\n'
+        'BỎ QUA (không đề cập): background, nền ảnh, watermark TikTok, '
+        'phụ kiện/quần áo khác của model không phải sản phẩm đang bán.\n\n'
+        'Chỉ mô tả những gì thực sự nhìn thấy. Không bịa đặt tính năng.'
+    )
+
+
+def analyze_images_with_openai(openai_settings: dict, images: list, product_name: str = '') -> str:
     """Dùng OpenAI-compatible (GPT-4o, GPT-4o-mini...) để phân tích ảnh sản phẩm, trả về text mô tả."""
     if not images or not openai_settings.get('apiKey', ''):
         return ''
-    n = len(images)
-    system_prompt = 'Bạn là chuyên gia phân tích sản phẩm. Mô tả chính xác, chi tiết những gì thấy trong ảnh.'
-    user_prompt = (
-        f'Tôi gửi {n} ảnh sản phẩm. Hãy phân tích TẤT CẢ {n} ảnh và tổng hợp thành 1 mô tả đầy đủ:\n'
-        '- Loại sản phẩm: nhận dạng từ hình ảnh (quần áo, mỹ phẩm, điện tử, thực phẩm, gia dụng...)\n'
-        '- Màu sắc & hình thức: màu sắc cụ thể, kích thước/form dáng, bao bì (nếu có)\n'
-        '- Chi tiết đặc trưng nổi bật: nhãn hiệu, logo, họa tiết, chất liệu, thiết kế đặc biệt\n'
-        '- Thông tin có thể thấy: số lượng, dung tích, model, nhãn sản phẩm, tình trạng\n'
-        '- Cảnh sử dụng (nếu có người/thú cưng/vật dùng trong ảnh): mô tả ngắn gọn\n'
-        'Chỉ mô tả những gì thực sự nhìn thấy. Không bịa đặt.'
-    )
     settings = {**openai_settings, 'temperature': 0.2, 'maxTokens': 0}
     try:
-        return call_openai_compatible(settings, system_prompt, user_prompt, images)
+        return call_openai_compatible(settings, _VISION_SYSTEM, _vision_user_prompt(len(images), product_name), images)
     except Exception:
         return ''
 
 
-def analyze_images_with_gemini(gemini_api_keys, images: list) -> str:
+def analyze_images_with_gemini(gemini_api_keys, images: list, product_name: str = '') -> str:
     """Dùng Gemini Flash (rẻ) để phân tích toàn bộ ảnh sản phẩm, trả về text mô tả.
     Hỗ trợ nhiều API key — tự động chuyển key khi gặp 429."""
-    keys = [k for k in _parse_gemini_keys(gemini_api_keys) if k.startswith('AIza')]
+    keys = [k for k in _parse_gemini_keys(gemini_api_keys) if k]
     if not keys or not images:
         return ''
-    n = len(images)
-    system_prompt = 'Bạn là chuyên gia phân tích sản phẩm. Mô tả chính xác, chi tiết những gì thấy trong ảnh.'
-    user_prompt = (
-        f'Tôi gửi {n} ảnh sản phẩm. Hãy phân tích TẤT CẢ {n} ảnh và tổng hợp thành 1 mô tả đầy đủ:\n'
-        '- Loại sản phẩm: nhận dạng từ hình ảnh (quần áo, mỹ phẩm, điện tử, thực phẩm, gia dụng...)\n'
-        '- Màu sắc & hình thức: màu sắc cụ thể, kích thước/form dáng, bao bì (nếu có)\n'
-        '- Chi tiết đặc trưng nổi bật: nhãn hiệu, logo, họa tiết, chất liệu, thiết kế đặc biệt\n'
-        '- Thông tin có thể thấy: số lượng, dung tích, model, nhãn sản phẩm, tình trạng\n'
-        '- Cảnh sử dụng (nếu có người/thú cưng/vật dùng trong ảnh): mô tả ngắn gọn\n'
-        'Chỉ mô tả những gì thực sự nhìn thấy. Không bịa đặt.'
-    )
     models = [
         'gemini-2.5-flash',
         'gemini-2.5-flash-lite-preview-06-17',
         'gemini-2.0-flash',
         'gemini-1.5-flash',
     ]
+    _up = _vision_user_prompt(len(images), product_name)
     for key in keys:
         for model in models:
             settings = {'apiKey': key, 'modelName': model, 'temperature': 0.2, 'maxTokens': 0}
             try:
-                return call_gemini(settings, system_prompt, user_prompt, images)
+                return call_gemini(settings, _VISION_SYSTEM, _up, images)
             except Exception as e:
                 err_s = str(e)
                 if '429' in err_s:
@@ -190,7 +204,7 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list, main_se
         raise ValueError('AI không trả về JSON hợp lệ')
 
     # ── Thử Gemini trước (rẻ hơn) ───────────────────────────────────────────
-    keys = [k for k in _parse_gemini_keys(gemini_api_keys) if k.startswith('AIza')]
+    keys = [k for k in _parse_gemini_keys(gemini_api_keys) if k]
     if keys:
         gemini_models = [
             'gemini-2.5-flash',
@@ -205,7 +219,10 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list, main_se
                         {'apiKey': key, 'modelName': model, 'temperature': 0.1, 'maxTokens': 0},
                         system_prompt, user_prompt, images
                     )
-                    return _parse_json(raw)
+                    try:
+                        return _parse_json(raw)
+                    except ValueError:
+                        continue  # AI trả text không phải JSON → thử model tiếp
                 except Exception as e:
                     err_s = str(e)
                     if '429' in err_s:
@@ -224,7 +241,7 @@ def scan_product_from_screenshot(gemini_api_keys, image_data_urls: list, main_se
         if provider == 'gemini':
             if not api_key:
                 api_key = api_keys.get('gemini', '')
-            if api_key and api_key.startswith('AIza'):
+            if api_key:
                 raw = call_gemini(
                     {'apiKey': api_key, 'modelName': model_name or 'gemini-2.5-flash', 'temperature': 0.1, 'maxTokens': 0},
                     system_prompt, user_prompt, images

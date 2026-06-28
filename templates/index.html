@@ -76,14 +76,17 @@
       <div class="w-16 h-16 rounded-full border-4 border-purple-100 border-t-purple-500 spin"></div>
       <div class="absolute inset-0 flex items-center justify-center text-xl">✨</div>
     </div>
-    <div class="text-center">
-      <p class="font-semibold text-gray-800">Đang tạo kịch bản...</p>
-      <p class="text-sm text-gray-500 mt-1">AI đang phân tích và viết kịch bản</p>
-    </div>
-    <div class="flex gap-1">
-      <div class="w-2 h-2 rounded-full bg-purple-400" style="animation: bounce 0.6s infinite 0s"></div>
-      <div class="w-2 h-2 rounded-full bg-purple-400" style="animation: bounce 0.6s infinite 0.15s"></div>
-      <div class="w-2 h-2 rounded-full bg-purple-400" style="animation: bounce 0.6s infinite 0.3s"></div>
+    <div class="min-w-[220px] space-y-3 pt-1">
+      <template x-for="(step, i) in generateSteps" :key="i">
+        <div class="flex items-center gap-3">
+          <div class="w-5 h-5 flex items-center justify-center flex-shrink-0">
+            <svg x-show="i+1 < generateStep" class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+            <div x-show="i+1 === generateStep" class="w-4 h-4 rounded-full border-2 border-purple-300 border-t-purple-600 spin"></div>
+            <div x-show="i+1 > generateStep" class="w-3.5 h-3.5 rounded-full border-2 border-gray-300"></div>
+          </div>
+          <span :class="i+1===generateStep ? 'text-gray-800 font-semibold' : 'text-gray-400'" class="text-sm" x-text="step.label"></span>
+        </div>
+      </template>
     </div>
   </div>
 </div>
@@ -352,29 +355,40 @@
                 <option value="both">🎬🤖 Quay thật &amp; AI</option>
               </select>
             </div>
+            <div x-show="form.productionMode !== 'ai'">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Cách đặt điện thoại</label>
+              <select x-model="form.phoneSetup" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                <option value="tripod">📱 Tripod / kẹp cố định — 2 tay rảnh</option>
+                <option value="selfie">🤳 Tự cầm điện thoại — 1 tay rảnh</option>
+                <option value="crew">🎥 Có người quay cho — 2 tay rảnh, camera di chuyển</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Ngành hàng</label>
+              <select x-model="form.industry" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                <option value="auto">🔍 Tự động nhận diện</option>
+                <option value="fashion">👗 Thời trang</option>
+                <option value="beauty">💄 Mỹ phẩm &amp; Skincare</option>
+                <option value="electronics">📱 Điện tử &amp; Công nghệ</option>
+                <option value="home">🏠 Gia dụng</option>
+                <option value="food">🍜 Thực phẩm &amp; Đồ uống</option>
+                <option value="pet">🐾 Thú cưng</option>
+                <option value="baby">👶 Mẹ &amp; Bé</option>
+                <option value="other">📦 Ngành hàng khác</option>
+              </select>
+            </div>
           </div>
-        </div>
-
-        <div class="px-4 pb-4 pt-3">
-          <label class="block text-xs font-semibold text-gray-600 mb-1">Ngành hàng</label>
-          <select x-model="form.industry" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
-            <option value="auto">🔍 Tự động nhận diện</option>
-            <option value="fashion">👗 Thời trang</option>
-            <option value="beauty">💄 Mỹ phẩm &amp; Skincare</option>
-            <option value="electronics">📱 Điện tử &amp; Công nghệ</option>
-            <option value="home">🏠 Gia dụng</option>
-            <option value="food">🍜 Thực phẩm &amp; Đồ uống</option>
-            <option value="pet">🐾 Thú cưng</option>
-            <option value="baby">👶 Mẹ &amp; Bé</option>
-            <option value="other">📦 Ngành hàng khác</option>
-          </select>
         </div>
       </div>
 
-      <button @click="generateScript()" :disabled="isGenerating"
+      <button @click="generateScript()" :disabled="isGenerating || !!regeneratingSection"
         class="w-full gradient-btn text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 text-base transition-all disabled:opacity-60">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 9-14 9V3z"/></svg>
         Tạo kịch bản AI
+        <span x-show="findCandidateLibraryEntries(form.productName, form.productDescription, form.industry).length > 0"
+          class="bg-white/25 text-xs px-2 py-0.5 rounded-full font-normal"
+          x-text="'📚 ' + findCandidateLibraryEntries(form.productName, form.productDescription, form.industry).length + ' mẫu'">
+        </span>
       </button>
     </div>
 
@@ -383,11 +397,11 @@
 
       <!-- Action bar -->
       <div class="flex flex-wrap items-center gap-2 bg-white border rounded-xl p-3 mb-4 shadow-sm">
-        <button @click="generateScript()" class="gradient-btn text-white text-sm px-4 py-2 rounded-lg flex items-center gap-1.5">
+        <button @click="generateScript()" :disabled="isGenerating || !!regeneratingSection" class="gradient-btn text-white text-sm px-4 py-2 rounded-lg flex items-center gap-1.5 disabled:opacity-60">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
           Tạo lại
         </button>
-        <button @click="currentScript=null; generateError=null" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50">
+        <button @click="currentScript=null; generateError=null; regeneratingSection=null; sectionError=null; sectionUndoData=null; selectedHookIndex=null; visualPromptResult=null; visualError=null; isGeneratingVisual=false; imageAnalysisStatus=null; showQuickAddLibrary=false; showVideoOptions=false" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50">
           Kịch bản mới
         </button>
         <button @click="copyFullScript()" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
@@ -448,7 +462,6 @@
         <div class="flex items-center gap-2">
           <select x-model="libraryForm.type" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
             <option value="hook">Hook ngắn</option>
-            <option value="script">Kịch bản đầy đủ</option>
             <option value="transcript">Transcript video viral</option>
           </select>
           <button @click="saveLibraryEntry(); showQuickAddLibrary=false"
@@ -554,10 +567,27 @@
               <option value="both">🎬🤖 Kết hợp</option>
             </select>
           </div>
+          <div x-show="form.productionMode !== 'ai'">
+            <label class="block text-xs font-medium text-gray-600 mb-1">Đặt điện thoại</label>
+            <select x-model="form.phoneSetup" @change="saveFormOptions()" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+              <option value="tripod">📱 Tripod / kẹp</option>
+              <option value="selfie">🤳 Tự cầm (1 tay rảnh)</option>
+              <option value="crew">🎥 Có người quay</option>
+            </select>
+          </div>
         </div>
         <div class="mt-2">
           <label class="block text-xs font-medium text-gray-600 mb-1">Đối tượng khách hàng</label>
           <input x-model="form.targetAudience" @change="saveFormOptions()" type="text" placeholder="VD: Mẹ bầu 5-8 tháng... (để trống AI tự suy luận)" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+        </div>
+      </div>
+
+      <!-- Undo banner -->
+      <div x-show="sectionUndoData" x-transition class="mb-3 bg-purple-50 border border-purple-200 rounded-lg px-4 py-2.5 flex items-center justify-between gap-3 text-sm">
+        <span class="text-purple-700">Đã tạo lại xong.</span>
+        <div class="flex items-center gap-2">
+          <button @click="undoRegenerate()" class="text-xs font-semibold text-purple-700 bg-purple-100 hover:bg-purple-200 px-3 py-1.5 rounded-lg transition-colors">↩ Hoàn tác</button>
+          <button @click="sectionUndoData=null" class="text-gray-400 hover:text-gray-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
         </div>
       </div>
 
@@ -574,14 +604,14 @@
             <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             <span class="font-semibold text-sm">1. Hook gợi ý</span>
           </div>
-          <button @click="regenerateSection('hooks')" :disabled="!!regeneratingSection" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+          <button @click="regenerateSection('hooks')" :disabled="!!regeneratingSection || isGenerating" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
             <svg x-show="regeneratingSection==='hooks'" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
             <svg x-show="regeneratingSection!=='hooks'" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             Tạo lại
           </button>
         </div>
         <div class="p-4 space-y-3">
-          <template x-for="(hook, i) in currentScript.section3.hooks" :key="i">
+          <template x-for="(hook, i) in (currentScript.section3?.hooks || [])" :key="i">
             <div @click="selectHook(i)"
                  :class="{
                    'border-green-500 bg-green-50 ring-2 ring-green-200': selectedHookIndex === i,
@@ -617,7 +647,7 @@
             <span class="font-semibold text-sm">2. Kịch bản chính</span>
           </div>
           <div class="flex items-center gap-2">
-            <button @click="regenerateSection('script')" :disabled="!!regeneratingSection" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            <button @click="regenerateSection('script')" :disabled="!!regeneratingSection || isGenerating" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
               <svg x-show="regeneratingSection==='script'" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
               <svg x-show="regeneratingSection!=='script'" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
               Tạo lại
@@ -627,8 +657,8 @@
         </div>
         <div class="p-4">
           <div class="flex flex-wrap gap-2 mb-4">
-            <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full" x-text="`⏱ ${currentScript.section4.duration}`"></span>
-            <span class="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full max-w-xs truncate" x-text="`Hook: ${currentScript.section4.hook}`"></span>
+            <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full" x-text="`⏱ ${currentScript?.section4?.duration}`"></span>
+            <span class="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full max-w-xs truncate" x-text="`Hook: ${currentScript?.section4?.hook}`"></span>
           </div>
           <!-- Voice Over mode: ElevenLabs script + hành động on-camera -->
           <template x-if="currentScript.section4.voScript">
@@ -645,20 +675,18 @@
                 <pre class="text-sm text-gray-100 whitespace-pre-wrap leading-relaxed font-mono" x-text="currentScript.section4.voScript"></pre>
               </div>
               <!-- Track hình: hành động on-camera đồng bộ -->
-              <template x-if="currentScript.section4.lines && currentScript.section4.lines.length > 0">
-                <div class="bg-blue-950 rounded-xl p-4">
-                  <div class="flex items-center gap-2 mb-3">
-                    <span class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full font-medium">📹 Track hình — Hành động on-camera</span>
-                    <span class="text-xs text-blue-400">Đồng bộ theo từng câu trong voScript</span>
+              <template x-if="currentScript.section4.lines && currentScript.section4.lines.filter(l=>l.type==='action').length > 0">
+                <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">📹 Hành động on-camera</span>
+                    <span class="text-xs text-gray-400">Đồng bộ theo từng câu trong voScript</span>
                   </div>
-                  <div class="space-y-1.5">
-                    <template x-for="(line, i) in currentScript.section4.lines" :key="i">
-                      <div class="flex gap-2 items-start">
-                        <span class="text-blue-400 text-xs font-mono shrink-0 mt-0.5" x-text="`${i+1}.`"></span>
-                        <p class="text-sm text-blue-200" x-text="line.text"></p>
-                      </div>
-                    </template>
-                  </div>
+                  <template x-for="(line, i) in (currentScript.section4?.lines || [])" :key="i">
+                    <div>
+                      <div x-show="line.type==='action'" class="action-badge" x-text="`(${line.text})`"></div>
+                      <p x-show="line.type==='dialogue'" class="dialogue-line pl-1" style="color:#1f2937" x-text="line.text"></p>
+                    </div>
+                  </template>
                 </div>
               </template>
             </div>
@@ -666,7 +694,7 @@
           <!-- Normal OneShot mode -->
           <template x-if="!currentScript.section4.voScript">
             <div class="bg-gray-50 rounded-xl p-4 space-y-3">
-              <template x-for="(line, i) in currentScript.section4.lines" :key="i">
+              <template x-for="(line, i) in (currentScript.section4?.lines || [])" :key="i">
                 <div>
                   <div x-show="line.type==='action'" class="action-badge" x-text="`(${line.text})`"></div>
                   <p x-show="line.type==='dialogue'" class="dialogue-line pl-1" style="color:#1f2937" x-text="line.text"></p>
@@ -684,10 +712,10 @@
             <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             <span class="font-semibold text-sm" x-text="currentScript.section4 && currentScript.section4.voScript ? '3. Timeline quay + lồng tiếng' : '3. Timeline quay'"></span>
           </div>
-          <button @click="copyText(currentScript.section5.timeline.map(p => p.voice ? `${p.timeRange}\n🎙 ${p.voice}\n📹 ${p.action||''}` : `${p.timeRange}: ${p.description||''}`).join('\n\n'))" class="border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50">Copy</button>
+          <button @click="copyText((currentScript.section5?.timeline||[]).map(p => p.voice ? `${p.timeRange}\n🎙 ${p.voice}\n📹 ${p.action||''}` : `${p.timeRange}: ${p.description||''}`).join('\n\n'))" class="border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50">Copy</button>
         </div>
         <div class="p-4 space-y-2">
-          <template x-for="(point, i) in currentScript.section5.timeline" :key="i">
+          <template x-for="(point, i) in (currentScript.section5?.timeline || [])" :key="i">
             <div class="rounded-lg border border-gray-100 overflow-hidden">
               <!-- Header: timestamp -->
               <div class="bg-gray-50 px-3 py-1.5 flex items-center gap-2">
@@ -725,14 +753,14 @@
             <svg class="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
             <span class="font-semibold text-sm">4. Caption TikTok</span>
           </div>
-          <button @click="regenerateSection('caption')" :disabled="!!regeneratingSection" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+          <button @click="regenerateSection('caption')" :disabled="!!regeneratingSection || isGenerating" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
             <svg x-show="regeneratingSection==='caption'" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
             <svg x-show="regeneratingSection!=='caption'" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             Tạo lại
           </button>
         </div>
         <div class="p-4 space-y-3">
-          <template x-for="(caption, i) in currentScript.section7.captions" :key="i">
+          <template x-for="(caption, i) in (currentScript.section7?.captions || [])" :key="i">
             <div class="bg-gray-50 border rounded-lg p-3 relative">
               <p class="text-[10px] font-semibold text-gray-400 uppercase mb-1" x-text="`Caption ${i+1}`"></p>
               <p class="text-sm text-gray-700 pr-8" x-text="caption"></p>
@@ -752,16 +780,16 @@
             <span class="font-semibold text-sm">5. Hashtag</span>
           </div>
           <div class="flex items-center gap-2">
-            <button @click="regenerateSection('hashtag')" :disabled="!!regeneratingSection" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+            <button @click="regenerateSection('hashtag')" :disabled="!!regeneratingSection || isGenerating" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
               <svg x-show="regeneratingSection==='hashtag'" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
               <svg x-show="regeneratingSection!=='hashtag'" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
               Tạo lại
             </button>
-            <button @click="copyText(currentScript.section8.hashtags.join(' '))" class="border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50">Copy</button>
+            <button @click="copyText((currentScript.section8?.hashtags || []).join(' '))" class="border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50">Copy</button>
           </div>
         </div>
         <div class="p-4 flex flex-wrap gap-1.5">
-          <template x-for="(tag, i) in currentScript.section8.hashtags" :key="i">
+          <template x-for="(tag, i) in (currentScript.section8?.hashtags || [])" :key="i">
             <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full" x-text="tag"></span>
           </template>
         </div>
@@ -790,7 +818,7 @@
             <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
             <span class="font-semibold text-sm">7. Phân tích nhanh</span>
           </div>
-          <button @click="regenerateSection('analysis')" :disabled="!!regeneratingSection" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+          <button @click="regenerateSection('analysis')" :disabled="!!regeneratingSection || isGenerating" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
             <svg x-show="regeneratingSection==='analysis'" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
             <svg x-show="regeneratingSection!=='analysis'" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             Tạo lại
@@ -820,12 +848,12 @@
               <p class="text-xs text-blue-600 mt-2" x-text="lastSentImages.length + ' ảnh đã được đính kèm vào prompt — AI nhìn thấy và dùng ảnh để viết kịch bản'"></p>
             </div>
           </template>
-          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Khách hàng mục tiêu</p><p class="text-sm text-gray-700" x-text="currentScript.section2.targetCustomer"></p></div>
-          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Pain point</p><p class="text-sm text-gray-700" x-text="currentScript.section2.painPoints"></p></div>
-          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Insight</p><p class="text-sm text-gray-700" x-text="currentScript.section2.insight"></p></div>
-          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Điểm nổi bật</p><p class="text-sm text-gray-700" x-text="currentScript.section2.highlights"></p></div>
-          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Lợi ích chính</p><p class="text-sm text-gray-700" x-text="currentScript.section2.mainBenefits"></p></div>
-          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Tình huống sử dụng</p><p class="text-sm text-gray-700" x-text="currentScript.section2.usageSituations"></p></div>
+          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Khách hàng mục tiêu</p><p class="text-sm text-gray-700" x-text="currentScript?.section2?.targetCustomer"></p></div>
+          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Pain point</p><p class="text-sm text-gray-700" x-text="currentScript?.section2?.painPoints"></p></div>
+          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Insight</p><p class="text-sm text-gray-700" x-text="currentScript?.section2?.insight"></p></div>
+          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Điểm nổi bật</p><p class="text-sm text-gray-700" x-text="currentScript?.section2?.highlights"></p></div>
+          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Lợi ích chính</p><p class="text-sm text-gray-700" x-text="currentScript?.section2?.mainBenefits"></p></div>
+          <div class="border rounded-lg p-3"><p class="text-xs font-semibold text-gray-400 uppercase mb-1">Tình huống sử dụng</p><p class="text-sm text-gray-700" x-text="currentScript?.section2?.usageSituations"></p></div>
         </div>
       </div>
 
@@ -836,7 +864,7 @@
             <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
             <span class="font-semibold text-sm">8. Lưu ý khi quay</span>
           </div>
-          <button @click="regenerateSection('tips')" :disabled="!!regeneratingSection" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+          <button @click="regenerateSection('tips')" :disabled="!!regeneratingSection || isGenerating" class="inline-flex items-center gap-1.5 border text-xs px-3 py-1.5 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
             <svg x-show="regeneratingSection==='tips'" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
             <svg x-show="regeneratingSection!=='tips'" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             Tạo lại
@@ -844,7 +872,7 @@
         </div>
         <div class="p-4">
           <ul class="space-y-2">
-            <template x-for="(tip, i) in currentScript.section9.tips" :key="i">
+            <template x-for="(tip, i) in (currentScript.section9?.tips || [])" :key="i">
               <li class="flex items-start gap-2 text-sm text-gray-700">
                 <span class="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0"></span>
                 <span x-text="tip"></span>
@@ -861,7 +889,7 @@
             <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
             <span class="font-semibold text-sm text-purple-700">AI Visual Prompt <span class="text-xs font-normal text-purple-400">(Freepik Seedream + Seedance)</span></span>
           </div>
-          <button @click="generateVisualPrompt()" :disabled="isGeneratingVisual"
+          <button @click="generateVisualPrompt()" :disabled="isGeneratingVisual || isGenerating || !!regeneratingSection || !currentScript"
             class="inline-flex items-center gap-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-xs px-4 py-1.5 rounded-lg transition-colors">
             <svg x-show="isGeneratingVisual" class="animate-spin w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
             <svg x-show="!isGeneratingVisual" class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3l14 9-14 9V3z"/></svg>
@@ -1001,18 +1029,25 @@
       <button x-show="history.length>0" @click="confirmClearHistory()" class="text-sm text-red-500 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50">Xóa tất cả</button>
     </div>
 
-    <div class="mb-4">
+    <div class="mb-4 relative">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
       <input x-model="historySearch" type="text" placeholder="Tìm kiếm theo tên sản phẩm, provider..."
-        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 pl-9 relative">
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 pl-9">
     </div>
 
-    <!-- Empty state -->
+    <!-- Empty state (no history) -->
     <div x-show="history.length===0" class="text-center py-20">
       <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
         <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       </div>
       <h3 class="font-semibold text-gray-700">Chưa có kịch bản nào</h3>
       <p class="text-sm text-gray-400 mt-1">Kịch bản sẽ xuất hiện ở đây sau khi bạn generate</p>
+    </div>
+
+    <!-- No results state -->
+    <div x-show="history.length > 0 && filteredHistory().length === 0" class="text-center py-10 text-gray-400 text-sm">
+      Không tìm thấy kịch bản nào khớp.
+      <button @click="historySearch=''" class="text-purple-600 hover:underline ml-1">Xóa tìm kiếm</button>
     </div>
 
     <!-- History list -->
@@ -1061,7 +1096,7 @@
     </div>
 
     <!-- History detail modal -->
-    <div x-show="selectedHistoryItem" class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" @click.self="selectedHistoryItem=null">
+    <div x-show="selectedHistoryItem" class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" @click.self="selectedHistoryItem=null" @keydown.escape.window="selectedHistoryItem=null">
       <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
         <div class="p-4 border-b flex items-center gap-3">
           <img x-show="selectedHistoryItem?.thumbnail" :src="selectedHistoryItem?.thumbnail" class="w-14 h-14 rounded-xl object-cover shrink-0 border border-gray-100">
@@ -1094,7 +1129,7 @@
           </div>
         </div>
         <div class="p-4 border-t flex items-center gap-2">
-          <button @click="loadHistoryItem(selectedHistoryItem)" class="gradient-btn text-white text-sm px-4 py-2 rounded-lg flex items-center gap-1.5">
+          <button @click="loadHistoryItem(selectedHistoryItem)" :disabled="isGenerating || !!regeneratingSection || isGeneratingVisual" class="gradient-btn text-white text-sm px-4 py-2 rounded-lg flex items-center gap-1.5 disabled:opacity-60">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
             Mở kịch bản
           </button>
@@ -1144,7 +1179,6 @@
           <label class="text-xs text-gray-500 mb-0.5 block">Loại</label>
           <select x-model="libraryForm.type" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
             <option value="hook">Hook ngắn</option>
-            <option value="script">Kịch bản đầy đủ</option>
             <option value="transcript">Transcript video viral</option>
           </select>
         </div>
@@ -1182,12 +1216,24 @@
       <input x-model="librarySearch" type="text" placeholder="Tìm theo nội dung, ngành, sản phẩm..."
         class="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
       <!-- Type filter chips -->
-      <div class="flex gap-1">
+      <div class="flex gap-1 flex-wrap">
         <button @click="libraryTypeFilter='all'" class="text-xs px-3 py-1.5 rounded-lg border transition-colors" :class="libraryTypeFilter==='all' ? 'bg-purple-600 text-white border-purple-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50'">Tất cả</button>
         <button @click="libraryTypeFilter='hook'" class="text-xs px-3 py-1.5 rounded-lg border transition-colors" :class="libraryTypeFilter==='hook' ? 'bg-purple-600 text-white border-purple-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50'">Hook</button>
-        <button @click="libraryTypeFilter='script'" class="text-xs px-3 py-1.5 rounded-lg border transition-colors" :class="libraryTypeFilter==='script' ? 'bg-purple-600 text-white border-purple-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50'">Kịch bản</button>
         <button @click="libraryTypeFilter='transcript'" class="text-xs px-3 py-1.5 rounded-lg border transition-colors" :class="libraryTypeFilter==='transcript' ? 'bg-purple-600 text-white border-purple-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50'">Transcript</button>
       </div>
+      <!-- Industry filter -->
+      <select x-model="libraryIndustryFilter" class="border border-gray-200 rounded-lg px-2 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-400 bg-white">
+        <option value="all">🏷 Tất cả ngành</option>
+        <option value="auto">🔍 Tổng hợp</option>
+        <option value="fashion">👗 Thời trang</option>
+        <option value="beauty">💄 Mỹ phẩm</option>
+        <option value="electronics">📱 Điện tử</option>
+        <option value="home">🏠 Gia dụng</option>
+        <option value="food">🍜 Thực phẩm</option>
+        <option value="pet">🐾 Thú cưng</option>
+        <option value="baby">👶 Mẹ &amp; Bé</option>
+        <option value="other">📦 Ngành khác</option>
+      </select>
     </div>
 
     <!-- Empty state (no entries at all) -->
@@ -1202,7 +1248,7 @@
     <!-- Empty state (filter no results) -->
     <div x-show="referenceLibrary.length > 0 && filteredLibrary().length === 0" class="text-center py-10 text-gray-400 text-sm">
       Không tìm thấy mẫu nào khớp với bộ lọc.
-      <button @click="librarySearch=''; libraryTypeFilter='all'" class="text-purple-600 hover:underline ml-1">Xóa bộ lọc</button>
+      <button @click="librarySearch=''; libraryTypeFilter='all'; libraryIndustryFilter='all'" class="text-purple-600 hover:underline ml-1">Xóa bộ lọc</button>
     </div>
 
     <!-- List mẫu -->
@@ -1215,7 +1261,7 @@
                 <!-- Badges -->
                 <div class="flex flex-wrap gap-1.5 mb-2">
                   <span class="bg-purple-50 text-purple-700 text-[11px] px-2 py-0.5 rounded-full font-medium"
-                    x-text="entry.type === 'hook' ? 'Hook ngắn' : entry.type === 'script' ? 'Kịch bản đầy đủ' : 'Transcript viral'"></span>
+                    x-text="entry.type === 'hook' ? 'Hook ngắn' : 'Transcript viral'"></span>
                   <span class="bg-blue-50 text-blue-600 text-[11px] px-2 py-0.5 rounded-full" x-text="industryLabel(entry.industry)"></span>
                   <span x-show="entry.productTag" class="bg-amber-50 text-amber-700 text-[11px] px-2 py-0.5 rounded-full" x-text="entry.productTag"></span>
                 </div>
@@ -1337,7 +1383,7 @@
             <label class="text-sm font-medium text-gray-700">Temperature (Độ sáng tạo)</label>
             <span class="text-sm text-gray-500 font-mono" x-text="settings.temperature.toFixed(1)"></span>
           </div>
-          <input type="range" min="0" max="2" step="0.1" x-model="settings.temperature" @change="saveSettings(true)" class="w-full accent-purple-600">
+          <input type="range" min="0" max="2" step="0.1" x-model.number="settings.temperature" @change="saveSettings(true)" class="w-full accent-purple-600">
           <div class="flex justify-between text-xs text-gray-400 mt-0.5">
             <span>Chính xác (0)</span><span>Cân bằng (1)</span><span>Sáng tạo (2)</span>
           </div>
@@ -1595,8 +1641,9 @@ function bellaApp() {
       duration: '30s', durationCustom: '', tone: 'natural-koc', toneCustom: '',
       videoGoal: 'increase-conversion',
       industry: 'auto',
-      subjectMode: 'auto',
+      subjectMode: 'face',
       productionMode: 'real',
+      phoneSetup: 'tripod',
     },
     formErrors: {},
     isDragging: false,
@@ -1605,9 +1652,12 @@ function bellaApp() {
     // State
     isGenerating: false,
     generateError: null,
+    generateStep: 0,
+    generateSteps: [],
     currentScript: null,
     regeneratingSection: null,
     sectionError: null,
+    sectionUndoData: null,
     selectedHookIndex: null,
     lastImageAnalysis: '',
     lastSentImages: [],
@@ -1658,6 +1708,7 @@ function bellaApp() {
     referenceLibrary: [],
     librarySearch: '',
     libraryTypeFilter: 'all',
+    libraryIndustryFilter: 'all',
     expandedLibraryId: null,
     showLibraryForm: true,
     libraryForm: { type: 'hook', industry: 'auto', productTag: '', content: '', note: '' },
@@ -1691,13 +1742,13 @@ function bellaApp() {
     loadFormOptions() {
       try {
         const fo = JSON.parse(localStorage.getItem('bella_form_options') || '{}');
-        const fields = ['targetAudience', 'shootingStyle', 'shootingStyleCustom', 'duration', 'durationCustom', 'tone', 'toneCustom', 'videoGoal', 'industry', 'subjectMode', 'productionMode'];
+        const fields = ['targetAudience', 'shootingStyle', 'shootingStyleCustom', 'duration', 'durationCustom', 'tone', 'toneCustom', 'videoGoal', 'industry', 'subjectMode', 'productionMode', 'phoneSetup'];
         fields.forEach(k => { if (fo[k] !== undefined) this.form[k] = fo[k]; });
       } catch {}
     },
     saveFormOptions() {
-      const { targetAudience, shootingStyle, shootingStyleCustom, duration, durationCustom, tone, toneCustom, videoGoal, industry, subjectMode, productionMode } = this.form;
-      localStorage.setItem('bella_form_options', JSON.stringify({ targetAudience, shootingStyle, shootingStyleCustom, duration, durationCustom, tone, toneCustom, videoGoal, industry, subjectMode, productionMode }));
+      const { targetAudience, shootingStyle, shootingStyleCustom, duration, durationCustom, tone, toneCustom, videoGoal, industry, subjectMode, productionMode, phoneSetup } = this.form;
+      localStorage.setItem('bella_form_options', JSON.stringify({ targetAudience, shootingStyle, shootingStyleCustom, duration, durationCustom, tone, toneCustom, videoGoal, industry, subjectMode, productionMode, phoneSetup }));
     },
 
     // ---- SETTINGS ----
@@ -1918,7 +1969,9 @@ function bellaApp() {
         }
         const reader = new FileReader();
         reader.onload = (ev) => {
-          this.form.images.push({id: Date.now() + Math.random(), name: file.name, size: file.size, type: file.type, dataUrl: ev.target.result});
+          if (this.form.images.length < 5) {
+            this.form.images.push({id: Date.now() + Math.random(), name: file.name, size: file.size, type: file.type, dataUrl: ev.target.result});
+          }
         };
         reader.readAsDataURL(file);
       }
@@ -1942,7 +1995,21 @@ function bellaApp() {
       this.imageAnalysisStatus = null;
       this.visualPromptResult = null;
       this.visualError = null;
-      this.selectedHistoryItem = null;    // tránh dữ liệu cũ từ History modal "dính" lại
+      this.isGeneratingVisual = false;
+      this.selectedHistoryItem = null;
+      // Build progress steps
+      const _hasImgs = this.form.images.length > 0;
+      const _candidates = this.findCandidateLibraryEntries(this.form.productName, this.form.productDescription, this.form.industry);
+      const _steps = [];
+      if (_hasImgs) _steps.push({label: 'Phân tích ảnh sản phẩm'});
+      if (_candidates.length > 0) _steps.push({label: 'Chọn mẫu tham khảo'});
+      _steps.push({label: 'Viết kịch bản'});
+      this.generateSteps = _steps;
+      this.generateStep = 1;
+      const _timers = [];
+      if (_steps.length >= 2) _timers.push(setTimeout(() => { if (this.isGenerating) this.generateStep = 2; }, 5000));
+      if (_steps.length >= 3) _timers.push(setTimeout(() => { if (this.isGenerating) this.generateStep = 3; }, 10000));
+      let _visionSkipped = false;
       try {
         const res = await fetch('/api/generate', {
           method: 'POST',
@@ -1954,21 +2021,20 @@ function bellaApp() {
             settings: {...this.settings, apiKey: this.settings.apiKeys[this.settings.provider] || ''},
             promptSettings: this.promptSettings,
             input: this.form,
-            referenceLibraryCandidates: this.findCandidateLibraryEntries(this.form.productName, this.form.productDescription, this.form.industry)
+            referenceLibraryCandidates: _candidates
           })
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'Lỗi không xác định');
-        this.currentScript = data.script;
+        this.currentScript = this.applyTimelineToActions(data.script);
         this.lastImageAnalysis = data.imageAnalysis || '';
         this.imageAnalysisStatus = data.imageAnalysisStatus || null;
         this.lastSentImages = (data.imageAnalysisStatus === 'same_ai') ? [...this.form.images] : [];
-        // Auto-chọn hook khuyên dùng
+        _visionSkipped = _hasImgs && this.imageAnalysisStatus === 'skipped';
         const _hooks = data.script?.section3?.hooks || [];
         const _recIdx = _hooks.findIndex(h => h.isRecommended);
         this.selectedHookIndex = _recIdx >= 0 ? _recIdx : 0;
         if (this.settings.autoSave) this.saveToHistory();
-        // Cảnh báo nếu kịch bản chính bị rỗng (AI bị cắt token)
         const s4 = data.script?.section4;
         const hasContent = s4?.voScript || s4?.lines?.length;
         if (!hasContent) {
@@ -1977,14 +2043,20 @@ function bellaApp() {
       } catch (e) {
         this.generateError = e.message;
       } finally {
+        _timers.forEach(t => clearTimeout(t));
         this.isGenerating = false;
+        this.generateStep = 0;
+        this.generateSteps = [];
       }
+      if (_visionSkipped) this.showToast('Ảnh không được phân tích — AI viết từ mô tả text', 'info');
     },
 
     async regenerateSection(section) {
-      if (this.regeneratingSection) return;
+      if (this.regeneratingSection || !this.currentScript) return;
       this.regeneratingSection = section;
       this.sectionError = null;
+      this.sectionUndoData = null;
+      const _prevScript = JSON.parse(JSON.stringify(this.currentScript));
       try {
         const _selHookText = (section === 'script' && this.selectedHookIndex !== null)
           ? (this.currentScript?.section3?.hooks?.[this.selectedHookIndex]?.text || '')
@@ -2007,15 +2079,17 @@ function bellaApp() {
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'Lỗi không xác định');
-        // Merge các section trả về vào currentScript hiện tại
         this.currentScript = {...this.currentScript, ...data.data};
-        // Sau khi tạo lại hooks → reset về hook khuyên dùng
+        if (section === 'script') this.currentScript = this.applyTimelineToActions(this.currentScript);
         if (section === 'hooks') {
           const _hs = this.currentScript?.section3?.hooks || [];
           const _ri = _hs.findIndex(h => h.isRecommended);
           this.selectedHookIndex = _ri >= 0 ? _ri : 0;
         }
         if (this.settings.autoSave) this.saveToHistory();
+        if (this._undoTimer) clearTimeout(this._undoTimer);
+        this.sectionUndoData = {section, prevScript: _prevScript};
+        this._undoTimer = setTimeout(() => { this.sectionUndoData = null; }, 12000);
       } catch(e) {
         this.sectionError = e.message;
         setTimeout(() => this.sectionError = null, 6000);
@@ -2024,8 +2098,42 @@ function bellaApp() {
       }
     },
 
+    undoRegenerate() {
+      if (!this.sectionUndoData) return;
+      this.currentScript = this.sectionUndoData.prevScript;
+      if (this.settings.autoSave) this.saveToHistory();
+      if (this._undoTimer) clearTimeout(this._undoTimer);
+      this.sectionUndoData = null;
+      this.showToast('Đã hoàn tác', 'info');
+    },
+
+    applyTimelineToActions(script) {
+      const lines = script?.section4?.lines;
+      const timeline = script?.section5?.timeline;
+      if (!Array.isArray(lines) || !Array.isArray(timeline) || timeline.length === 0) return script;
+      const dialogueLines = lines.filter(l => l.type === 'dialogue');
+      if (dialogueLines.length === 0) return script;
+      const newLines = [];
+      let dIdx = 0;
+      for (const line of lines) {
+        if (line.type === 'action') continue;
+        if (line.type === 'dialogue') {
+          const tIdx = Math.min(Math.floor(dIdx * timeline.length / dialogueLines.length), timeline.length - 1);
+          const entry = timeline[tIdx];
+          const actionText = entry.action || entry.description || '';
+          if (actionText) newLines.push({ type: 'action', text: actionText });
+          newLines.push(line);
+          dIdx++;
+        } else {
+          newLines.push(line);
+        }
+      }
+      script.section4.lines = newLines;
+      return script;
+    },
+
     selectHook(i) {
-      if (this.regeneratingSection) return;
+      if (this.isGenerating || this.regeneratingSection) return;
       if (this.selectedHookIndex === i) return;
       this.selectedHookIndex = i;
       this.regenerateSection('script');
@@ -2288,6 +2396,10 @@ function bellaApp() {
       this.visualError = null;
       // Đóng quick-add panel nếu đang mở
       this.showQuickAddLibrary = false;
+      // Reset section regenerate state (tránh disabled vĩnh viễn hoặc banner lỗi cũ)
+      this.regeneratingSection = null;
+      this.sectionError = null;
+      this.sectionUndoData = null;
       // Reset hook selection về hook khuyên dùng của kịch bản này
       const _hs = item.script?.section3?.hooks || [];
       const _ri = _hs.findIndex(h => h.isRecommended);
@@ -2315,7 +2427,9 @@ function bellaApp() {
     // V8.1: mở panel thêm nhanh mẫu ngay trên tab Generate — tự gợi ý ngành/sản phẩm hiện tại
     toggleQuickAddLibrary() {
       this.showQuickAddLibrary = !this.showQuickAddLibrary;
-      if (this.showQuickAddLibrary && !this.editingLibraryId) {
+      if (this.showQuickAddLibrary) {
+        // Quick Add luôn là thêm mới — reset editingLibraryId để không ghi đè mẫu cũ
+        this.editingLibraryId = null;
         this.libraryForm = { type: 'hook', industry: this.form.industry || 'auto', productTag: this.form.productName || '', content: '', note: '' };
       }
     },
@@ -2357,11 +2471,13 @@ function bellaApp() {
     filteredLibrary() {
       let list = this.referenceLibrary;
       if (this.libraryTypeFilter !== 'all') list = list.filter(e => e.type === this.libraryTypeFilter);
+      if (this.libraryIndustryFilter !== 'all') list = list.filter(e => e.industry === this.libraryIndustryFilter);
       const q = this.librarySearch.toLowerCase().trim();
       if (q) list = list.filter(e =>
         (e.content || '').toLowerCase().includes(q) ||
         (e.productTag || '').toLowerCase().includes(q) ||
-        (e.industry || '').toLowerCase().includes(q)
+        (e.industry || '').toLowerCase().includes(q) ||
+        (e.note || '').toLowerCase().includes(q)
       );
       return list;
     },
@@ -2387,13 +2503,20 @@ function bellaApp() {
         .map(s => s.entry);
       return candidates.map(e => ({ type: e.type, industry: e.industry, productTag: e.productTag, content: e.content }));
     },
-    exportLibrary() {
-      const blob = new Blob([JSON.stringify(this.referenceLibrary, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'bella_thu_vien_mau.json';
-      a.click();
-      URL.revokeObjectURL(url);
+    async exportLibrary() {
+      try {
+        const res = await fetch('/api/save-file', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ content: JSON.stringify(this.referenceLibrary, null, 2), filename: 'bella_thu_vien_mau.json' })
+        });
+        const data = await res.json();
+        if (data.cancelled) return;
+        if (!data.success) { this.showToast('Lỗi lưu file: ' + (data.error || ''), 'error'); return; }
+        this.showToast('Đã lưu: ' + data.path, 'success');
+      } catch(e) {
+        this.showToast('Lỗi export: ' + e.message, 'error');
+      }
     },
     importLibrary(e) {
       const file = e.target.files?.[0];
