@@ -944,6 +944,18 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
     return "\n".join(lines)
 
 
+def _build_custom_req_block(custom_req: str) -> list:
+    req = (custom_req or '').strip()
+    if not req:
+        return []
+    return [
+        "## YÊU CẦU TÙY CHỈNH — BẮT BUỘC TUÂN THEO",
+        req,
+        "QUAN TRỌNG: Trước khi xuất JSON, kiểm tra TỪNG yêu cầu trên. Nếu chưa đáp ứng → sửa lại ngay.",
+        "",
+    ]
+
+
 def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = '') -> str:
     shooting = input_data.get('shootingStyle', 'one-shot')
 
@@ -1097,6 +1109,7 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         "",
         "---",
         "",
+        *_build_custom_req_block(input_data.get('customRequirement', '')),
         "## PRE-WRITE PROTOCOL — làm TRƯỚC khi viết kịch bản",
         *(["0. Xác định NGÀNH HÀNG từ tên + mô tả sản phẩm (Thời trang / Mỹ phẩm / Điện tử / Gia dụng / Thực phẩm / Thú cưng / Mẹ&Bé / Khác) → dùng để chọn action phù hợp ở bước 3."]
           if _is_auto_industry else [f"0. Ngành hàng: {industry_label} — áp dụng action phù hợp ngành này ở bước 3."]),
@@ -1274,6 +1287,12 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
     if audience:
         base += f"\nĐối tượng: {audience}"
 
+    _custom_req_sec = (input_data.get('customRequirement') or '').strip()
+    _custom_req_note = (
+        f"\n## YÊU CẦU TÙY CHỈNH — BẮT BUỘC\n{_custom_req_sec}\n"
+        "QUAN TRỌNG: Kiểm tra từng yêu cầu này trước khi output JSON. Nếu chưa đáp ứng → sửa lại ngay.\n"
+    ) if _custom_req_sec else ''
+
     shooting_guide = SHOOTING_GUIDE.get(shooting, '')
     tone_guide = TONE_GUIDE.get(tone, '')
     goal_guide = GOAL_GUIDE.get(input_data.get('videoGoal', ''), '')
@@ -1326,7 +1345,7 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
             ) if tone == 'tiktok-nhay' else ''
             hook_instruction = f' Câu đầu tiên PHẢI là hook đã cho, không được thay đổi: "{selected_hook}"' if selected_hook else ''
             user = f"""{base}{analysis_block}
-{context_line}{hook_line}{hero_line}
+{context_line}{hook_line}{hero_line}{_custom_req_note}
 
 Persona: {persona_guide}
 
@@ -1391,7 +1410,7 @@ TỰ KIỂM TRA KOC: Lời thoại có giống người thật đang trải nghi
             else:
                 _koc_block = ""
             user = f"""{base}{analysis_block}
-{context_line}{hook_line}{hero_line}
+{context_line}{hook_line}{hero_line}{_custom_req_note}
 
 ENGINE 1 — CẤU TRÚC LẦN NÀY: {_pattern['name']}
 Flow: {_pattern['flow']}
@@ -1438,7 +1457,7 @@ Tạo kịch bản mới và timeline quay tương ứng. Lời thoại tự nhi
             persona_guide = VO_PERSONA_GUIDE.get(tone, 'Nói tự nhiên như người thật.')
             user = f"""{base}
 {analysis}
-{context_line}
+{context_line}{_custom_req_note}
 
 Persona: {persona_guide}
 
@@ -1459,7 +1478,7 @@ Quy tắc hook Voice Over:
         else:
             user = f"""{base}
 {analysis}
-{context_line}
+{context_line}{_custom_req_note}
 
 Tạo 3 hook mở đầu khác nhau, hook đầu tiên là hook khuyên dùng.
 

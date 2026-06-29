@@ -420,6 +420,14 @@
           <svg class="w-3.5 h-3.5 transition-transform duration-200" :class="showVideoOptions ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
           Tùy chọn
         </button>
+        <!-- Yêu cầu tùy chỉnh -->
+        <button @click="showCustomReq=!showCustomReq"
+          class="border text-sm px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors"
+          :class="form.customRequirement.trim() ? 'bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100' : (showCustomReq ? 'bg-gray-100 text-gray-800 border-gray-300' : 'text-gray-600 hover:bg-gray-50')"
+          title="Nhập yêu cầu tùy chỉnh cho hook/kịch bản">
+          ✏️ Yêu cầu
+          <span x-show="form.customRequirement.trim()" class="w-2 h-2 rounded-full bg-orange-400 inline-block"></span>
+        </button>
         <!-- Image analysis status badge -->
         <template x-if="(imageAnalysisStatus === 'gemini' || imageAnalysisStatus === 'openai') && lastImageAnalysis">
           <button @click="document.getElementById('image-analysis-card')?.scrollIntoView({behavior:'smooth', block:'center'})"
@@ -446,6 +454,26 @@
           <button @click="downloadScript('md')" class="border text-xs px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">MD</button>
           <button @click="downloadScript('json')" class="border text-xs px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50">JSON</button>
         </div>
+      </div>
+
+      <!-- Panel yêu cầu tùy chỉnh -->
+      <div x-show="showCustomReq" x-transition class="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4">
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <div>
+            <p class="text-sm font-semibold text-orange-800">✏️ Yêu cầu tùy chỉnh</p>
+            <p class="text-xs text-orange-600 mt-0.5">AI sẽ tuân theo các yêu cầu này khi tạo hook và kịch bản. Áp dụng cho cả "Tạo lại" và "Tạo lại từng phần".</p>
+          </div>
+          <button @click="form.customRequirement=''" x-show="form.customRequirement.trim()" class="text-xs text-orange-500 hover:text-orange-700 shrink-0 mt-0.5">Xóa</button>
+        </div>
+        <textarea
+          x-model="form.customRequirement"
+          rows="3"
+          placeholder='VD: Hook phải bắt đầu bằng "ê các mày ơiiii"&#10;VD: Kịch bản phải đề cập giá sale 199k và mã giảm giá BELLA10&#10;VD: Giọng nhây, gọi người xem là "mấy bà"'
+          class="w-full border border-orange-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none leading-relaxed"
+        ></textarea>
+        <p class="text-xs text-orange-500 mt-1.5" x-show="form.customRequirement.trim()">
+          Yêu cầu đang bật — AI sẽ tuân theo khi bấm Tạo lại.
+        </p>
       </div>
 
       <!-- V8: Referenced samples badge -->
@@ -1706,6 +1734,7 @@ function bellaApp() {
       subjectMode: 'face',
       productionMode: 'real',
       phoneSetup: 'tripod',
+      customRequirement: '',
     },
     formErrors: {},
     isDragging: false,
@@ -1786,6 +1815,7 @@ function bellaApp() {
     editingLibraryId: null,
     showQuickAddLibrary: false,  // V8.1: panel thêm nhanh mẫu ngay trên tab Generate
     showVideoOptions: false,     // panel chỉnh nhanh tùy chọn video trên trang kết quả
+    showCustomReq: false,        // panel nhập yêu cầu tùy chỉnh cho hook/kịch bản
 
     // Toast
     toast: {show: false, message: '', type: 'info'},
