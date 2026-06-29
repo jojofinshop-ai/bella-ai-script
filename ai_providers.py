@@ -35,6 +35,9 @@ def call_openai_compatible(settings: dict, system_prompt: str, user_prompt: str,
     model_name = settings.get('modelName', 'gpt-4o')
     max_tok = int(settings.get('maxTokens') or 0)
     temp = float(settings.get('temperature') or 0.8)
+    # DeepSeek JSON output bị lỗi khi temperature > 1.5 dù API cho phép đến 2.0
+    if settings.get('provider') == 'deepseek':
+        temp = min(temp, 1.5)
 
     # o1/o3/o4 chỉ hỗ trợ temperature=1 (mặc định) → không truyền tham số này
     use_new_param = any(model_name.startswith(p) for p in ('gpt-5', 'o1', 'o3', 'o4'))
