@@ -1570,7 +1570,7 @@
           </template>
           <span x-text="isTranscribing ? 'Đang xử lý...' : '🎙️ Transcript'"></span>
         </button>
-        <button x-show="transcriptFile" @click="transcriptFile=null; transcriptFileName=''; transcriptFileSize=0; transcriptResult=''; transcriptError=''; $refs.transcriptFileInput.value=''" class="text-sm text-gray-400 hover:text-gray-600 px-3 py-2">Xóa file</button>
+        <button x-show="transcriptFile && !isTranscribing && !isTranscribingUrl" @click="transcriptFile=null; transcriptFileName=''; transcriptFileSize=0; transcriptResult=''; transcriptError=''; $refs.transcriptFileInput.value=''" class="text-sm text-gray-400 hover:text-gray-600 px-3 py-2">Xóa file</button>
       </div>
 
       <!-- Processing hint -->
