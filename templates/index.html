@@ -1343,6 +1343,20 @@
       <div x-show="transcriptResult">
         <textarea x-model="transcriptResult" rows="6"
           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-green-400 resize-y font-mono leading-relaxed"></textarea>
+        <div class="flex items-center gap-2 mb-2">
+          <label class="text-xs text-gray-500 shrink-0">Ngành hàng:</label>
+          <select x-model="transcriptIndustry" class="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-green-400">
+            <option value="auto">🔍 Tất cả ngành</option>
+            <option value="fashion">👗 Thời trang</option>
+            <option value="beauty">💄 Mỹ phẩm & Skincare</option>
+            <option value="electronics">📱 Điện tử & Công nghệ</option>
+            <option value="home">🏠 Gia dụng</option>
+            <option value="food">🍜 Thực phẩm & Đồ uống</option>
+            <option value="pet">🐾 Thú cưng</option>
+            <option value="baby">👶 Mẹ & Bé</option>
+            <option value="other">📦 Ngành hàng khác</option>
+          </select>
+        </div>
         <div class="flex gap-2">
           <button @click="navigator.clipboard.writeText(transcriptResult); transcriptCopied=true; setTimeout(()=>transcriptCopied=false,2000)"
             class="text-sm border px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
@@ -1603,7 +1617,21 @@
           rows="12"
           class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-purple-400 resize-y font-mono"
           placeholder="Kết quả sẽ hiện ở đây..."></textarea>
-        <p class="text-xs text-gray-400 mt-1.5" x-text="transcriptResult.length + ' ký tự'"></p>
+        <div class="flex items-center gap-2 mt-2">
+          <label class="text-xs text-gray-500 shrink-0">Ngành hàng khi lưu:</label>
+          <select x-model="transcriptIndustry" class="border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400">
+            <option value="auto">🔍 Tất cả ngành</option>
+            <option value="fashion">👗 Thời trang</option>
+            <option value="beauty">💄 Mỹ phẩm & Skincare</option>
+            <option value="electronics">📱 Điện tử & Công nghệ</option>
+            <option value="home">🏠 Gia dụng</option>
+            <option value="food">🍜 Thực phẩm & Đồ uống</option>
+            <option value="pet">🐾 Thú cưng</option>
+            <option value="baby">👶 Mẹ & Bé</option>
+            <option value="other">📦 Ngành hàng khác</option>
+          </select>
+          <span class="text-xs text-gray-400" x-text="transcriptResult.length + ' ký tự'"></span>
+        </div>
       </div>
     </div>
 
@@ -2090,6 +2118,7 @@ function bellaApp() {
     transcriptCopied: false,
     transcriptUrl: '',
     isTranscribingUrl: false,
+    transcriptIndustry: 'auto',
     showVideoOptions: false,     // panel chỉnh nhanh tùy chọn video trên trang kết quả
     showCustomReq: false,        // panel nhập yêu cầu tùy chỉnh cho hook/kịch bản
 
@@ -2985,7 +3014,7 @@ function bellaApp() {
       if (!this.transcriptResult.trim()) return;
       this.libraryForm = {
         type: 'transcript',
-        industry: 'auto',
+        industry: this.transcriptIndustry || 'auto',
         productTag: '',
         content: this.transcriptResult.trim(),
         note: this.transcriptFileName || '',
