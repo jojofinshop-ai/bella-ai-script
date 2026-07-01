@@ -1294,22 +1294,22 @@
 
       <!-- File input -->
       <div class="border-2 border-dashed rounded-lg p-4 text-center mb-3 cursor-pointer transition-colors"
-        :class="transcriptFileName ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-green-400'"
+        :class="transcriptFiles.length ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-green-400'"
         @dragover.prevent @drop.prevent="transcriptHandleDrop($event)"
         @click="$refs.libTranscriptInput.click()">
         <input type="file" x-ref="libTranscriptInput" class="hidden"
           accept=".mp3,.mp4,.mpeg,.mpga,.m4a,.wav,.webm,.flac,.ogg,.opus"
-          @change="if($event.target.files[0]) transcriptSetFile($event.target.files[0])">
-        <template x-if="!transcriptFileName">
+          @change="transcriptSetFiles($event.target.files)">
+        <template x-if="!transcriptFiles.length">
           <div>
             <p class="text-sm font-medium text-gray-600">🎬 Kéo thả hoặc <span class="text-green-600">click để chọn</span> video/audio</p>
             <p class="text-xs text-gray-400 mt-0.5">MP4, MP3, M4A, WAV, WEBM • Tối đa 25MB</p>
           </div>
         </template>
-        <template x-if="transcriptFileName">
+        <template x-if="transcriptFiles.length">
           <div>
-            <p class="text-sm font-medium text-gray-800">✅ <span x-text="transcriptFileName"></span></p>
-            <p class="text-xs text-gray-400 mt-0.5" x-text="(transcriptFileSize/1024/1024).toFixed(1) + 'MB — click để đổi file'"></p>
+            <p class="text-sm font-medium text-gray-800">✅ <span x-text="transcriptFiles.length > 1 ? transcriptFiles.length + ' file đã chọn' : transcriptFiles[0].name"></span></p>
+            <p class="text-xs text-gray-400 mt-0.5" x-text="transcriptFiles.length === 1 ? (transcriptFiles[0].size/1024/1024).toFixed(1) + 'MB — click để đổi file' : 'click để đổi'"></p>
           </div>
         </template>
       </div>
@@ -1321,13 +1321,19 @@
           <option value="en">🇺🇸 English</option>
           <option value="auto">🌐 Tự động</option>
         </select>
-        <button @click="transcribeVideo()"
-          :disabled="!transcriptFile || isTranscribing || !settings.groqApiKey.trim()"
+        <button x-show="transcriptFiles.length <= 1" @click="transcribeVideo()"
+          :disabled="!transcriptFiles.length || isTranscribing || !settings.groqApiKey.trim()"
           class="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm px-4 py-1.5 rounded-lg flex items-center gap-1.5">
           <svg x-show="isTranscribing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
           <span x-text="isTranscribing ? 'Đang xử lý...' : '🎙️ Transcript'"></span>
         </button>
-        <button x-show="transcriptFile && !isTranscribing" @click="transcriptFile=null;transcriptFileName='';transcriptFileSize=0;transcriptResult='';transcriptError='';transcriptIndustry='auto';$refs.libTranscriptInput.value=''" class="text-xs text-gray-400 hover:text-gray-600">Xóa file</button>
+        <button x-show="transcriptFiles.length > 1" @click="transcribeBatchFiles()"
+          :disabled="isBatchProcessing || !settings.groqApiKey.trim()"
+          class="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm px-4 py-1.5 rounded-lg flex items-center gap-1.5">
+          <svg x-show="isBatchProcessing" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          <span x-text="isBatchProcessing ? ('Đang xử lý ' + batchCurrent + '/' + batchTotal + '...') : ('🎙️ Batch ' + transcriptFiles.length + ' file')"></span>
+        </button>
+        <button x-show="transcriptFiles.length && !isTranscribing && !isBatchProcessing" @click="transcriptFiles=[];transcriptFile=null;transcriptFileName='';transcriptFileSize=0;transcriptResult='';transcriptError='';transcriptIndustry='auto';batchResults=[];$refs.libTranscriptInput.value=''" class="text-xs text-gray-400 hover:text-gray-600">Xóa file</button>
       </div>
 
       <!-- Processing hint (library panel) -->
@@ -1521,23 +1527,38 @@
     </div>
 
     <div class="bg-white border rounded-xl shadow-sm p-5 mb-4">
-      <!-- URL input -->
+      <!-- URL input (batch-capable) -->
       <div class="mb-5">
-        <label class="block text-sm font-medium text-gray-700 mb-1.5">🔗 Paste link TikTok / YouTube</label>
-        <div class="flex gap-2">
-          <input x-model="transcriptUrl" type="url"
-            placeholder="https://www.tiktok.com/@... hoặc https://youtu.be/..."
-            class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-            @keydown.enter="transcribeFromUrl()"
-            :disabled="isTranscribingUrl || isTranscribing">
-          <button @click="transcribeFromUrl()"
-            :disabled="!transcriptUrl.trim() || isTranscribingUrl || isTranscribing || !settings.groqApiKey.trim()"
-            class="gradient-btn text-white text-sm px-4 py-2 rounded-lg flex items-center gap-1.5 disabled:opacity-60 shrink-0">
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="block text-sm font-medium text-gray-700">🔗 Paste link TikTok / YouTube</label>
+          <span x-show="transcriptUrl.trim().split('\n').filter(l=>l.trim()).length > 1"
+            class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full"
+            x-text="transcriptUrl.trim().split('\n').filter(l=>l.trim()).length + ' link'"></span>
+        </div>
+        <textarea x-model="transcriptUrl" rows="3"
+          placeholder="Paste 1 link hoặc nhiều link (mỗi dòng 1 link)&#10;https://www.tiktok.com/@...&#10;https://youtu.be/..."
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none"
+          :disabled="isTranscribingUrl || isTranscribing || isBatchProcessing"></textarea>
+        <div class="flex gap-2 mt-2 flex-wrap">
+          <!-- Single URL mode -->
+          <button x-show="transcriptUrl.trim().split('\n').filter(l=>l.trim()).length <= 1"
+            @click="transcribeFromUrl()"
+            :disabled="!transcriptUrl.trim() || isTranscribingUrl || isTranscribing || isBatchProcessing || !settings.groqApiKey.trim()"
+            class="gradient-btn text-white text-sm px-4 py-2 rounded-lg flex items-center gap-1.5 disabled:opacity-60">
             <svg x-show="isTranscribingUrl" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
             <span x-text="isTranscribingUrl ? 'Đang lấy...' : '🎙️ Lấy & Transcript'"></span>
           </button>
+          <!-- Batch URL mode -->
+          <button x-show="transcriptUrl.trim().split('\n').filter(l=>l.trim()).length > 1"
+            @click="transcribeBatchUrls()"
+            :disabled="isBatchProcessing || isTranscribingUrl || isTranscribing || !settings.groqApiKey.trim()"
+            class="gradient-btn text-white text-sm px-4 py-2 rounded-lg flex items-center gap-1.5 disabled:opacity-60">
+            <svg x-show="isBatchProcessing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <span x-text="isBatchProcessing ? ('Đang xử lý ' + batchCurrent + '/' + batchTotal + '...') : ('🎙️ Transcript & lưu ' + transcriptUrl.trim().split('\n').filter(l=>l.trim()).length + ' video')"></span>
+          </button>
+          <button x-show="transcriptUrl.trim() && !isBatchProcessing && !isTranscribingUrl" @click="transcriptUrl=''; batchResults=[]" class="text-sm text-gray-400 hover:text-gray-600 px-2 py-2">Xóa</button>
         </div>
-        <p class="text-xs text-gray-400 mt-1">TikTok video public, YouTube • Video dài có thể mất 10-30 giây</p>
+        <p class="text-xs text-gray-400 mt-1">Mỗi dòng 1 link • Batch mode: tự lưu vào thư viện • TikTok public, YouTube</p>
       </div>
 
       <div class="flex items-center gap-3 mb-5 text-gray-400">
@@ -1546,28 +1567,41 @@
         <div class="flex-1 border-t"></div>
       </div>
 
-      <!-- Drop zone -->
+      <!-- Drop zone (multiple files) -->
       <div
-        class="border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer mb-4"
-        :class="transcriptFileName ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'"
+        class="border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer mb-3"
+        :class="transcriptFiles.length ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'"
         @dragover.prevent @drop.prevent="transcriptHandleDrop($event)"
         @click="$refs.transcriptFileInput.click()">
-        <input type="file" x-ref="transcriptFileInput" class="hidden"
+        <input type="file" x-ref="transcriptFileInput" class="hidden" multiple
           accept=".mp3,.mp4,.mpeg,.mpga,.m4a,.wav,.webm,.flac,.ogg,.opus"
-          @change="if($event.target.files[0]) transcriptSetFile($event.target.files[0])">
-        <template x-if="!transcriptFileName">
+          @change="transcriptSetFiles($event.target.files)">
+        <template x-if="!transcriptFiles.length">
           <div>
             <div class="text-4xl mb-2">🎬</div>
             <p class="text-sm font-medium text-gray-700">Kéo thả file vào đây hoặc <span class="text-purple-600">click để chọn</span></p>
-            <p class="text-xs text-gray-400 mt-1">MP4, MP3, M4A, WAV, WEBM, OGG, FLAC • Tối đa 25MB</p>
+            <p class="text-xs text-gray-400 mt-1">MP4, MP3, M4A, WAV, WEBM, OGG, FLAC • Tối đa 25MB/file • Chọn nhiều file cùng lúc</p>
           </div>
         </template>
-        <template x-if="transcriptFileName">
+        <template x-if="transcriptFiles.length === 1">
           <div>
             <div class="text-3xl mb-1">✅</div>
-            <p class="text-sm font-medium text-gray-800" x-text="transcriptFileName"></p>
-            <p class="text-xs text-gray-500 mt-0.5" x-text="(transcriptFileSize/1024/1024).toFixed(1) + 'MB'"></p>
+            <p class="text-sm font-medium text-gray-800" x-text="transcriptFiles[0].name"></p>
+            <p class="text-xs text-gray-500 mt-0.5" x-text="(transcriptFiles[0].size/1024/1024).toFixed(1) + 'MB'"></p>
             <p class="text-xs text-purple-600 mt-1">Click để đổi file</p>
+          </div>
+        </template>
+        <template x-if="transcriptFiles.length > 1">
+          <div>
+            <div class="text-3xl mb-1">📂</div>
+            <p class="text-sm font-medium text-gray-800" x-text="transcriptFiles.length + ' file đã chọn'"></p>
+            <div class="text-xs text-gray-500 mt-1 space-y-0.5">
+              <template x-for="f in transcriptFiles.slice(0,3)" :key="f.name">
+                <p x-text="'• ' + f.name + ' (' + (f.size/1024/1024).toFixed(1) + 'MB)'"></p>
+              </template>
+              <p x-show="transcriptFiles.length > 3" x-text="'... và ' + (transcriptFiles.length - 3) + ' file khác'" class="text-purple-600"></p>
+            </div>
+            <p class="text-xs text-purple-600 mt-1">Batch mode — tự lưu vào thư viện</p>
           </div>
         </template>
       </div>
@@ -1582,22 +1616,56 @@
             <option value="auto">🌐 Tự động nhận diện</option>
           </select>
         </div>
-        <button
+        <!-- Single file mode -->
+        <button x-show="transcriptFiles.length === 1"
           @click="transcribeVideo()"
-          :disabled="!transcriptFile || isTranscribing || !settings.groqApiKey.trim()"
+          :disabled="!transcriptFiles.length || isTranscribing || isBatchProcessing || !settings.groqApiKey.trim()"
           class="gradient-btn text-white text-sm px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
-          <template x-if="isTranscribing">
-            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-          </template>
+          <svg x-show="isTranscribing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
           <span x-text="isTranscribing ? 'Đang xử lý...' : '🎙️ Transcript'"></span>
         </button>
-        <button x-show="transcriptFile && !isTranscribing && !isTranscribingUrl" @click="transcriptFile=null; transcriptFileName=''; transcriptFileSize=0; transcriptResult=''; transcriptError=''; transcriptIndustry='auto'; $refs.transcriptFileInput.value=''" class="text-sm text-gray-400 hover:text-gray-600 px-3 py-2">Xóa file</button>
+        <!-- Batch file mode -->
+        <button x-show="transcriptFiles.length > 1"
+          @click="transcribeBatchFiles()"
+          :disabled="isBatchProcessing || isTranscribing || !settings.groqApiKey.trim()"
+          class="gradient-btn text-white text-sm px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+          <svg x-show="isBatchProcessing" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          <span x-text="isBatchProcessing ? ('Đang xử lý ' + batchCurrent + '/' + batchTotal + '...') : ('🎙️ Transcript & lưu ' + transcriptFiles.length + ' file')"></span>
+        </button>
+        <button x-show="transcriptFiles.length && !isTranscribing && !isBatchProcessing" @click="transcriptFiles=[]; transcriptFile=null; transcriptFileName=''; transcriptFileSize=0; transcriptResult=''; transcriptError=''; transcriptIndustry='auto'; batchResults=[]; $refs.transcriptFileInput.value=''" class="text-sm text-gray-400 hover:text-gray-600 px-3 py-2">Xóa file</button>
       </div>
 
       <!-- Processing hint -->
       <div x-show="isTranscribing || isTranscribingUrl" class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-700 flex items-center gap-2">
         <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
         <span x-text="isTranscribingUrl ? 'Đang tải video từ URL + Transcript... có thể mất 15-60 giây.' : 'Groq Whisper đang xử lý... Video dài có thể mất 10-30 giây.'"></span>
+      </div>
+
+      <!-- Batch progress UI -->
+      <div x-show="isBatchProcessing || batchResults.length" class="mb-4">
+        <div x-show="isBatchProcessing" class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2 text-sm text-blue-700 flex items-center gap-2">
+          <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          <span x-text="'Đang xử lý ' + batchCurrent + '/' + batchTotal + '... Mỗi video có thể mất 15-60 giây.'"></span>
+        </div>
+        <div x-show="batchResults.length" class="border border-gray-200 rounded-lg overflow-hidden">
+          <div class="bg-gray-50 px-3 py-2 text-xs font-medium text-gray-600 flex justify-between">
+            <span x-text="'Kết quả batch (' + batchResults.length + '/' + batchTotal + ')'"></span>
+            <span x-show="!isBatchProcessing && batchResults.length" class="text-green-600"
+              x-text="batchResults.filter(r=>r.ok).length + ' thành công, ' + batchResults.filter(r=>!r.ok).length + ' lỗi'"></span>
+          </div>
+          <div class="divide-y divide-gray-100 max-h-40 overflow-y-auto">
+            <template x-for="(r, i) in batchResults" :key="i">
+              <div class="px-3 py-2 text-xs flex items-start gap-2">
+                <span x-text="r.ok ? '✅' : '❌'" class="shrink-0"></span>
+                <div class="min-w-0 flex-1">
+                  <p class="text-gray-700 truncate" x-text="r.label"></p>
+                  <p x-show="r.ok" class="text-green-600" x-text="r.industry ? ('Ngành: ' + r.industry + ' • Đã lưu thư viện') : 'Đã lưu thư viện'"></p>
+                  <p x-show="!r.ok" class="text-red-500" x-text="r.error"></p>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
       </div>
 
       <!-- Error -->
@@ -2125,6 +2193,7 @@ function bellaApp() {
     transcriptFile: null,
     transcriptFileName: '',
     transcriptFileSize: 0,
+    transcriptFiles: [],
     transcriptLang: 'vi',
     transcriptResult: '',
     transcriptError: '',
@@ -2134,6 +2203,10 @@ function bellaApp() {
     isTranscribingUrl: false,
     transcriptIndustry: 'auto',
     isDetectingIndustry: false,
+    isBatchProcessing: false,
+    batchResults: [],
+    batchCurrent: 0,
+    batchTotal: 0,
     showVideoOptions: false,     // panel chỉnh nhanh tùy chọn video trên trang kết quả
     showCustomReq: false,        // panel nhập yêu cầu tùy chỉnh cho hook/kịch bản
 
@@ -3008,26 +3081,130 @@ function bellaApp() {
       }
     },
 
-    transcriptHandleDrop(e) {
-      const file = e.dataTransfer?.files?.[0];
-      if (file) this.transcriptSetFile(file);
+    async transcribeBatchUrls() {
+      const lines = (this.transcriptUrl || '').split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) { await this.transcribeFromUrl(); return; }
+      const groqKey = (this.settings.groqApiKey || '').trim();
+      if (!groqKey) { this.transcriptError = 'Chưa nhập Groq API key. Vào Cài đặt → mục 3.'; return; }
+      this.isBatchProcessing = true;
+      this.batchResults = [];
+      this.batchCurrent = 0;
+      this.batchTotal = lines.length;
+      this.transcriptError = '';
+      for (let i = 0; i < lines.length; i++) {
+        this.batchCurrent = i + 1;
+        const url = lines[i];
+        try {
+          const res = await fetch('/api/transcribe-url', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ url, groqApiKey: groqKey, language: this.transcriptLang })
+          });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.error || 'Lỗi không xác định');
+          const text = data.transcript;
+          let industry = 'auto';
+          try {
+            const dr = await fetch('/api/detect-industry', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ text, groqApiKey: groqKey })
+            });
+            const dd = await dr.json();
+            if (dd.success && dd.industry) industry = dd.industry;
+          } catch(_) {}
+          const entry = {
+            id: Date.now().toString() + Math.random().toString(36).slice(2),
+            createdAt: new Date().toISOString(),
+            type: 'transcript', industry,
+            productTag: '', content: text.trim(), note: url
+          };
+          this.referenceLibrary = [entry, ...this.referenceLibrary];
+          localStorage.setItem('bella_reference_library', JSON.stringify(this.referenceLibrary));
+          this.batchResults.push({ label: url, ok: true, industry });
+        } catch(e) {
+          this.batchResults.push({ label: url, ok: false, error: e.message });
+        }
+      }
+      this.isBatchProcessing = false;
+      this.batchCurrent = this.batchTotal;
     },
-    transcriptSetFile(file) {
-      this.transcriptFile = file;
-      this.transcriptFileName = file.name;
-      this.transcriptFileSize = file.size;
+
+    async transcribeBatchFiles() {
+      const files = this.transcriptFiles;
+      if (!files.length) return;
+      if (files.length === 1) { await this.transcribeVideo(); return; }
+      const groqKey = (this.settings.groqApiKey || '').trim();
+      if (!groqKey) { this.transcriptError = 'Chưa nhập Groq API key. Vào Cài đặt → mục 3.'; return; }
+      this.isBatchProcessing = true;
+      this.batchResults = [];
+      this.batchCurrent = 0;
+      this.batchTotal = files.length;
+      this.transcriptError = '';
+      for (let i = 0; i < files.length; i++) {
+        this.batchCurrent = i + 1;
+        const file = files[i];
+        try {
+          if (file.size > 25 * 1024 * 1024) throw new Error(`File quá lớn (${Math.round(file.size/1024/1024)}MB), giới hạn 25MB`);
+          const fd = new FormData();
+          fd.append('file', file, file.name);
+          fd.append('groqApiKey', groqKey);
+          fd.append('language', this.transcriptLang);
+          const res = await fetch('/api/transcribe', { method: 'POST', body: fd });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.error || 'Lỗi không xác định');
+          const text = data.transcript;
+          let industry = 'auto';
+          try {
+            const dr = await fetch('/api/detect-industry', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ text, groqApiKey: groqKey })
+            });
+            const dd = await dr.json();
+            if (dd.success && dd.industry) industry = dd.industry;
+          } catch(_) {}
+          const entry = {
+            id: Date.now().toString() + Math.random().toString(36).slice(2),
+            createdAt: new Date().toISOString(),
+            type: 'transcript', industry,
+            productTag: '', content: text.trim(), note: file.name
+          };
+          this.referenceLibrary = [entry, ...this.referenceLibrary];
+          localStorage.setItem('bella_reference_library', JSON.stringify(this.referenceLibrary));
+          this.batchResults.push({ label: file.name, ok: true, industry });
+        } catch(e) {
+          this.batchResults.push({ label: file.name, ok: false, error: e.message });
+        }
+      }
+      this.isBatchProcessing = false;
+      this.batchCurrent = this.batchTotal;
+    },
+
+    transcriptHandleDrop(e) {
+      const files = e.dataTransfer?.files;
+      if (files && files.length) this.transcriptSetFiles(files);
+    },
+    transcriptSetFiles(files) {
+      const arr = Array.from(files);
+      this.transcriptFiles = arr;
+      this.transcriptFile = arr[0] || null;
+      this.transcriptFileName = arr[0]?.name || '';
+      this.transcriptFileSize = arr[0]?.size || 0;
       this.transcriptResult = '';
       this.transcriptError = '';
+      this.batchResults = [];
     },
     async transcribeVideo() {
-      if (!this.transcriptFile) return;
+      if (!this.transcriptFiles.length) return;
+      const file = this.transcriptFiles[0];
       const groqKey = (this.settings.groqApiKey || '').trim();
       if (!groqKey) {
         this.transcriptError = 'Chưa nhập Groq API key. Vào Cài đặt → mục Transcript để nhập.';
         return;
       }
-      if (this.transcriptFile.size > 25 * 1024 * 1024) {
-        this.transcriptError = `File quá lớn (${Math.round(this.transcriptFile.size/1024/1024)}MB). Groq giới hạn 25MB — hãy nén video hoặc cắt ngắn.`;
+      if (file.size > 25 * 1024 * 1024) {
+        this.transcriptError = `File quá lớn (${Math.round(file.size/1024/1024)}MB). Groq giới hạn 25MB — hãy nén video hoặc cắt ngắn.`;
         return;
       }
       this.isTranscribing = true;
@@ -3036,7 +3213,7 @@ function bellaApp() {
       this.transcriptIndustry = 'auto';
       try {
         const fd = new FormData();
-        fd.append('file', this.transcriptFile, this.transcriptFileName);
+        fd.append('file', file, file.name);
         fd.append('groqApiKey', groqKey);
         fd.append('language', this.transcriptLang);
         const res = await fetch('/api/transcribe', { method: 'POST', body: fd });
