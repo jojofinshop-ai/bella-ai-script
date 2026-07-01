@@ -58,10 +58,11 @@ def generate():
         system_prompt = build_system_prompt(prompt_settings)
         has_images = len(images) > 0
 
-        # Phân tích ảnh theo cấu hình Vision AI
+        # Chuẩn bị tham số phân tích ảnh
         image_analysis = ''
         images_to_send = []
-        analysis_status = 'no_image'  # no_image | skipped | gemini | openai | same_ai
+        analysis_status = 'no_image'
+        _image_fn = None  # callable cho ThreadPoolExecutor
         if has_images:
             vision_provider = settings.get('visionProvider', 'gemini')
             max_imgs = max(1, int(settings.get('maxAnalysisImages', 1)))
@@ -70,8 +71,7 @@ def generate():
                 raw_vision = settings.get('visionGeminiKeys', '') or (settings.get('apiKeys') or {}).get('gemini', '')
                 gemini_keys = [k.strip() for k in raw_vision.replace(',', '\n').split('\n') if k.strip()]
                 if gemini_keys:
-                    image_analysis = analyze_images_with_gemini(gemini_keys, images_for_analysis, product_name)
-                    analysis_status = 'gemini' if image_analysis else 'skipped'
+                    _image_fn = lambda: ('gemini', analyze_images_with_gemini(gemini_keys, images_for_analysis, product_name))
                 else:
                     analysis_status = 'skipped'
             elif vision_provider == 'openai':
@@ -80,8 +80,7 @@ def generate():
                 vision_model = (settings.get('visionOpenaiModel', '') or 'gpt-4o-mini').strip()
                 if vision_key:
                     openai_vision_settings = {'apiKey': vision_key, 'baseUrl': vision_base_url, 'modelName': vision_model}
-                    image_analysis = analyze_images_with_openai(openai_vision_settings, images_for_analysis, product_name)
-                    analysis_status = 'openai' if image_analysis else 'skipped'
+                    _image_fn = lambda: ('openai', analyze_images_with_openai(openai_vision_settings, images_for_analysis, product_name))
                 else:
                     analysis_status = 'skipped'
             elif vision_provider == 'same':
@@ -91,17 +90,28 @@ def generate():
                 else:
                     analysis_status = 'skipped'
 
-        # has_images_effective: True chỉ khi AI thực sự nhận được ảnh (qua analysis text hoặc trực tiếp)
-        has_images_effective = bool(image_analysis) or bool(images_to_send)
-
-        # V8: Reference Library — AI chọn lọc mẫu phù hợp nhất từ candidates (frontend đã
-        # pre-filter theo ngành hàng). Lỗi ở bước này KHÔNG được làm fail cả lần generate chính.
-        _ref_result = {'contents': [], 'used': []}
-        if reference_candidates:
-            from ai_providers import select_relevant_examples
-            _ref_result = select_relevant_examples(
+        # Chạy song song: phân tích ảnh + chọn mẫu thư viện (2 bước độc lập nhau)
+        import concurrent.futures as _cf
+        from ai_providers import select_relevant_examples
+        with _cf.ThreadPoolExecutor(max_workers=2) as _pool:
+            _img_future = _pool.submit(_image_fn) if _image_fn else None
+            _ref_future = _pool.submit(
+                select_relevant_examples,
                 settings, product_name, product_desc, input_data.get('industry', 'auto'), reference_candidates
-            )
+            ) if reference_candidates else None
+
+            if _img_future:
+                try:
+                    _img_provider, _img_result = _img_future.result()
+                    image_analysis = _img_result or ''
+                    analysis_status = _img_provider if image_analysis else 'skipped'
+                except Exception:
+                    analysis_status = 'skipped'
+
+            _ref_result = _ref_future.result() if _ref_future else {'contents': [], 'used': []}
+
+        # has_images_effective: True chỉ khi AI thực sự nhận được ảnh
+        has_images_effective = bool(image_analysis) or bool(images_to_send)
         input_data['referenceExamples'] = _ref_result['contents']
         _referenced_samples = _ref_result['used']
 
