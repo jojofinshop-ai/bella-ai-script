@@ -749,6 +749,9 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
             "",
             "## ENGINE 4 — HOOK LẦN NÀY",
             f"Hook phải thuộc kiểu: {_hook_type}",
+            "Hook PHẢI NGẮN: tối đa 2 câu. Tổng hook ≤ 20 từ (~3 giây nói). 1 ý duy nhất — cú đánh đầu tiên.",
+            "KHÔNG nhét nhiều ý (feature + benefit + reaction + so sánh) vào cùng 1 hook.",
+            "Nếu dùng so sánh ('như...', 'giống...'): phải liên quan logic đến sản phẩm/tình huống dùng — KHÔNG so sánh 'làm màu' kiểu 'như hồi xưa', 'như thời chưa có X', 'như trước đây' khi không liên quan.",
             "",
             "## EMOTION RHYTHM — LUẬT BẮT BUỘC",
             "KHÔNG được: Review → Review → Review → Review liên tiếp.",
@@ -774,6 +777,8 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
             "- Có đoạn Review → Review → Review liên tiếp (2+ ý không xen nhịp cảm xúc) không? → Chèn reaction/cười/lẩm bẩm vào giữa.",
             f"- Hook có đúng kiểu '{_hook_short}' không? → Nếu không, viết lại hook.",
             f"- Cấu trúc có đúng '{_pattern_short}' không? → Nếu lệch, điều chỉnh.",
+            "- Hook dài quá 2 câu hoặc 20 từ? → Cắt ngắn — hook là cú đánh đầu tiên, không kể cả câu chuyện.",
+            "- Hook có so sánh ('như thời...', 'giống hồi...'): so sánh đó có logic với sản phẩm không? Nếu nghe weird → xóa.",
             "- Đọc to lên: nghe buồn cười không? Giống đang tám chuyện không? Hay vẫn giống review?",
             "Chỉ output khi nghe giống TikToker thật đang vui miệng nói — không phải đang review sản phẩm.",
         ]
@@ -787,6 +792,9 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
             "## ENGINE 4 — HOOK LẦN NÀY",
             f"Hook phải thuộc kiểu: {_hook_type}",
             "Đi thẳng vào nội dung. Không lời chào, không giới thiệu bản thân.",
+            "Hook PHẢI NGẮN: tối đa 2 câu. Tổng hook ≤ 20 từ (~3 giây nói). 1 ý duy nhất — cú đánh đầu tiên.",
+            "KHÔNG nhét nhiều ý (feature + benefit + reaction + so sánh) vào cùng 1 hook.",
+            "Nếu dùng so sánh ('như...', 'giống...'): phải liên quan logic đến sản phẩm/tình huống dùng — KHÔNG so sánh 'làm màu' kiểu 'như hồi xưa', 'như thời chưa có X', 'như trước đây' khi không liên quan.",
             "",
             "## ENGINE 3 — EMOTION CURVE",
             "Năng lượng KHÔNG được đều từ đầu đến cuối.",
@@ -811,6 +819,8 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
             f"- Cấu trúc có đúng '{_pattern_short}' không? → Nếu lệch, điều chỉnh.",
             "- Có ít nhất 2-3 câu reaction độc lập (câu ngắn đứng riêng) chưa? → Nếu thiếu, thêm vào.",
             "- Có lặp từ / lặp cấu trúc câu không? → Đa dạng hóa.",
+            "- Hook dài quá 2 câu hoặc 20 từ? → Cắt ngắn — hook là cú đánh đầu tiên, không kể cả câu chuyện.",
+            "- Hook có so sánh ('như thời...', 'giống hồi...'): so sánh đó có logic với sản phẩm không? Nếu nghe weird → xóa.",
             "- Có đúng Persona và Giọng điệu đã chọn không?",
             "- Người nghe có cảm giác 'đây là Creator thật' không?",
             "Nếu chưa đạt → tự chỉnh sửa trước khi xuất JSON.",
@@ -963,7 +973,7 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         '{',
         f'  "section1": {{"productName":"","targetAudience":"","shootingStyle":"Voice Over (ElevenLabs)","duration":"","tone":"","videoGoal":"","subjectMode":"{subject_mode}","subjectModeResolved":"{resolved_mode}","productionMode":"{production_mode}"}},',
         '  "section2": {"targetCustomer":"","painPoints":"","insight":"","highlights":"","mainBenefits":"","usageSituations":"","heroBenefit":""},',
-        '  "section3": {"hooks":[{"text":"câu hook tự nhiên mạnh 0-3s, không tag, không chào hỏi","isRecommended":true},{"text":"hook 2 kiểu khác — phủ định hoặc câu hỏi","isRecommended":false},{"text":"hook 3 kiểu khác — nhận xét bất ngờ","isRecommended":false}]},',
+        '  "section3": {"hooks":[{"text":"hook ngắn 1-2 câu ≤20 từ, 1 punch duy nhất, không tag, không chào","isRecommended":true},{"text":"hook 2 kiểu khác ≤20 từ — phủ định hoặc câu hỏi","isRecommended":false},{"text":"hook 3 kiểu khác ≤20 từ — nhận xét bất ngờ","isRecommended":false}]},',
         '  "section7": {"captions":["caption 1 ≤100 ký tự + 1-2 emoji","caption 2 ≤100 ký tự + 1-2 emoji","caption 3 ≤100 ký tự + 1-2 emoji"]},',
         '  "section8": {"hashtags":["#tag1","#tag2","#tiktokshop"]},',
         '  "section4": {',
@@ -1523,6 +1533,8 @@ Quy tắc hook Voice Over:
 - Không mở đầu kiểu AI/MC: 'Xin chào', 'Hôm nay mình', 'Đây là sản phẩm'
 - Đi thẳng vào nội dung
 - Viết như người đang nói chuyện thật
+- Hook PHẢI NGẮN: tối đa 2 câu ngắn, tổng ≤ 20 từ (~3 giây). 1 punch duy nhất — không nhét nhiều ý
+- Nếu dùng so sánh ('như...', 'giống...'): phải liên quan logic đến sản phẩm — KHÔNG so sánh vô nghĩa kiểu 'như thời chưa có X', 'như hồi xưa' khi không liên quan trực tiếp
 
 ```json
 {{"section3":{{"hooks":[{{"text":"hook 1 tự nhiên mạnh, không tag","isRecommended":true}},{{"text":"hook 2 kiểu khác, không tag","isRecommended":false}},{{"text":"hook 3 kiểu khác, không tag","isRecommended":false}}]}}}}
