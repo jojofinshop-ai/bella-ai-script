@@ -424,7 +424,7 @@ def transcribe_with_groq(groq_api_key: str, file_bytes: bytes, filename: str, la
         except Exception:
             err = resp.text[:200]
         raise ValueError(f'Groq API lỗi: {err}')
-    text = resp.text.strip()
+    text = resp.content.decode('utf-8').strip()
     if not text:
         raise ValueError('Groq trả về kết quả rỗng — file có thể không có âm thanh')
     return text
