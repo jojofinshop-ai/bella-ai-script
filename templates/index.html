@@ -401,7 +401,7 @@
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
           Tạo lại
         </button>
-        <button @click="currentScript=null; generateError=null; regeneratingSection=null; sectionError=null; sectionUndoData=null; selectedHookIndex=null; visualPromptResult=null; visualError=null; isGeneratingVisual=false; imageAnalysisStatus=null; showQuickAddLibrary=false; showVideoOptions=false" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50">
+        <button @click="currentScript=null; generateError=null; regeneratingSection=null; sectionError=null; sectionUndoData=null; selectedHookIndex=null; visualPromptResult=null; visualError=null; isGeneratingVisual=false; imageAnalysisStatus=null; showQuickAddLibrary=false; showVideoOptions=false; currentHistoryId=null" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50">
           Kịch bản mới
         </button>
         <button @click="copyFullScript()" class="border text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
@@ -2176,6 +2176,7 @@ function bellaApp() {
     history: [],
     historySearch: '',
     selectedHistoryItem: null,
+    currentHistoryId: null,   // ID của entry đang active — save sẽ update entry này thay vì tạo mới
 
     // Reference Library (V8)
     referenceLibrary: [],
@@ -2495,6 +2496,7 @@ function bellaApp() {
       this.showReferencedSamples = false;
       this.editingHookIndex = null;
       this.editingScriptMode = false;
+      this.currentHistoryId = null; // generate mới → entry mới
       this.editingLineIndex = null;
       // Build progress steps
       const _hasImgs = this.form.images.length > 0;
@@ -2871,22 +2873,38 @@ function bellaApp() {
       if (!this.currentScript) return;
       const firstImg = this.form.images?.[0]?.dataUrl;
       const thumbnail = firstImg ? await this._resizeThumbnail(firstImg) : null;
-      const item = {
-        id: Date.now().toString() + Math.random().toString(36).slice(2),
-        createdAt: new Date().toISOString(),
-        productName: this.form.productName,
-        provider: this.settings.provider,
-        modelName: this.settings.modelName,
-        shootingStyle: this.form.shootingStyle === 'custom' ? this.form.shootingStyleCustom : this.form.shootingStyle,
-        thumbnail,
-        input: JSON.parse(JSON.stringify({...this.form, images: []})),
-        script: this.currentScript
-      };
-      this.history = [item, ...this.history].slice(0, 100);
+      const now = new Date().toISOString();
+
+      if (this.currentHistoryId) {
+        // Cập nhật entry hiện tại — không tạo mới
+        this.history = this.history.map(h => h.id === this.currentHistoryId
+          ? { ...h, updatedAt: now, productName: this.form.productName,
+              provider: this.settings.provider, modelName: this.settings.modelName,
+              shootingStyle: this.form.shootingStyle === 'custom' ? this.form.shootingStyleCustom : this.form.shootingStyle,
+              thumbnail: thumbnail || h.thumbnail,
+              input: JSON.parse(JSON.stringify({...this.form, images: []})),
+              script: this.currentScript }
+          : h
+        );
+      } else {
+        // Tạo entry mới (generate lần đầu)
+        const id = Date.now().toString() + Math.random().toString(36).slice(2);
+        const item = {
+          id, createdAt: now,
+          productName: this.form.productName,
+          provider: this.settings.provider,
+          modelName: this.settings.modelName,
+          shootingStyle: this.form.shootingStyle === 'custom' ? this.form.shootingStyleCustom : this.form.shootingStyle,
+          thumbnail,
+          input: JSON.parse(JSON.stringify({...this.form, images: []})),
+          script: this.currentScript
+        };
+        this.history = [item, ...this.history].slice(0, 100);
+        this.currentHistoryId = id;
+      }
       try {
         localStorage.setItem('bella_history', JSON.stringify(this.history));
       } catch {
-        // localStorage full → trim thumbnails rồi thử lại
         this.history = this.history.map(h => ({...h, thumbnail: null}));
         try { localStorage.setItem('bella_history', JSON.stringify(this.history)); } catch { /* silent */ }
       }
@@ -2911,6 +2929,7 @@ function bellaApp() {
         this.form = {...this.form, ...restInput};
       }
       this.currentScript = item.script;
+      this.currentHistoryId = item.id; // edit tiếp theo sẽ update entry này
       this.generateError = null;
       this.selectedHistoryItem = null;
       this.activeTab = 'generate';
