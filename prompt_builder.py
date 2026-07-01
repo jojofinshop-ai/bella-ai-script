@@ -160,13 +160,13 @@ VO_PERSONA_GUIDE = {
     'real-review': (
         "Persona: Người vừa dùng sản phẩm thật — đang kể lại trải nghiệm thực tế cho bạn bè nghe.\n"
         "Chân thật, không PR quá, không hoàn hảo 100% — nghe đáng tin vì có cả điểm chưa hoàn hảo.\n"
-        "CÁCH KỂ: mỗi tính năng phải gắn với 1 tình huống cụ thể mình đã gặp — KHÔNG liệt kê spec.\n"
-        "  SAI: 'Pin xài 6 tháng, kết nối Bluetooth, không cần sim.'\n"
-        "  ĐÚNG: 'Gắn từ hồi Tết giờ vẫn chưa thay pin. Móc vô chùm chìa khóa, lên đường chẳng lo gì.'\n"
-        "ĐƯỢC PHÉP và KHUYẾN KHÍCH: dùng 1 câu sợ hãi/lo ngại cụ thể để mở đầu thân bài ('Trộm cắp giờ nhanh lắm.' / 'Lỡ mà có chuyện, mình bó tay.').\n"
+        "CÁCH KỂ: mỗi lợi ích phải gắn với 1 tình huống thực tế cụ thể mình đã gặp — KHÔNG liệt kê spec.\n"
+        "  SAI: 'Nó mỏng, nhẹ, màu đẹp, chất vải tốt.'\n"
+        "  ĐÚNG: 'Mặc đi tiệc hôm đó mà không ai biết mình chỉ mua 200k — hỏi hoài.'\n"
+        "ĐƯỢC PHÉP: mở đầu thân bài bằng 1 câu lo ngại/vấn đề thực tế liên quan sản phẩm (tùy ngành).\n"
         "Được phép: ngập ngừng ('ừ thì... thật ra...'), tự điều chỉnh, reaction ngắn đứng riêng ('Ghê thiệt.', 'Hú hồn.', 'Khỏi lo luôn.').\n"
         "Dùng: 'thật ra', 'nói thật', 'mình dùng rồi nên biết', 'điểm này mình thích / chưa thích lắm'.\n"
-        "Kể bằng tình huống: khi quên xe đâu, khi sợ bị trộm, khi lục tìm không ra — không đọc catalogue.\n"
+        "Kể bằng tình huống cụ thể phù hợp với sản phẩm — không đọc catalogue.\n"
         "Sau mỗi 1-2 điểm review: BẮT BUỘC xen 1 reaction ngắn đứng riêng (2-5 từ) trước khi kể tiếp."
     ),
 }
@@ -604,7 +604,7 @@ def _build_reference_examples_block(reference_examples: list, policy: dict = Non
         "",
         "⚠ ANTI-COPY GUARD (bắt buộc mọi trường hợp):",
         "  • Hook mới phải KHÁC mẫu ≥70% về từ ngữ — cùng KIỂU nhưng không clone câu mẫu",
-        "  • KHÔNG dùng nguyên cụm mở đầu từ mẫu — phải paraphrase: 'Để chỉ cho anh em...' → viết lại góc tiếp cận khác",
+        "  • KHÔNG dùng nguyên cụm mở đầu từ mẫu — phải đổi góc tiếp cận hoàn toàn, không chỉ thay từ",
         "  • CTA phải KHÁC mẫu ≥60% về từ ngữ",
         "  • 3 hooks phải thật sự khác nhau (không chỉ đổi từ hoặc hoán vị cùng cấu trúc)",
     ]
@@ -857,14 +857,15 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         "Không dùng cấu trúc AI: 'Ngoài ra...', 'Đặc biệt...', 'Sản phẩm có...', 'Sản phẩm được...'.",
         "",
         "## TUYỆT ĐỐI KHÔNG liệt kê tính năng khô",
-        "KHÔNG được viết kiểu: 'Nó nhỏ xíu, chỉ 34mm. Pin CR2032 xài 6 tháng. Không cần sim. Kết nối Bluetooth.'",
-        "Mỗi tính năng PHẢI đặt trong tình huống thực tế hoặc kèm reaction cảm xúc:",
-        "  SAI: 'Pin xài 6 tháng.' → ĐÚNG: 'Gắn từ Tết đến giờ mà pin vẫn còn — không lo thay pin mấy.'",
-        "  SAI: 'Không cần sim.' → ĐÚNG: 'Không tốn sim, không phí — móc vô chìa là dùng được luôn.'",
-        "Tính năng phải đến từ trải nghiệm, không phải từ catalogue sản phẩm.",
+        "KHÔNG được viết kiểu: đặc điểm A. Tính năng B. Thông số C. Công dụng D. (liệt kê như catalogue)",
+        "Mỗi lợi ích PHẢI đặt trong tình huống thực tế của người dùng hoặc kèm reaction cảm xúc:",
+        "  SAI: 'Chất vải mát, màu đẹp, form chuẩn, giá rẻ.' → ĐÚNG: 'Mặc cả ngày nắng mà không thấy nóng bức — kiểu đó mà.'",
+        "  SAI: 'Kem dưỡng ẩm, không nhờn, hương nhẹ.' → ĐÚNG: 'Bôi xong đi ngủ, sáng dậy da mềm khác hẳn — không tin mà.'",
+        "Lợi ích phải đến từ trải nghiệm thực tế, không phải từ mô tả sản phẩm.",
         "",
         "## TUYỆT ĐỐI KHÔNG bịa thông tin",
         "KHÔNG được tự bịa: deal giảm giá, mã giảm giá, flash sale, tặng quà, giá cụ thể — nếu sản phẩm không đề cập.",
+        "KHÔNG được tự bịa: 'kẻo hết hàng', 'kẻo hết size', 'rẻ hơn chỗ khác', 'mua nhiều hơn ở đây' — nếu không có trong mô tả.",
         "Chỉ nói những gì có trong mô tả sản phẩm và ảnh.",
         "",
         "## NHỊP ĐIỆU VOICEOVER — LUẬT BẮT BUỘC",
@@ -875,10 +876,10 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         "Câu ngắn 2-5 từ xen kẽ câu dài. Nhịp câu phải biến đổi — không đều đơn điệu.",
         "Tối thiểu 2 reaction ngắn đứng riêng nằm XEN GIỮA các ý trong thân bài (không phải cuối script).",
         "",
-        "## FEAR / URGENCY — ĐỀ XUẤT (nếu phù hợp sản phẩm)",
-        "Với sản phẩm bảo vệ/an toàn/tài sản: thêm 1 câu sợ hãi/lo ngại thực tế TRƯỚC khi giới thiệu giải pháp.",
-        "Ví dụ: 'Trộm cắp giờ nhanh lắm. 5 giây là bốc hơi thôi.' / 'Lỡ mà có chuyện, mình bó tay.'",
-        "Câu này phải ngắn, cụ thể, chạm được nỗi sợ thực tế của người xem.",
+        "## PAIN / URGENCY — ĐỀ XUẤT (nếu phù hợp sản phẩm)",
+        "Nếu sản phẩm giải quyết một vấn đề/nỗi lo thực tế: thêm 1 câu nêu vấn đề đó TRƯỚC khi giới thiệu giải pháp.",
+        "Câu này phải ngắn, cụ thể với ngành/sản phẩm đó — đừng dùng câu chung chung.",
+        "Ví dụ (tùy ngành): vấn đề bảo vệ tài sản, vấn đề da dầu mụn, vấn đề size không vừa, vấn đề mất thời gian.",
         "",
         "## ENGINE 2 — HUMAN CONVERSATION",
         "Voice Over phải nghe như người thật đang nói — không phải AI đang đọc script.",
