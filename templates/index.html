@@ -1272,6 +1272,26 @@
         ⚠️ Chưa nhập Groq API key — vào <button @click="activeTab='settings'" class="underline font-medium">Cài đặt → mục 3</button> để nhập.
       </div>
 
+      <!-- URL input (library panel) -->
+      <div class="mb-3">
+        <div class="flex gap-2">
+          <input x-model="transcriptUrl" type="url"
+            placeholder="Paste link TikTok / YouTube..."
+            class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+            @keydown.enter="transcribeFromUrl()"
+            :disabled="isTranscribingUrl || isTranscribing">
+          <button @click="transcribeFromUrl()"
+            :disabled="!transcriptUrl.trim() || isTranscribingUrl || isTranscribing || !settings.groqApiKey.trim()"
+            class="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm px-3 py-1.5 rounded-lg flex items-center gap-1.5 shrink-0">
+            <svg x-show="isTranscribingUrl" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <span x-text="isTranscribingUrl ? 'Đang lấy...' : '🔗 Lấy từ URL'"></span>
+          </button>
+        </div>
+        <div class="flex items-center gap-2 my-2 text-gray-300">
+          <div class="flex-1 border-t"></div><span class="text-xs text-gray-400">hoặc upload file</span><div class="flex-1 border-t"></div>
+        </div>
+      </div>
+
       <!-- File input -->
       <div class="border-2 border-dashed rounded-lg p-4 text-center mb-3 cursor-pointer transition-colors"
         :class="transcriptFileName ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-green-400'"
@@ -1308,6 +1328,12 @@
           <span x-text="isTranscribing ? 'Đang xử lý...' : '🎙️ Transcript'"></span>
         </button>
         <button x-show="transcriptFile && !isTranscribing" @click="transcriptFile=null;transcriptFileName='';transcriptFileSize=0;transcriptResult='';transcriptError='';$refs.libTranscriptInput.value=''" class="text-xs text-gray-400 hover:text-gray-600">Xóa file</button>
+      </div>
+
+      <!-- Processing hint (library panel) -->
+      <div x-show="isTranscribing || isTranscribingUrl" class="bg-blue-50 border border-blue-200 rounded-lg p-2.5 mb-3 text-xs text-blue-700 flex items-center gap-2">
+        <svg class="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+        <span x-text="isTranscribingUrl ? 'Đang tải video từ URL + Transcript... có thể mất 15-60 giây.' : 'Groq Whisper đang xử lý...'"></span>
       </div>
 
       <!-- Error -->
@@ -1474,6 +1500,31 @@
     </div>
 
     <div class="bg-white border rounded-xl shadow-sm p-5 mb-4">
+      <!-- URL input -->
+      <div class="mb-5">
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">🔗 Paste link TikTok / YouTube</label>
+        <div class="flex gap-2">
+          <input x-model="transcriptUrl" type="url"
+            placeholder="https://www.tiktok.com/@... hoặc https://youtu.be/..."
+            class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+            @keydown.enter="transcribeFromUrl()"
+            :disabled="isTranscribingUrl || isTranscribing">
+          <button @click="transcribeFromUrl()"
+            :disabled="!transcriptUrl.trim() || isTranscribingUrl || isTranscribing || !settings.groqApiKey.trim()"
+            class="gradient-btn text-white text-sm px-4 py-2 rounded-lg flex items-center gap-1.5 disabled:opacity-60 shrink-0">
+            <svg x-show="isTranscribingUrl" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <span x-text="isTranscribingUrl ? 'Đang lấy...' : '🎙️ Lấy & Transcript'"></span>
+          </button>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">TikTok video public, YouTube • Video dài có thể mất 10-30 giây</p>
+      </div>
+
+      <div class="flex items-center gap-3 mb-5 text-gray-400">
+        <div class="flex-1 border-t"></div>
+        <span class="text-xs">hoặc upload file</span>
+        <div class="flex-1 border-t"></div>
+      </div>
+
       <!-- Drop zone -->
       <div
         class="border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer mb-4"
@@ -1523,9 +1574,9 @@
       </div>
 
       <!-- Processing hint -->
-      <div x-show="isTranscribing" class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-700 flex items-center gap-2">
+      <div x-show="isTranscribing || isTranscribingUrl" class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-700 flex items-center gap-2">
         <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-        Groq Whisper đang xử lý... Video dài có thể mất 10-30 giây.
+        <span x-text="isTranscribingUrl ? 'Đang tải video từ URL + Transcript... có thể mất 15-60 giây.' : 'Groq Whisper đang xử lý... Video dài có thể mất 10-30 giây.'"></span>
       </div>
 
       <!-- Error -->
@@ -2037,6 +2088,8 @@ function bellaApp() {
     transcriptError: '',
     isTranscribing: false,
     transcriptCopied: false,
+    transcriptUrl: '',
+    isTranscribingUrl: false,
     showVideoOptions: false,     // panel chỉnh nhanh tùy chọn video trên trang kết quả
     showCustomReq: false,        // panel nhập yêu cầu tùy chỉnh cho hook/kịch bản
 
@@ -2864,6 +2917,30 @@ function bellaApp() {
         .map(s => s.entry);
       return candidates.map(e => ({ type: e.type, industry: e.industry, productTag: e.productTag, content: e.content }));
     },
+    async transcribeFromUrl() {
+      const url = (this.transcriptUrl || '').trim();
+      if (!url) return;
+      const groqKey = (this.settings.groqApiKey || '').trim();
+      if (!groqKey) { this.transcriptError = 'Chưa nhập Groq API key. Vào Cài đặt → mục 3.'; return; }
+      this.isTranscribingUrl = true;
+      this.transcriptError = '';
+      this.transcriptResult = '';
+      try {
+        const res = await fetch('/api/transcribe-url', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ url, groqApiKey: groqKey, language: this.transcriptLang })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Lỗi không xác định');
+        this.transcriptResult = data.transcript;
+      } catch(e) {
+        this.transcriptError = e.message;
+      } finally {
+        this.isTranscribingUrl = false;
+      }
+    },
+
     transcriptHandleDrop(e) {
       const file = e.dataTransfer?.files?.[0];
       if (file) this.transcriptSetFile(file);

@@ -1353,6 +1353,54 @@ def scan_product():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/transcribe-url', methods=['POST'])
+def transcribe_url():
+    try:
+        data = request.get_json() or {}
+        url = data.get('url', '').strip()
+        groq_key = data.get('groqApiKey', '').strip()
+        language = data.get('language', 'vi')
+        if not url:
+            return jsonify({'success': False, 'error': 'Chưa nhập URL'}), 400
+        if not groq_key:
+            return jsonify({'success': False, 'error': 'Chưa nhập Groq API key. Vào Cài đặt → mục 3.'}), 400
+        import yt_dlp, tempfile, os as _os
+        MAX = 25 * 1024 * 1024
+        with tempfile.TemporaryDirectory() as tmp:
+            ydl_opts = {
+                'format': 'bestaudio[filesize<25M]/bestaudio/best[filesize<25M]/best',
+                'outtmpl': _os.path.join(tmp, '%(id)s.%(ext)s'),
+                'quiet': True, 'no_warnings': True,
+                'noplaylist': True, 'max_filesize': MAX,
+                'socket_timeout': 30,
+            }
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url])
+            except yt_dlp.utils.DownloadError as e:
+                msg = str(e)
+                if any(k in msg.lower() for k in ('private', 'login', 'cookie', 'sign in')):
+                    return jsonify({'success': False, 'error': 'Video riêng tư hoặc yêu cầu đăng nhập — thử video public khác'}), 400
+                if 'unsupported url' in msg.lower():
+                    return jsonify({'success': False, 'error': 'URL không được hỗ trợ. Dùng link TikTok hoặc YouTube.'}), 400
+                return jsonify({'success': False, 'error': f'Không thể tải: {msg[:200]}'}), 400
+            files = [_os.path.join(tmp, f) for f in _os.listdir(tmp) if _os.path.isfile(_os.path.join(tmp, f))]
+            if not files:
+                return jsonify({'success': False, 'error': 'Không tìm thấy file sau khi tải. Thử URL khác.'}), 400
+            filepath = files[0]
+            sz = _os.path.getsize(filepath)
+            if sz > MAX:
+                return jsonify({'success': False, 'error': f'File quá lớn ({sz//1024//1024}MB). Groq giới hạn 25MB — thử video ngắn hơn.'}), 400
+            fname = _os.path.basename(filepath)
+            with open(filepath, 'rb') as f:
+                file_bytes = f.read()
+        from ai_providers import transcribe_with_groq
+        text = transcribe_with_groq(groq_key, file_bytes, fname, language)
+        return jsonify({'success': True, 'transcript': text})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/transcribe', methods=['POST'])
 def transcribe_audio():
     try:
