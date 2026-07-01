@@ -874,6 +874,21 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         "HARD RULE: Mọi hành động trong section5.timeline PHẢI khớp subject mode trên.",
         "Không được dùng action sai subject mode (VD: 'nhìn camera' khi mode=hands, 'orbit sản phẩm' khi mode=face).",
         "",
+        "---",
+        "",
+        "# THÔNG TIN SẢN PHẨM",
+        f"Tên sản phẩm: {input_data.get('productName', '')}",
+        f"Mô tả: {input_data.get('productDescription', '')}",
+    ]
+    if audience:
+        lines.append(f"Đối tượng: {audience}")
+    lines += [
+        f"Thời lượng: {duration_label} | Phong cách: {tone_label} | Mục tiêu: {goal_label}",
+        f"Ảnh: {img_line}",
+        "",
+        "Bối cảnh quay: video liên tục, người quay KHÔNG NÓI — miệng im hoàn toàn.",
+        "Giọng lồng vào sau khi edit qua ElevenLabs. Người quay chỉ làm hành động khớp với giọng.",
+        "",
         "## PRE-WRITE PROTOCOL — làm TRƯỚC khi viết kịch bản",
         *(["0. Xác định NGÀNH HÀNG từ tên + mô tả sản phẩm (Thời trang / Mỹ phẩm / Điện tử / Gia dụng / Thực phẩm / Thú cưng / Mẹ&Bé / Khác) → dùng để chọn camera action ở bước 3."]
           if _is_auto_industry else [f"0. Ngành hàng: {industry_label} — áp dụng camera action phù hợp ngành này ở bước 3."]),
@@ -891,24 +906,9 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
             "4. Nhịp điệu voScript: xen kẽ câu ngắn/dài, reaction/review — không đều đơn điệu.",
         ]),
         "",
+        *_reference_examples,
         *_struct_check,
         "",
-        "---",
-        "",
-        "# THÔNG TIN SẢN PHẨM",
-        f"Tên sản phẩm: {input_data.get('productName', '')}",
-        f"Mô tả: {input_data.get('productDescription', '')}",
-    ]
-    if audience:
-        lines.append(f"Đối tượng: {audience}")
-    lines += [
-        f"Thời lượng: {duration_label} | Phong cách: {tone_label} | Mục tiêu: {goal_label}",
-        f"Ảnh: {img_line}",
-        "",
-        "Bối cảnh quay: video liên tục, người quay KHÔNG NÓI — miệng im hoàn toàn.",
-        "Giọng lồng vào sau khi edit qua ElevenLabs. Người quay chỉ làm hành động khớp với giọng.",
-        "",
-        *_reference_examples,
         "---",
         "",
         "# ĐẦU RA — Chỉ trả về JSON hợp lệ, không text nào ngoài JSON:",
@@ -1161,8 +1161,8 @@ def build_user_prompt(input_data: dict, has_images: bool, image_analysis: str = 
         "",
         *_koc_extra,
         *( [""] if _koc_extra else [] ),
-        *_selfcheck_lines,
         *_reference_examples,
+        *_selfcheck_lines,
         "---",
         "",
         "# YÊU CẦU ĐẦU RA",
@@ -1311,6 +1311,8 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
         f"Mục tiêu: {goal_label}" + (f" ({goal_guide})" if goal_guide else '')
     )
 
+    _cached_ref_policy = None  # set trong các nhánh 'script'/'hooks' để tránh tính lại cuối hàm
+
     if section == 'script':
         s2 = current_script.get('section2') or {}
         hero_benefit = (s2.get('heroBenefit') or '').strip()
@@ -1332,6 +1334,7 @@ def build_section_prompt(section: str, product_name: str, product_desc: str,
             _hook_type = random.choice(HOOK_TYPES) if not selected_hook else 'theo hook đã chọn'
             _sec_policy = get_reference_influence_policy(
                 input_data.get('referenceExamples', []), has_selected_hook=bool(selected_hook))
+            _cached_ref_policy = _sec_policy
             if _sec_policy['allow_hook_override']:
                 _hook_type = 'từ MẪU THAM KHẢO — xem phần dưới, không dùng kiểu ngẫu nhiên'
             _reaction_min = '3' if duration in ('15s', '20s') else '4-5' if duration == '30s' else '6-8'
@@ -1382,6 +1385,7 @@ Quy tắc viết voScript:
             _is_koc_sec = shooting in ('one-shot', 'review', 'koc-review') and tone == 'natural-koc'
             _sec_policy = get_reference_influence_policy(
                 input_data.get('referenceExamples', []), is_koc=_is_koc_sec, has_selected_hook=bool(selected_hook))
+            _cached_ref_policy = _sec_policy
             if _sec_policy['allow_hook_override']:
                 _hook_type = 'từ MẪU THAM KHẢO — xem phần dưới, không dùng kiểu ngẫu nhiên'
             _koc_flow_sec = random.choice(KOC_DISCOVERY_FLOWS) if _is_koc_sec else None
@@ -1439,7 +1443,9 @@ Tạo kịch bản mới và timeline quay tương ứng. Lời thoại tự nhi
         # V3: Pick 3 different hook types; V9: policy-based override when library active
         _hook_types_3 = random.sample(HOOK_TYPES, 3)
         _is_koc_hooks = shooting in ('one-shot', 'review', 'koc-review') and tone == 'natural-koc'
-        _hooks_policy = get_reference_influence_policy(input_data.get('referenceExamples', []), is_koc=_is_koc_hooks)
+        _hooks_policy = get_reference_influence_policy(
+            input_data.get('referenceExamples', []), is_koc=_is_koc_hooks, has_selected_hook=bool(selected_hook))
+        _cached_ref_policy = _hooks_policy
         if _hooks_policy['allow_hook_override']:
             _hook_req = (
                 "  Hook 1 (khuyên dùng): Xác định kiểu hook mẫu dùng (câu hỏi / kể chuyện / reaction / tiết lộ...) "
@@ -1595,14 +1601,10 @@ Gồm: setup góc máy phù hợp subject mode + ngành, cách demo rõ Hero Ben
     else:
         raise ValueError(f'Section không hợp lệ: {section}')
 
-    # Inject reference library vào hooks và script — policy-aware, với avoid_hooks variation rule
-    if section in ('script', 'hooks'):
-        _is_koc_inj = shooting in ('one-shot', 'review', 'koc-review') and tone == 'natural-koc'
-        _inj_policy = get_reference_influence_policy(
-            input_data.get('referenceExamples', []), is_koc=_is_koc_inj,
-            has_selected_hook=bool(selected_hook))
+    # Inject reference library vào hooks và script — dùng policy đã tính trong nhánh trên
+    if section in ('script', 'hooks') and _cached_ref_policy is not None:
         _ref_lines = _build_reference_examples_block(
-            input_data.get('referenceExamples', []), policy=_inj_policy, avoid_hooks=avoid_hooks)
+            input_data.get('referenceExamples', []), policy=_cached_ref_policy, avoid_hooks=avoid_hooks)
         if _ref_lines:
             _ref_block = '\n'.join(_ref_lines)
             user = user.replace('\n```json\n', f'\n{_ref_block}\n```json\n', 1)

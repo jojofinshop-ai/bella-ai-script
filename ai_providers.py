@@ -75,7 +75,7 @@ def call_gemini(settings: dict, system_prompt: str, user_prompt: str, images: li
 
     url = f'https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}'
 
-    parts = [{'text': f"{system_prompt}\n\n{user_prompt}"}]
+    parts = [{'text': user_prompt}]
     for img in images:
         b64_data, mime = get_base64_from_data_url(img.get('dataUrl', ''))
         parts.append({'inline_data': {'mime_type': mime, 'data': b64_data}})
@@ -84,7 +84,7 @@ def call_gemini(settings: dict, system_prompt: str, user_prompt: str, images: li
     if max_tokens > 0:
         gen_config['maxOutputTokens'] = max_tokens
 
-    payload = _json.dumps({
+    body = {
         'contents': [{'role': 'user', 'parts': parts}],
         'generationConfig': gen_config,
         'safetySettings': [
@@ -92,8 +92,11 @@ def call_gemini(settings: dict, system_prompt: str, user_prompt: str, images: li
             {'category': 'HARM_CATEGORY_HATE_SPEECH', 'threshold': 'BLOCK_NONE'},
             {'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold': 'BLOCK_NONE'},
             {'category': 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold': 'BLOCK_NONE'},
-        ]
-    }).encode('utf-8')
+        ],
+    }
+    if system_prompt:
+        body['systemInstruction'] = {'parts': [{'text': system_prompt}]}
+    payload = _json.dumps(body).encode('utf-8')
 
     req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'})
     with urllib.request.urlopen(req, timeout=120) as resp:
@@ -325,10 +328,32 @@ def select_relevant_examples(settings: dict, product_name: str, product_desc: st
             'Trả về JSON: {"selected": [index, ...]} — index là số trong dấu [] ở trên. '
             'Nếu không mẫu nào phù hợp, trả {"selected": []}.'
         )
-        scan_settings = dict(settings)
-        scan_settings['maxTokens'] = 300
-        scan_settings['temperature'] = 0.2
-        raw = call_ai(scan_settings, system_prompt, user_prompt, [])
+        # Ưu tiên Gemini Flash (rẻ hơn) để chọn mẫu; fallback về model chính nếu không có key
+        _ref_gemini_raw = (
+            settings.get('visionGeminiKeys', '')
+            or (settings.get('apiKeys') or {}).get('gemini', '')
+            or (settings.get('apiKey', '') if settings.get('provider') == 'gemini' else '')
+        )
+        _ref_gemini_keys = [k.strip() for k in _ref_gemini_raw.replace(',', '\n').split('\n') if k.strip()]
+        raw = None
+        if _ref_gemini_keys:
+            for _rgk in _ref_gemini_keys:
+                for _rgm in ('gemini-2.0-flash', 'gemini-1.5-flash'):
+                    try:
+                        raw = call_gemini(
+                            {'apiKey': _rgk, 'modelName': _rgm, 'temperature': 0.2, 'maxTokens': 300},
+                            system_prompt, user_prompt, []
+                        )
+                        break
+                    except Exception:
+                        continue
+                if raw:
+                    break
+        if not raw:
+            scan_settings = dict(settings)
+            scan_settings['maxTokens'] = 300
+            scan_settings['temperature'] = 0.2
+            raw = call_ai(scan_settings, system_prompt, user_prompt, [])
 
         m = _re.search(r'\{[\s\S]*\}', raw)
         if not m:
