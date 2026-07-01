@@ -1384,6 +1384,115 @@
     </div>
   </div>
 
+  <!-- ====== TAB: TRANSCRIPT ====== -->
+  <div x-show="activeTab==='transcript'">
+    <div class="mb-5">
+      <h2 class="text-xl font-bold">🎬 Transcript Video</h2>
+      <p class="text-sm text-gray-500 mt-1">Chuyển video/audio thành text bằng Groq Whisper — nhanh, miễn phí, hỗ trợ tiếng Việt</p>
+    </div>
+
+    <!-- Groq key warning -->
+    <div x-show="!settings.groqApiKey.trim()" class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-start gap-3">
+      <span class="text-amber-500 text-lg shrink-0">⚠️</span>
+      <div>
+        <p class="text-sm font-medium text-amber-800">Chưa nhập Groq API key</p>
+        <p class="text-xs text-amber-700 mt-0.5">Vào <button @click="activeTab='settings'" class="underline font-medium">Cài đặt → mục 3</button> để nhập. Lấy key miễn phí tại <span class="text-blue-700 font-medium">console.groq.com</span></p>
+      </div>
+    </div>
+
+    <div class="bg-white border rounded-xl shadow-sm p-5 mb-4">
+      <!-- Drop zone -->
+      <div
+        class="border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer mb-4"
+        :class="transcriptFileName ? 'border-green-400 bg-green-50' : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'"
+        @dragover.prevent @drop.prevent="transcriptHandleDrop($event)"
+        @click="$refs.transcriptFileInput.click()">
+        <input type="file" x-ref="transcriptFileInput" class="hidden"
+          accept=".mp3,.mp4,.mpeg,.mpga,.m4a,.wav,.webm,.flac,.ogg,.opus"
+          @change="if($event.target.files[0]) transcriptSetFile($event.target.files[0])">
+        <template x-if="!transcriptFileName">
+          <div>
+            <div class="text-4xl mb-2">🎬</div>
+            <p class="text-sm font-medium text-gray-700">Kéo thả file vào đây hoặc <span class="text-purple-600">click để chọn</span></p>
+            <p class="text-xs text-gray-400 mt-1">MP4, MP3, M4A, WAV, WEBM, OGG, FLAC • Tối đa 25MB</p>
+          </div>
+        </template>
+        <template x-if="transcriptFileName">
+          <div>
+            <div class="text-3xl mb-1">✅</div>
+            <p class="text-sm font-medium text-gray-800" x-text="transcriptFileName"></p>
+            <p class="text-xs text-gray-500 mt-0.5" x-text="(transcriptFileSize/1024/1024).toFixed(1) + 'MB'"></p>
+            <p class="text-xs text-purple-600 mt-1">Click để đổi file</p>
+          </div>
+        </template>
+      </div>
+
+      <!-- Language + Transcribe button -->
+      <div class="flex items-center gap-3 mb-4 flex-wrap">
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-gray-600 font-medium shrink-0">Ngôn ngữ:</label>
+          <select x-model="transcriptLang" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+            <option value="vi">🇻🇳 Tiếng Việt</option>
+            <option value="en">🇺🇸 English</option>
+            <option value="auto">🌐 Tự động nhận diện</option>
+          </select>
+        </div>
+        <button
+          @click="transcribeVideo()"
+          :disabled="!transcriptFile || isTranscribing || !settings.groqApiKey.trim()"
+          class="gradient-btn text-white text-sm px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+          <template x-if="isTranscribing">
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          </template>
+          <span x-text="isTranscribing ? 'Đang xử lý...' : '🎙️ Transcript'"></span>
+        </button>
+        <button x-show="transcriptFile" @click="transcriptFile=null; transcriptFileName=''; transcriptFileSize=0; transcriptResult=''; transcriptError=''; $refs.transcriptFileInput.value=''" class="text-sm text-gray-400 hover:text-gray-600 px-3 py-2">Xóa file</button>
+      </div>
+
+      <!-- Processing hint -->
+      <div x-show="isTranscribing" class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-700 flex items-center gap-2">
+        <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+        Groq Whisper đang xử lý... Video dài có thể mất 10-30 giây.
+      </div>
+
+      <!-- Error -->
+      <div x-show="transcriptError" class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700" x-text="transcriptError"></div>
+
+      <!-- Result -->
+      <div x-show="transcriptResult">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-sm font-semibold text-gray-700">Kết quả transcript:</p>
+          <div class="flex gap-2">
+            <button @click="navigator.clipboard.writeText(transcriptResult); transcriptCopied=true; setTimeout(()=>transcriptCopied=false,2000)"
+              class="text-xs border px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
+              :class="transcriptCopied ? 'bg-green-50 text-green-700 border-green-300' : 'text-gray-600 hover:bg-gray-50'">
+              <span x-text="transcriptCopied ? '✓ Đã copy' : '📋 Copy'"></span>
+            </button>
+            <button @click="transcriptAddToLibrary()"
+              class="text-xs bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+              📚 Thêm vào Thư viện mẫu
+            </button>
+          </div>
+        </div>
+        <textarea
+          x-model="transcriptResult"
+          rows="12"
+          class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-purple-400 resize-y font-mono"
+          placeholder="Kết quả sẽ hiện ở đây..."></textarea>
+        <p class="text-xs text-gray-400 mt-1.5" x-text="transcriptResult.length + ' ký tự'"></p>
+      </div>
+    </div>
+
+    <!-- Hướng dẫn -->
+    <div class="bg-gray-50 border rounded-xl p-4 text-sm text-gray-600 space-y-1.5">
+      <p class="font-medium text-gray-700">Lưu ý:</p>
+      <p>• File tối đa <strong>25MB</strong> — video TikTok 15-60s thường 5-20MB, hoàn toàn OK</p>
+      <p>• File lớn hơn: dùng <strong>HandBrake</strong> hoặc <strong>FFmpeg</strong> để nén/cắt trước</p>
+      <p>• Groq miễn phí <strong>7200 phút/ngày</strong> — đủ dùng thoải mái</p>
+      <p>• Sau khi có transcript, bấm <strong>"Thêm vào Thư viện mẫu"</strong> để AI học phong cách video đó</p>
+    </div>
+  </div>
+
   <!-- ====== TAB: SETTINGS ====== -->
   <div x-show="activeTab==='settings'">
     <div class="mb-6">
@@ -1510,6 +1619,29 @@
         <button @click="saveSettings()" class="w-full gradient-btn text-white font-medium py-2.5 rounded-lg">
           Lưu cài đặt
         </button>
+      </div>
+    </div>
+
+    <!-- 3. Transcript (Groq Whisper) -->
+    <div class="bg-white border rounded-xl shadow-sm mb-4">
+      <div class="p-4 border-b flex items-center justify-between">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-green-600 text-white text-xs font-bold flex items-center justify-center">3</span>
+            <h3 class="font-semibold text-gray-800">Groq API Key <span class="text-xs text-gray-400 font-normal">(dành cho Transcript video)</span></h3>
+          </div>
+          <p class="text-xs text-gray-500 mt-1 ml-8">Dùng Whisper để chuyển video/audio thành text. Miễn phí 7200 phút/ngày.</p>
+        </div>
+        <a href="https://console.groq.com" target="_blank" class="text-xs text-blue-600 hover:underline shrink-0">Lấy key miễn phí</a>
+      </div>
+      <div class="p-4 space-y-3">
+        <div class="relative">
+          <input :type="showGroqKey ? 'text' : 'password'" x-model="settings.groqApiKey" @change="saveSettings(true)" placeholder="gsk_..." class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm pr-10 focus:outline-none focus:ring-2 focus:ring-purple-400">
+          <button @click="showGroqKey=!showGroqKey" class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="showGroqKey ? 'M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21' : 'M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z'"/></svg>
+          </button>
+        </div>
+        <p class="text-xs text-gray-400">Model: <strong>whisper-large-v3-turbo</strong> • Hỗ trợ tiếng Việt • Giới hạn 25MB/file</p>
       </div>
     </div>
 
@@ -1724,6 +1856,7 @@ function bellaApp() {
       {id:'generate', label:'Tạo kịch bản', icon:'▶'},
       {id:'history', label:'Lịch sử', icon:'🕐'},
       {id:'library', label:'Thư viện mẫu', icon:'📚'},
+      {id:'transcript', label:'Transcript', icon:'🎬'},
       {id:'settings', label:'Cài đặt', icon:'⚙️'},
       {id:'prompt', label:'Prompt', icon:'📝'},
     ],
@@ -1795,8 +1928,10 @@ function bellaApp() {
       visionOpenaiBaseUrl: 'https://api.openai.com/v1',
       visionOpenaiModel: 'gpt-4o-mini',
       maxAnalysisImages: 1,
+      groqApiKey: '',
     },
     showApiKey: false,
+    showGroqKey: false,
     testingConnection: false,
     testResult: null,
 
@@ -1818,6 +1953,16 @@ function bellaApp() {
     libraryForm: { type: 'hook', industry: 'auto', productTag: '', content: '', note: '' },
     editingLibraryId: null,
     showQuickAddLibrary: false,  // V8.1: panel thêm nhanh mẫu ngay trên tab Generate
+
+    // Transcript tab state
+    transcriptFile: null,
+    transcriptFileName: '',
+    transcriptFileSize: 0,
+    transcriptLang: 'vi',
+    transcriptResult: '',
+    transcriptError: '',
+    isTranscribing: false,
+    transcriptCopied: false,
     showVideoOptions: false,     // panel chỉnh nhanh tùy chọn video trên trang kết quả
     showCustomReq: false,        // panel nhập yêu cầu tùy chỉnh cho hook/kịch bản
 
@@ -2645,6 +2790,60 @@ function bellaApp() {
         .map(s => s.entry);
       return candidates.map(e => ({ type: e.type, industry: e.industry, productTag: e.productTag, content: e.content }));
     },
+    transcriptHandleDrop(e) {
+      const file = e.dataTransfer?.files?.[0];
+      if (file) this.transcriptSetFile(file);
+    },
+    transcriptSetFile(file) {
+      this.transcriptFile = file;
+      this.transcriptFileName = file.name;
+      this.transcriptFileSize = file.size;
+      this.transcriptResult = '';
+      this.transcriptError = '';
+    },
+    async transcribeVideo() {
+      if (!this.transcriptFile) return;
+      const groqKey = (this.settings.groqApiKey || '').trim();
+      if (!groqKey) {
+        this.transcriptError = 'Chưa nhập Groq API key. Vào Cài đặt → mục Transcript để nhập.';
+        return;
+      }
+      if (this.transcriptFile.size > 25 * 1024 * 1024) {
+        this.transcriptError = `File quá lớn (${Math.round(this.transcriptFile.size/1024/1024)}MB). Groq giới hạn 25MB — hãy nén video hoặc cắt ngắn.`;
+        return;
+      }
+      this.isTranscribing = true;
+      this.transcriptError = '';
+      this.transcriptResult = '';
+      try {
+        const fd = new FormData();
+        fd.append('file', this.transcriptFile, this.transcriptFileName);
+        fd.append('groqApiKey', groqKey);
+        fd.append('language', this.transcriptLang);
+        const res = await fetch('/api/transcribe', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Lỗi không xác định');
+        this.transcriptResult = data.transcript;
+      } catch(e) {
+        this.transcriptError = e.message;
+      } finally {
+        this.isTranscribing = false;
+      }
+    },
+    transcriptAddToLibrary() {
+      if (!this.transcriptResult.trim()) return;
+      this.libraryForm = {
+        type: 'transcript',
+        industry: 'auto',
+        productTag: '',
+        content: this.transcriptResult.trim(),
+        note: this.transcriptFileName || '',
+      };
+      this.editingLibraryId = null;
+      this.saveLibraryEntry();
+      this.showToast('Đã thêm transcript vào Thư viện mẫu', 'success');
+    },
+
     async exportLibrary() {
       try {
         const res = await fetch('/api/save-file', {

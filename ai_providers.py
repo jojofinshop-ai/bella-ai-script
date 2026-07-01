@@ -342,6 +342,39 @@ def select_relevant_examples(settings: dict, product_name: str, product_desc: st
         return fallback
 
 
+def transcribe_with_groq(groq_api_key: str, file_bytes: bytes, filename: str, language: str = 'vi') -> str:
+    """Gọi Groq Whisper API để chuyển audio/video thành text."""
+    import requests as _req
+    url = 'https://api.groq.com/openai/v1/audio/transcriptions'
+    headers = {'Authorization': f'Bearer {groq_api_key}'}
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'mp4'
+    mime_map = {
+        'mp3': 'audio/mpeg', 'mp4': 'video/mp4', 'mpeg': 'audio/mpeg',
+        'mpga': 'audio/mpeg', 'm4a': 'audio/mp4', 'wav': 'audio/wav',
+        'webm': 'audio/webm', 'flac': 'audio/flac', 'ogg': 'audio/ogg', 'opus': 'audio/opus',
+    }
+    mime = mime_map.get(ext, 'audio/mpeg')
+    files = {'file': (filename, file_bytes, mime)}
+    data = {'model': 'whisper-large-v3-turbo', 'response_format': 'text'}
+    if language and language != 'auto':
+        data['language'] = language
+    resp = _req.post(url, headers=headers, files=files, data=data, timeout=180)
+    if resp.status_code == 401:
+        raise ValueError('Groq API key không hợp lệ hoặc đã hết hạn')
+    if resp.status_code == 413:
+        raise ValueError('File quá lớn. Groq giới hạn 25MB — hãy nén video trước')
+    if not resp.ok:
+        try:
+            err = resp.json().get('error', {}).get('message', resp.text[:200])
+        except Exception:
+            err = resp.text[:200]
+        raise ValueError(f'Groq API lỗi: {err}')
+    text = resp.text.strip()
+    if not text:
+        raise ValueError('Groq trả về kết quả rỗng — file có thể không có âm thanh')
+    return text
+
+
 def call_ai(settings: dict, system_prompt: str, user_prompt: str, images: list) -> str:
     provider = settings.get('provider', 'openai')
     if provider == 'gemini':

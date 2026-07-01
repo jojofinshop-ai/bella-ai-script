@@ -1353,6 +1353,28 @@ def scan_product():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/transcribe', methods=['POST'])
+def transcribe_audio():
+    try:
+        f = request.files.get('file')
+        if not f:
+            return jsonify({'success': False, 'error': 'Không có file được gửi lên'}), 400
+        groq_key = request.form.get('groqApiKey', '').strip()
+        if not groq_key:
+            return jsonify({'success': False, 'error': 'Chưa nhập Groq API key. Vào Cài đặt → Transcript để nhập.'}), 400
+        language = request.form.get('language', 'vi')
+        file_bytes = f.read()
+        max_size = 25 * 1024 * 1024  # 25MB
+        if len(file_bytes) > max_size:
+            mb = len(file_bytes) // 1024 // 1024
+            return jsonify({'success': False, 'error': f'File quá lớn ({mb}MB). Groq giới hạn 25MB — hãy nén video hoặc cắt ngắn trước.'}), 400
+        from ai_providers import transcribe_with_groq
+        text = transcribe_with_groq(groq_key, file_bytes, f.filename or 'audio.mp4', language)
+        return jsonify({'success': True, 'transcript': text})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/generate-visual-prompt', methods=['POST'])
 def generate_visual_prompt():
     try:
