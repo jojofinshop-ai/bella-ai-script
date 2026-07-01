@@ -1401,6 +1401,21 @@ def transcribe_url():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/detect-industry', methods=['POST'])
+def detect_industry():
+    try:
+        data = request.get_json() or {}
+        text = (data.get('text') or '').strip()
+        groq_key = (data.get('groqApiKey') or '').strip()
+        if not text or not groq_key:
+            return jsonify({'success': True, 'industry': 'auto'})
+        from ai_providers import detect_industry_with_groq
+        industry = detect_industry_with_groq(groq_key, text)
+        return jsonify({'success': True, 'industry': industry})
+    except Exception:
+        return jsonify({'success': True, 'industry': 'auto'})
+
+
 @app.route('/api/transcribe', methods=['POST'])
 def transcribe_audio():
     try:

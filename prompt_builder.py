@@ -528,7 +528,7 @@ def get_reference_influence_policy(reference_examples: list, is_koc: bool = Fals
 
 def _build_reference_examples_block(reference_examples: list, policy: dict = None, avoid_hooks: list = None) -> list:
     """Trả về list dòng prompt tham khảo mẫu từ Thư viện — theo policy ảnh hưởng dựa trên số mẫu."""
-    examples = [e.strip()[:600] for e in (reference_examples or []) if e and e.strip()]
+    examples = [e.strip()[:450] for e in (reference_examples or []) if e and e.strip()]
     if not examples:
         return []
 

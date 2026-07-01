@@ -311,7 +311,7 @@ def select_relevant_examples(settings: dict, product_name: str, product_desc: st
 
         listing = '\n'.join(
             f"[{i}] loại={c.get('type', '')} ngành={c.get('industry', '')} tag={c.get('productTag', '')}: "
-            f"{(c.get('content', '') or '')[:150]}"
+            f"{(c.get('content', '') or '')[:300]}"
             for i, c in enumerate(candidates)
         )
         system_prompt = 'Bạn là bộ lọc chọn mẫu tham khảo cho copywriter. Chỉ trả JSON, không giải thích gì thêm.'
@@ -340,6 +340,36 @@ def select_relevant_examples(settings: dict, product_name: str, product_desc: st
         return _make_result(selected_items) if selected_items else fallback
     except Exception:
         return fallback
+
+
+def detect_industry_with_groq(groq_api_key: str, text: str) -> str:
+    """Dùng Groq LLM (llama-3.1-8b-instant) phân loại ngành hàng từ transcript.
+    Trả về 1 trong: fashion/beauty/electronics/home/food/pet/baby/other/auto (nếu lỗi)."""
+    import requests as _req
+    headers = {'Authorization': f'Bearer {groq_api_key}', 'Content-Type': 'application/json'}
+    payload = {
+        'model': 'llama-3.1-8b-instant',
+        'messages': [
+            {'role': 'system', 'content': 'Bạn phân loại ngành hàng TikTok Shop. Chỉ trả về đúng 1 từ khóa tiếng Anh, không giải thích.'},
+            {'role': 'user', 'content': (
+                f'Đọc đoạn script/transcript video TikTok Shop này:\n\n"{text[:800]}"\n\n'
+                'Chọn đúng 1 trong các từ khóa sau: fashion, beauty, electronics, home, food, pet, baby, other'
+            )},
+        ],
+        'temperature': 0.1,
+        'max_tokens': 20,
+    }
+    try:
+        resp = _req.post('https://api.groq.com/openai/v1/chat/completions', headers=headers, json=payload, timeout=15)
+        if not resp.ok:
+            return 'auto'
+        content = resp.json().get('choices', [{}])[0].get('message', {}).get('content', '').strip().lower()
+        for kw in ('fashion', 'beauty', 'electronics', 'home', 'food', 'pet', 'baby', 'other'):
+            if kw in content:
+                return kw
+    except Exception:
+        pass
+    return 'auto'
 
 
 def transcribe_with_groq(groq_api_key: str, file_bytes: bytes, filename: str, language: str = 'vi') -> str:
