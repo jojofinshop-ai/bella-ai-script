@@ -158,10 +158,16 @@ VO_PERSONA_GUIDE = {
         "Chốt nhẹ, không áp lực — người nghe tự muốn tìm hiểu thêm."
     ),
     'real-review': (
-        "Persona: Người vừa dùng sản phẩm thật — đang nói thật, không PR.\n"
-        "Có cả ưu và điểm cần lưu ý. Nghe đáng tin vì không hoàn hảo 100%.\n"
-        "Được phép: ngập ngừng ('ừ thì... thật ra...'), tự điều chỉnh ('không phải tất cả, nhưng...'), reaction thật ('ghê thật').\n"
-        "Dùng: 'thật ra', 'nói thật', 'mình dùng rồi nên biết', 'điểm này mình thích / chưa thích lắm'."
+        "Persona: Người vừa dùng sản phẩm thật — đang kể lại trải nghiệm thực tế cho bạn bè nghe.\n"
+        "Chân thật, không PR quá, không hoàn hảo 100% — nghe đáng tin vì có cả điểm chưa hoàn hảo.\n"
+        "CÁCH KỂ: mỗi tính năng phải gắn với 1 tình huống cụ thể mình đã gặp — KHÔNG liệt kê spec.\n"
+        "  SAI: 'Pin xài 6 tháng, kết nối Bluetooth, không cần sim.'\n"
+        "  ĐÚNG: 'Gắn từ hồi Tết giờ vẫn chưa thay pin. Móc vô chùm chìa khóa, lên đường chẳng lo gì.'\n"
+        "ĐƯỢC PHÉP và KHUYẾN KHÍCH: dùng 1 câu sợ hãi/lo ngại cụ thể để mở đầu thân bài ('Trộm cắp giờ nhanh lắm.' / 'Lỡ mà có chuyện, mình bó tay.').\n"
+        "Được phép: ngập ngừng ('ừ thì... thật ra...'), tự điều chỉnh, reaction ngắn đứng riêng ('Ghê thiệt.', 'Hú hồn.', 'Khỏi lo luôn.').\n"
+        "Dùng: 'thật ra', 'nói thật', 'mình dùng rồi nên biết', 'điểm này mình thích / chưa thích lắm'.\n"
+        "Kể bằng tình huống: khi quên xe đâu, khi sợ bị trộm, khi lục tìm không ra — không đọc catalogue.\n"
+        "Sau mỗi 1-2 điểm review: BẮT BUỘC xen 1 reaction ngắn đứng riêng (2-5 từ) trước khi kể tiếp."
     ),
 }
 
@@ -560,7 +566,8 @@ def _build_reference_examples_block(reference_examples: list, policy: dict = Non
              "    — Câu hỏi nghi vấn? / Tiết lộ bí mật / twist? / Kể chuyện 'mình trước đây...'?",
              "    — Reaction bất ngờ 'Ủa / Thú thật...'? / Thách thức nhận thức?",
              "  • NHỊP CÂU: ngắn (<8 từ) hay dài? Có ngắt '...'? Có reaction xen giữa?",
-             "  • BỐ CỤC: hook → pain → tính năng → social proof → CTA? hay flow khác?",
+             "  • BỐ CỤC: hook → pain/tình huống thực → giải pháp + cảm xúc → CTA? hay flow khác?",
+             "  • THÂN BÀI: mẫu kể tình huống cụ thể hay liệt kê tính năng? Reaction xen giữa ở đâu?",
              "  • VĂN PHONG: first-person 'mình/em'? Thân mật? Từ ngữ đặc trưng?",
              "", "BƯỚC 2 — ÁP DỤNG:"]
 
@@ -576,11 +583,13 @@ def _build_reference_examples_block(reference_examples: list, policy: dict = Non
         lines += [
             f"  ✓ BLEND DNA từ ít nhất 2 mẫu — không copy một mẫu duy nhất",
             f"  ✓ Hook phải cùng KIỂU với mẫu (xác định kiểu phổ biến nhất trong {count} mẫu)",
-            "     (mẫu dùng câu hỏi → viết câu hỏi; mẫu kể chuyện → kể chuyện; mẫu reaction → reaction)",
+            "     (mẫu dùng câu hỏi → viết câu hỏi; mẫu kể chuyện → kể chuyện; mẫu tiết lộ bí mật → tiết lộ bí mật)",
             "  ✓ Nhịp câu và độ dài câu blend từ mẫu",
             "  ✓ Bố cục theo flow phổ biến nhất của mẫu",
+            "  ✓ Học CÁCH KỂ THÂN BÀI: mẫu dùng tình huống thực + reaction — không liệt kê tính năng",
             "  ✓ Văn phong blend từ mẫu — nội dung phải mới hoàn toàn",
             "  ✗ BỎ QUA ENGINE 4 ngẫu nhiên — hook type từ mẫu QUAN TRỌNG HƠN",
+            "  ★ Hook được đánh isRecommended=true PHẢI là hook thuộc KIỂU học từ mẫu — không được recommend hook kiểu khác.",
         ]
     else:
         lines += [
@@ -595,6 +604,7 @@ def _build_reference_examples_block(reference_examples: list, policy: dict = Non
         "",
         "⚠ ANTI-COPY GUARD (bắt buộc mọi trường hợp):",
         "  • Hook mới phải KHÁC mẫu ≥70% về từ ngữ — cùng KIỂU nhưng không clone câu mẫu",
+        "  • KHÔNG dùng nguyên cụm mở đầu từ mẫu — phải paraphrase: 'Để chỉ cho anh em...' → viết lại góc tiếp cận khác",
         "  • CTA phải KHÁC mẫu ≥60% về từ ngữ",
         "  • 3 hooks phải thật sự khác nhau (không chỉ đổi từ hoặc hoán vị cùng cấu trúc)",
     ]
@@ -792,9 +802,13 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
             "- Có tag dạng [xxx] không? → Xóa hết.",
             "- Có giống văn viết / MC / ChatGPT không? → Viết lại.",
             "- Có câu mở đầu kiểu AI ('Xin chào', 'Hôm nay mình') không? → Thay hook khác.",
+            "- Body có liệt kê tính năng khô không? ('nhỏ Xmm, pin Y tháng, kết nối Z...') → Thay bằng tình huống thực.",
+            "- Body có 2+ tính năng liên tiếp không xen reaction? → Thêm reaction ngắn XEN VÀO GIỮA chúng (không phải cuối script).",
+            "- Reaction ngắn đứng riêng có nằm XEN GIỮA các ý hay bị dồn cuối? → Dời vào giữa.",
+            "- Có bịa deal/giảm giá/flash sale không có trong mô tả sản phẩm? → Xóa.",
             f"- Hook có đúng kiểu '{_hook_short}' không? → Nếu không, viết lại hook.",
             f"- Cấu trúc có đúng '{_pattern_short}' không? → Nếu lệch, điều chỉnh.",
-            "- Có ít nhất 2-3 câu reaction / ngắt nhịp độc lập chưa? → Nếu thiếu, thêm vào.",
+            "- Có ít nhất 2-3 câu reaction độc lập (câu ngắn đứng riêng) chưa? → Nếu thiếu, thêm vào.",
             "- Có lặp từ / lặp cấu trúc câu không? → Đa dạng hóa.",
             "- Có đúng Persona và Giọng điệu đã chọn không?",
             "- Người nghe có cảm giác 'đây là Creator thật' không?",
@@ -809,9 +823,9 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         _struct_check = [
             "## ENGINE 4 — HOOK LẦN NÀY (override bởi MẪU THAM KHẢO)"
             if line == _e4_header else
-            "Hook lần này: học kiểu hook từ MẪU THAM KHẢO bên dưới — KHÔNG dùng kiểu ngẫu nhiên"
+            "Hook lần này: học kiểu hook từ MẪU THAM KHẢO bên trên — KHÔNG dùng kiểu ngẫu nhiên. Hook isRecommended=true PHẢI thuộc kiểu đó."
             if line == _e4_line else
-            "- Hook có cùng KIỂU/NHỊP CÂU với MẪU THAM KHẢO không? → Nếu không, viết lại hook."
+            "- Hook có cùng KIỂU/NHỊP CÂU với MẪU THAM KHẢO không? → Nếu không, viết lại. Hook recommend có đúng kiểu học từ mẫu không?"
             if line == _check_line else
             line
             for line in _struct_check
@@ -841,6 +855,30 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
         "Không mở đầu bằng: 'Xin chào mọi người', 'Hôm nay mình sẽ', 'Mình xin giới thiệu',",
         "'Trong video này', 'Đây là sản phẩm', 'Sản phẩm này được thiết kế để'.",
         "Không dùng cấu trúc AI: 'Ngoài ra...', 'Đặc biệt...', 'Sản phẩm có...', 'Sản phẩm được...'.",
+        "",
+        "## TUYỆT ĐỐI KHÔNG liệt kê tính năng khô",
+        "KHÔNG được viết kiểu: 'Nó nhỏ xíu, chỉ 34mm. Pin CR2032 xài 6 tháng. Không cần sim. Kết nối Bluetooth.'",
+        "Mỗi tính năng PHẢI đặt trong tình huống thực tế hoặc kèm reaction cảm xúc:",
+        "  SAI: 'Pin xài 6 tháng.' → ĐÚNG: 'Gắn từ Tết đến giờ mà pin vẫn còn — không lo thay pin mấy.'",
+        "  SAI: 'Không cần sim.' → ĐÚNG: 'Không tốn sim, không phí — móc vô chìa là dùng được luôn.'",
+        "Tính năng phải đến từ trải nghiệm, không phải từ catalogue sản phẩm.",
+        "",
+        "## TUYỆT ĐỐI KHÔNG bịa thông tin",
+        "KHÔNG được tự bịa: deal giảm giá, mã giảm giá, flash sale, tặng quà, giá cụ thể — nếu sản phẩm không đề cập.",
+        "Chỉ nói những gì có trong mô tả sản phẩm và ảnh.",
+        "",
+        "## NHỊP ĐIỆU VOICEOVER — LUẬT BẮT BUỘC",
+        "KHÔNG được viết: Feature → Feature → Feature → reaction (reaction ở cuối KHÔNG tính).",
+        "PHẢI là: Feature → reaction ngắn ← XEN VÀO GIỮA → Feature tiếp theo.",
+        "Reaction ngắn đứng riêng (tách thành câu riêng biệt): 'Ghê thiệt.', 'Khỏi lo luôn.', 'Yên tâm hơn hẳn.',",
+        "  'Hú hồn.', 'Không đùa đâu.', 'Thật sự mà.', 'Kiểu đó mà.', 'Mình mà không tin.', 'Sợ luôn ấy.'",
+        "Câu ngắn 2-5 từ xen kẽ câu dài. Nhịp câu phải biến đổi — không đều đơn điệu.",
+        "Tối thiểu 2 reaction ngắn đứng riêng nằm XEN GIỮA các ý trong thân bài (không phải cuối script).",
+        "",
+        "## FEAR / URGENCY — ĐỀ XUẤT (nếu phù hợp sản phẩm)",
+        "Với sản phẩm bảo vệ/an toàn/tài sản: thêm 1 câu sợ hãi/lo ngại thực tế TRƯỚC khi giới thiệu giải pháp.",
+        "Ví dụ: 'Trộm cắp giờ nhanh lắm. 5 giây là bốc hơi thôi.' / 'Lỡ mà có chuyện, mình bó tay.'",
+        "Câu này phải ngắn, cụ thể, chạm được nỗi sợ thực tế của người xem.",
         "",
         "## ENGINE 2 — HUMAN CONVERSATION",
         "Voice Over phải nghe như người thật đang nói — không phải AI đang đọc script.",
@@ -894,7 +932,7 @@ def build_voiceover_prompt(input_data: dict, has_images: bool, image_analysis: s
           if _is_auto_industry else [f"0. Ngành hàng: {industry_label} — áp dụng camera action phù hợp ngành này ở bước 3."]),
         "1. Xác định HERO BENEFIT — 1 lợi ích bán hàng mạnh nhất cho khách mục tiêu. Ghi vào section2.heroBenefit.",
         "   Ví dụ: " + industry_data.get('hero_examples', "'Lợi ích mạnh nhất' (TT) / 'Thấm nhanh không nhờn' (MP) / 'Pin trâu 2 ngày' (ĐT)"),
-        "2. voScript: 70% xoay quanh Hero Benefit. 30% mới nói lợi ích phụ.",
+        "2. voScript: 70% xoay quanh Hero Benefit — kể qua tình huống thực + reaction, KHÔNG liệt kê spec. 30% mới nói lợi ích phụ.",
         f"3. Timeline camera action phục vụ Hero Benefit + Subject Mode [{resolved_label}]:",
         f"   {subject_action_vo}",
         "   KHÔNG dùng action sai subject mode trong timeline. Action phải phục vụ Hero Benefit đang nói.",
